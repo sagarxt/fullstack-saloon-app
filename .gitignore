@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -15,3 +16,130 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+=======
+##############################################
+# GLOBAL - Common for all OS & editors
+##############################################
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environments
+.env
+.env.*.local
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+
+# Build folders (global safety)
+dist/
+build/
+.tmp/
+temp/
+
+##############################################
+# BACKEND - SPRING BOOT (Java + Maven)
+##############################################
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# STS / Eclipse
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans/
+.sts4-cache/
+
+# IntelliJ
+out/
+
+# Jars / compiled
+*.class
+*.jar
+*.war
+*.ear
+
+##############################################
+# FRONTEND WEB - React (Vite)
+##############################################
+
+frontend_web/node_modules/
+frontend_web/dist/
+frontend_web/*.local
+
+##############################################
+# MOBILE APP - React Native (Expo)
+##############################################
+
+mobile_app/node_modules/
+mobile_app/.expo/
+mobile_app/dist/
+mobile_app/web-build/
+mobile_app/expo-env.d.ts
+
+# Native directories created by Expo prebuild
+mobile_app/ios/
+mobile_app/android/
+
+# React Native / Metro
+mobile_app/.metro-health-check*
+
+# Certificates / Keys (Security)
+mobile_app/*.pem
+mobile_app/*.p8
+mobile_app/*.p12
+mobile_app/*.key
+mobile_app/*.mobileprovision
+
+# Expo debug files
+mobile_app/npm-debug.*
+mobile_app/yarn-debug.*
+mobile_app/yarn-error.*
+
+# TypeScript build info
+mobile_app/*.tsbuildinfo
+
+# Expo example app
+mobile_app/app-example
+
+##############################################
+# NPM / PACKAGE MANAGERS (safe for full repo)
+##############################################
+
+node_modules/
+
+##############################################
+# OPTIONAL: OS / Tooling
+##############################################
+
+# Windows
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.AppleDouble
+.LSOverride
+
+##############################################
+# END OF FILE
+##############################################
+>>>>>>> d8d3d02 (First commit with JWT Auth and Admin Module basic functionality)
