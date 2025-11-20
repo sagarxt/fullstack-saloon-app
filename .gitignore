@@ -1,22 +1,3 @@
-<<<<<<< HEAD
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-# https://maven.apache.org/wrapper/#usage-without-binary-jar
-.mvn/wrapper/maven-wrapper.jar
-
-# Eclipse m2e generated files
-# Eclipse Core
-.project
-# JDT-specific (Eclipse Java Development Tools)
-.classpath
-=======
 ##############################################
 # GLOBAL - Common for all OS & editors
 ##############################################
@@ -90,6 +71,7 @@ out/
 frontend_web/node_modules/
 frontend_web/dist/
 frontend_web/*.local
+frontend_web/.vite/
 
 ##############################################
 # MOBILE APP - React Native (Expo)
@@ -147,4 +129,3 @@ Desktop.ini
 ##############################################
 # END OF FILE
 ##############################################
->>>>>>> d8d3d02 (First commit with JWT Auth and Admin Module basic functionality)
