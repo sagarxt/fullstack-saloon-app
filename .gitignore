@@ -42,8 +42,7 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 
 # SECRETS
-.properties
-/backend/src/main/resources/application.properties
+application.properties
 
 
 # STS / Eclipse
