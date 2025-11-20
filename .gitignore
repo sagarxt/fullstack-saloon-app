@@ -61,7 +61,7 @@ target/
 !.mvn/wrapper/maven-wrapper.jar
 
 # SECRETS
-/backend/src/main/resources/application.properties
+.properties
 
 # STS / Eclipse
 .apt_generated/
