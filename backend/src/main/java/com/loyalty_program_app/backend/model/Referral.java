@@ -2,21 +2,37 @@ package com.loyalty_program_app.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "referrals")
-@Getter @Setter @Builder
-@NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Referral {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
     private UUID id;
 
-    private UUID userId;
+    @ManyToOne
+    @JoinColumn(name = "referrer_id")
+    private User referrer;
 
-    private String refereeEmail;
+    @ManyToOne
+    @JoinColumn(name = "referred_id")
+    private User referred;
 
-    private boolean awarded;
+    private boolean rewardGiven = false;
+
+    @OneToOne
+    @JoinColumn(name = "points_ledger_id")
+    private PointsLedger pointsLedger;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
 }

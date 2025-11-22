@@ -21,25 +21,20 @@ public class JwtTokenProvider {
             @Value("${app.jwt.secret}") String secret,
             @Value("${app.jwt.expiration-ms}") long expirationMs
     ) {
-        System.out.println("==== JWT SECRET LOADED FROM PROPERTIES ====");
-        System.out.println(secret);
-        System.out.println("Base64 decode length: " +
-                java.util.Base64.getDecoder().decode(secret).length);
-        // Decode Base64 to get real key bytes
         byte[] decodedKey = Base64.getDecoder().decode(secret);
         this.key = Keys.hmacShaKeyFor(decodedKey);
-
         this.expirationMs = expirationMs;
     }
 
     public String generateToken(String userId, String email, String role) {
+
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
                 .subject(userId)
                 .claim("email", email)
-                .claim("role", role)
+                .claim("role", role) // e.g. ROLE_ADMIN
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(key, SignatureAlgorithm.HS256)
