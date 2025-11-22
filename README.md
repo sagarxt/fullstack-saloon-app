@@ -34,6 +34,7 @@ Client (React/React Native) <--HTTP & Rest API--> Backend (Spring Boot) <--Datab
 **Guest :**
 - Browse services
 - View service details
+  
 **Customer :** 
 - Register/Login (Tagged as REGISTERED_BY_SELF)
 - Browse services
@@ -49,6 +50,7 @@ Client (React/React Native) <--HTTP & Rest API--> Backend (Spring Boot) <--Datab
 - View Payment History
 - View Notifications
 - Logout
+  
 **Staff :**
 - Register/Login
 - Browse services
@@ -60,6 +62,7 @@ Client (React/React Native) <--HTTP & Rest API--> Backend (Spring Boot) <--Datab
 - View/Edit/Deactivate Profile for Customer (Tagged as MODIFIED_BY_STAFF - Staff Name)
 - View Tier/Reward Points/Referral/Payment Details for Customer
 - Logout
+  
 **Admin :**
 - Register/Login
 - Register new Admin/Staff/Customer
