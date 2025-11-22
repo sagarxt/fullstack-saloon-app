@@ -2,7 +2,7 @@ package com.loyalty_program_app.backend.controller.admin;
 
 import com.loyalty_program_app.backend.dto.coupon.CouponRequest;
 import com.loyalty_program_app.backend.dto.coupon.CouponResponse;
-import com.loyalty_program_app.backend.service.interfaces.CouponAdminService;
+import com.loyalty_program_app.backend.service.admin.CouponAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

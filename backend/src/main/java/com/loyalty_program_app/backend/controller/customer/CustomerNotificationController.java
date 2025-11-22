@@ -1,7 +1,7 @@
 package com.loyalty_program_app.backend.controller.customer;
 
 import com.loyalty_program_app.backend.dto.notification.NotificationResponse;
-import com.loyalty_program_app.backend.service.interfaces.CustomerNotificationService;
+import com.loyalty_program_app.backend.service.customer.CustomerNotificationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;

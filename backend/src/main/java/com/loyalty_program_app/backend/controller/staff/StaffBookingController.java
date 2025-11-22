@@ -3,7 +3,7 @@ package com.loyalty_program_app.backend.controller.staff;
 import com.loyalty_program_app.backend.dto.booking.BookingResponse;
 import com.loyalty_program_app.backend.dto.booking.CustomerUpdateBookingRequest;
 import com.loyalty_program_app.backend.dto.staff.StaffCreateBookingRequest;
-import com.loyalty_program_app.backend.service.interfaces.StaffBookingService;
+import com.loyalty_program_app.backend.service.staff.StaffBookingService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;

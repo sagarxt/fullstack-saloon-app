@@ -2,7 +2,7 @@ package com.loyalty_program_app.backend.controller.customer;
 
 import com.loyalty_program_app.backend.dto.referral.ReferralCodeResponse;
 import com.loyalty_program_app.backend.dto.referral.ReferralResponse;
-import com.loyalty_program_app.backend.service.interfaces.CustomerReferralService;
+import com.loyalty_program_app.backend.service.customer.CustomerReferralService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;

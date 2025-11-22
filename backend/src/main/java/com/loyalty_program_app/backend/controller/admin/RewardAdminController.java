@@ -2,7 +2,7 @@ package com.loyalty_program_app.backend.controller.admin;
 
 import com.loyalty_program_app.backend.dto.reward.RewardRequest;
 import com.loyalty_program_app.backend.dto.reward.RewardResponse;
-import com.loyalty_program_app.backend.service.interfaces.RewardAdminService;
+import com.loyalty_program_app.backend.service.admin.RewardAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

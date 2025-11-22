@@ -14,6 +14,9 @@ public class HomeResponse {
     private List<CategoryResponse> categories;
     private List<ServiceResponse> popularServices;
 
+    // NEW — Personalized block
+    private List<ServiceResponse> personalizedServices;
+
     private Integer points;
     private String tier;
 }

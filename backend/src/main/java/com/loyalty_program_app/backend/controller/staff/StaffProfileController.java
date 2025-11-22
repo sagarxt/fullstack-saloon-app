@@ -2,7 +2,7 @@ package com.loyalty_program_app.backend.controller.staff;
 
 import com.loyalty_program_app.backend.dto.user.CustomerProfileUpdateRequest;
 import com.loyalty_program_app.backend.dto.user.UserResponse;
-import com.loyalty_program_app.backend.service.interfaces.StaffProfileService;
+import com.loyalty_program_app.backend.service.staff.StaffProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

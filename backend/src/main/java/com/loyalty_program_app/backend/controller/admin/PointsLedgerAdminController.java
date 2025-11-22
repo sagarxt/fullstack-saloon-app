@@ -2,7 +2,7 @@ package com.loyalty_program_app.backend.controller.admin;
 
 import com.loyalty_program_app.backend.dto.points.PointsLedgerRequest;
 import com.loyalty_program_app.backend.dto.points.PointsLedgerResponse;
-import com.loyalty_program_app.backend.service.interfaces.PointsLedgerAdminService;
+import com.loyalty_program_app.backend.service.admin.PointsLedgerAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

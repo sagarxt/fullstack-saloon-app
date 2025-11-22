@@ -1,7 +1,7 @@
 package com.loyalty_program_app.backend.controller.customer;
 
 import com.loyalty_program_app.backend.dto.reward.RewardResponse;
-import com.loyalty_program_app.backend.service.interfaces.CustomerRewardService;
+import com.loyalty_program_app.backend.service.customer.CustomerRewardService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;

@@ -2,7 +2,7 @@ package com.loyalty_program_app.backend.controller.admin;
 
 import com.loyalty_program_app.backend.dto.banner.BannerRequest;
 import com.loyalty_program_app.backend.dto.banner.BannerResponse;
-import com.loyalty_program_app.backend.service.interfaces.BannerAdminService;
+import com.loyalty_program_app.backend.service.admin.BannerAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.web.bind.annotation.*;

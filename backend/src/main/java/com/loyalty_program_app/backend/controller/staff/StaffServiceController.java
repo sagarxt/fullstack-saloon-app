@@ -1,7 +1,7 @@
 package com.loyalty_program_app.backend.controller.staff;
 
 import com.loyalty_program_app.backend.dto.service.ServiceResponse;
-import com.loyalty_program_app.backend.service.interfaces.StaffServiceBrowseService;
+import com.loyalty_program_app.backend.service.staff.StaffServiceBrowseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.web.bind.annotation.*;

@@ -10,7 +10,7 @@ import com.loyalty_program_app.backend.model.ServiceEntity;
 import com.loyalty_program_app.backend.repository.BannerRepository;
 import com.loyalty_program_app.backend.repository.CategoryRepository;
 import com.loyalty_program_app.backend.repository.ServiceRepository;
-import com.loyalty_program_app.backend.service.interfaces.PublicHomeService;
+import com.loyalty_program_app.backend.service.PublicHomeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

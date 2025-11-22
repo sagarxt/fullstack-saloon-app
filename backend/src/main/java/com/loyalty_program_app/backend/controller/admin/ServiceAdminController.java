@@ -1,7 +1,7 @@
 package com.loyalty_program_app.backend.controller.admin;
 
 import com.loyalty_program_app.backend.dto.service.ServiceResponse;
-import com.loyalty_program_app.backend.service.interfaces.ServiceAdminService;
+import com.loyalty_program_app.backend.service.admin.ServiceAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

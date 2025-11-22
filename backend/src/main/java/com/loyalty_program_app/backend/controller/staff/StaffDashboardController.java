@@ -1,7 +1,7 @@
 package com.loyalty_program_app.backend.controller.staff;
 
 import com.loyalty_program_app.backend.dto.staff.StaffDashboardResponse;
-import com.loyalty_program_app.backend.service.interfaces.StaffDashboardService;
+import com.loyalty_program_app.backend.service.staff.StaffDashboardService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

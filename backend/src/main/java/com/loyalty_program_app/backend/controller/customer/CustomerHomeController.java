@@ -1,7 +1,7 @@
 package com.loyalty_program_app.backend.controller.customer;
 
 import com.loyalty_program_app.backend.dto.home.HomeResponse;
-import com.loyalty_program_app.backend.service.interfaces.CustomerHomeService;
+import com.loyalty_program_app.backend.service.customer.CustomerHomeService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

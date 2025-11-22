@@ -2,7 +2,7 @@ package com.loyalty_program_app.backend.controller.admin;
 
 import com.loyalty_program_app.backend.dto.booking.BookingResponse;
 import com.loyalty_program_app.backend.dto.booking.BookingUpdateRequest;
-import com.loyalty_program_app.backend.service.interfaces.BookingAdminService;
+import com.loyalty_program_app.backend.service.admin.BookingAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

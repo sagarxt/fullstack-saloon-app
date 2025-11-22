@@ -2,7 +2,7 @@ package com.loyalty_program_app.backend.controller.customer;
 
 import com.loyalty_program_app.backend.dto.points.PointsBalanceResponse;
 import com.loyalty_program_app.backend.dto.points.PointsLedgerResponse;
-import com.loyalty_program_app.backend.service.interfaces.CustomerPointsService;
+import com.loyalty_program_app.backend.service.customer.CustomerPointsService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
