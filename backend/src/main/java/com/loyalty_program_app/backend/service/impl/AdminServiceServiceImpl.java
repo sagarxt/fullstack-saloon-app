@@ -5,12 +5,11 @@ import com.loyalty_program_app.backend.dto.service.ServiceResponse;
 import com.loyalty_program_app.backend.model.ServiceEntity;
 import com.loyalty_program_app.backend.repository.ServiceRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
-@Service
+@org.springframework.stereotype.Service
 @RequiredArgsConstructor
 public class AdminServiceServiceImpl {
 

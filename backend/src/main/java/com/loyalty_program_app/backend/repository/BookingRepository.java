@@ -1,7 +1,6 @@
 package com.loyalty_program_app.backend.repository;
 
 import com.loyalty_program_app.backend.model.Booking;
-import com.loyalty_program_app.backend.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

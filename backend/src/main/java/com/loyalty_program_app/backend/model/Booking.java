@@ -2,24 +2,43 @@ package com.loyalty_program_app.backend.model;
 
 import com.loyalty_program_app.backend.enums.BookingStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 import lombok.*;
-import java.time.Instant;
-import java.time.OffsetDateTime;
+
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "bookings")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Booking {
+
     @Id
     @GeneratedValue
     private UUID id;
 
-    private UUID userId;
-    private UUID serviceId;
-    private UUID paymentId;
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
-    private OffsetDateTime scheduledAt;
+    @OneToMany(mappedBy = "booking")
+    private List<BookingItem> bookingItems;
+
+    @ManyToOne
+    @JoinColumn(name = "payment_id")
+    private Payment payment;
+
+    @ManyToOne
+    @JoinColumn(name = "coupon_id")
+    private Coupon coupon;
+
+    private LocalDateTime scheduledAt;
+
+    private Double totalAmount;
     private Double pricePaid;
 
     @Enumerated(EnumType.STRING)
@@ -27,7 +46,12 @@ public class Booking {
 
     private String note;
 
-    private String paymentGatewayId;
-    private Instant createdAt = Instant.now();
+    private String bookedBy;
+
+    private LocalDateTime cancelledAt;
+    private LocalDateTime completedAt;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
 }
 

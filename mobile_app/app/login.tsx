@@ -2,13 +2,13 @@
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function LoginScreen() {
@@ -35,7 +35,7 @@ export default function LoginScreen() {
       <View style={styles.card}>
         <View style={styles.logoContainer}>
           <Text style={styles.logo}>💇‍♀️</Text>
-          <Text style={styles.title}>Glamour Salon</Text>
+          <Text style={styles.title}>My Salon</Text>
           <Text style={styles.subtitle}>Welcome back! Log in to continue</Text>
         </View>
 

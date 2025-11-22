@@ -1,12 +1,13 @@
 package com.loyalty_program_app.backend.controller.customer;
 
-import com.loyalty_program_app.backend.model.PointsLedger;
-import com.loyalty_program_app.backend.security.JwtTokenProvider;
-import com.loyalty_program_app.backend.service.PointsService;
+import com.loyalty_program_app.backend.dto.points.PointsBalanceResponse;
+import com.loyalty_program_app.backend.dto.points.PointsLedgerResponse;
+import com.loyalty_program_app.backend.service.interfaces.CustomerPointsService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -14,23 +15,24 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CustomerPointsController {
 
-    private final PointsService pointsService;
-    private final JwtTokenProvider jwtProvider;
+    private final CustomerPointsService pointsService;
+
+    private UUID getCurrentUserId(HttpServletRequest request) {
+        return UUID.fromString((String) request.getAttribute("userId"));
+    }
 
     @GetMapping("/balance")
-    public int getBalance(@RequestHeader("Authorization") String token) {
-        UUID userId = extractUser(token);
-        return pointsService.getBalance(userId);
+    public PointsBalanceResponse getBalance(HttpServletRequest request) {
+        return pointsService.getBalance(getCurrentUserId(request));
     }
 
-    @GetMapping("/ledger")
-    public List<PointsLedger> getLedger(@RequestHeader("Authorization") String token) {
-        UUID userId = extractUser(token);
-        return pointsService.getLedger(userId);
-    }
-
-    private UUID extractUser(String token) {
-        String raw = token.replace("Bearer ", "");
-        return UUID.fromString(jwtProvider.getUserId(raw));
+    @GetMapping("/history")
+    public Page<PointsLedgerResponse> getHistory(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return pointsService.getHistory(getCurrentUserId(request), pageable);
     }
 }

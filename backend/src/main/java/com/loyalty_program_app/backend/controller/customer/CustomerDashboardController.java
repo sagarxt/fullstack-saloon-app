@@ -1,7 +1,6 @@
 package com.loyalty_program_app.backend.controller.customer;
 
 import com.loyalty_program_app.backend.dto.customer.CustomerDashboardResponse;
-import com.loyalty_program_app.backend.service.CustomerDashboardService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.*;
 import org.springframework.web.bind.annotation.*;

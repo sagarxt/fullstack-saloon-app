@@ -2,7 +2,6 @@ package com.loyalty_program_app.backend.controller.admin;
 
 import com.loyalty_program_app.backend.dto.booking.BookingRequest;
 import com.loyalty_program_app.backend.dto.booking.BookingResponse;
-import com.loyalty_program_app.backend.enums.BookingStatus;
 import com.loyalty_program_app.backend.service.impl.AdminBookingServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

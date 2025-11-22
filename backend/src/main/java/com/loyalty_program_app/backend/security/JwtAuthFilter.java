@@ -29,19 +29,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        System.out.println("🔥 JwtAuthFilter triggered: " + request.getRequestURI());
-
         String header = request.getHeader("Authorization");
 
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
 
             try {
-                // Validate & parse token
                 Claims claims = tokenProvider.validateToken(token);
 
                 String userId = claims.getSubject();
-                String role = claims.get("role", String.class);
+                String role = claims.get("role", String.class); // e.g. ROLE_ADMIN
 
                 request.setAttribute("userId", userId);
 
@@ -49,13 +46,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(
                                 userId,
                                 null,
-                                List.of(new SimpleGrantedAuthority(role))
+                                List.of(new SimpleGrantedAuthority(role)) // already ROLE_ prefixed
                         );
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
 
             } catch (Exception ex) {
-                System.out.println("❌ JWT ERROR: " + ex.getMessage());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");
                 response.getWriter().write("{\"error\":\"Invalid or expired token\"}");

@@ -2,26 +2,42 @@ package com.loyalty_program_app.backend.model;
 
 import com.loyalty_program_app.backend.enums.PaymentMethod;
 import com.loyalty_program_app.backend.enums.PaymentStatus;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-
+import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import lombok.*;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Entity
+@Table(name = "payments")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Payment {
 
     @Id
     @GeneratedValue
     private UUID id;
 
-    private UUID userId;
+    private String invoiceNumber;
 
-    private UUID bookingId;
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    private Double amount;
 
     @Enumerated(EnumType.STRING)
-    private PaymentMethod method;
+    private PaymentMethod paymentMethod;
+
+    private String paymentModeDetails;
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
+
+    private String paymentGatewayId;
+
+    @CreationTimestamp
+    private LocalDateTime createdAt;
 }

@@ -2,7 +2,6 @@ package com.loyalty_program_app.backend.service.impl;
 
 import com.loyalty_program_app.backend.dto.booking.BookingRequest;
 import com.loyalty_program_app.backend.dto.booking.BookingResponse;
-import com.loyalty_program_app.backend.enums.BookingStatus;
 import com.loyalty_program_app.backend.model.Booking;
 import com.loyalty_program_app.backend.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;

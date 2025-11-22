@@ -30,6 +30,52 @@ This application is a **complete salon management + loyalty rewards system** tha
 
 Client (React/React Native) <--HTTP & Rest API--> Backend (Spring Boot) <--Database--> PostgreSQL
 
+## Functionality
+**Guest :**
+- Browse services
+- View service details
+**Customer :** 
+- Register/Login (Tagged as REGISTERED_BY_SELF)
+- Browse services
+- View service details
+- Book service (Tagged as BOOKED_BY_SELF)
+- Modify booking (Tagged as MODIFIED_BY_SELF)
+- View booking history
+- View rewards
+- View/Edit/Deactivate Profile (Tagged as MODIFIED_BY_SELF)
+- View Tier Details
+- View Referral Code
+- View Referral History
+- View Payment History
+- View Notifications
+- Logout
+**Staff :**
+- Register/Login
+- Browse services
+- View service details
+- Register new Customer (Tagged as REGISTERED_BY_STAFF - Staff Name) //To Track who registered
+- Book service for Customer (Tagged as BOOKED_BY_STAFF - Staff Name) //To Track who booked
+- Modify booking for Customer (Tagged as MODIFIED_BY_STAFF - Staff Name) //To Track who modified
+- View booking history for Customer
+- View/Edit/Deactivate Profile for Customer (Tagged as MODIFIED_BY_STAFF - Staff Name)
+- View Tier/Reward Points/Referral/Payment Details for Customer
+- Logout
+**Admin :**
+- Register/Login
+- Register new Admin/Staff/Customer
+- View/Edit/Deactivate Profile for Admin/Staff/Customer (Tagged as MODIFIED_BY_ADMIN - Admin Name)
+- Add/Edit/Delete Services
+- Add/Edit/Delete Categories 
+- Add/Edit/Delete Coupons=
+- View Tier/Reward Points/Referral/Payment Details for Customer
+- View Payment History for Customer
+- View Notifications for Customer
+- View Booking History for Customer
+- Add/Edit/Delete Banners/Offer Cards
+- Logout
+
+---
+
 ## Database Entities & Relationships
 
 Below is the full list of entities with fields.
@@ -52,7 +98,10 @@ Below is the full list of entities with fields.
 | points | Integer |
 | tier | Enum | SILVER, GOLD, PLATINUM |
 | referralCode | String | Unique |
+| createdBy | UUID | Foreign key (User) |
+| updatedBy | UUID | Foreign key (User) |
 | active | boolean |
+| lastLoginAt | DateTime |
 | createdAt | DateTime |
 
 ---
@@ -64,6 +113,7 @@ e.g. Hair Care, Facial & Skin Care, Grooming & Hair Removal, Nails, Make Up & Br
 |-------|------|-------------|
 | id | UUID | Primary key |
 | name | String |
+| description | String |
 | image | String | URL |
 | active | boolean |
 | createdAt | DateTime |
@@ -81,6 +131,7 @@ While creating a service, Admin has to select a category.
 | categoryId | UUID | Foreign key (Category) |
 | image | String | URL |
 | description | String |
+| gender | Enum | MALE / FEMALE / UNISEX |
 | mrp | Double |
 | price | Double |
 | rewards | Integer | earn points on booking
@@ -107,19 +158,51 @@ eg. NEW10 (For New Customers 10% Discount), HBDAY200 (For Happy Birthday Flat Rs
 
 ---
 
+**Payment :** Payment gateway.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | UUID | Primary key |
+| invoiceNumber | String |
+| userId | UUID | Foreign key (User) |
+| amount | Double |
+| paymentMethod | Enum | CASH, UPI, CARD, VOUCHER |
+| paymentModeDetails | String | (UPI ID / Card last digits) |
+| status | Enum | PENDING, COMPLETED, FAILED |
+| paymentGatewayId | String |
+| createdAt | DateTime |
+
+---
+
+**BookingItem :** Items in a booking.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | UUID | Primary key |
+| bookingId | UUID | Foreign key (Booking) |
+| serviceId | UUID | Foreign key (Service) |
+| serviceNameSnapshot | String | Service price may change in the future, so we need to keep a snapshot
+| servicePriceSnapshot | Double |
+| serviceDurationSnapshot | Integer |
+| status | Enum | PENDING, CONFIRMED, COMPLETED, CANCELLED, MODIFIED, REFUNDED |
+| createdAt | DateTime |
+
 **Booking :** Represents a customer booking.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | id | UUID | Primary key |
 | userId | UUID | Foreign key (User) |
-| serviceId | UUID | Foreign key (Service) |
-| paymentId | UUID (optional) | Foreign key (Payment) |
+| paymentId | UUID | Foreign key (Payment) |
+| couponId | UUID | Foreign key (Coupon) |
 | scheduledAt | DateTime |
+| totalAmount | Double |
 | pricePaid | Double |
-| status | Enum | PENDING, CONFIRMED, COMPLETED, CANCELLED, MODIFIED |
+| status | Enum | PENDING, CONFIRMED, COMPLETED, CANCELLED, MODIFIED, REFUNDED |
 | note | String |
-| paymentGatewayId | String |
+| bookedBy | String | BOOKED_BY_STAFF, BOOKED_BY_SELF, MODIFIED_BY_STAFF |
+| cancelledAt | DateTime |
+| completedAt | DateTime |
 | createdAt | DateTime |
 
 ---
@@ -130,6 +213,7 @@ eg. NEW10 (For New Customers 10% Discount), HBDAY200 (For Happy Birthday Flat Rs
 |-------|------|-------------|
 | id | UUID | Primary key |
 | title | String |
+| image | String | URL |
 | description | String |
 | pointsRequired | Integer |
 | stock | Integer |
@@ -160,6 +244,7 @@ eg. NEW10 (For New Customers 10% Discount), HBDAY200 (For Happy Birthday Flat Rs
 | referrerId | UUID | Foreign key (User) |
 | referredId | UUID | Foreign key (User) |
 | rewardGiven | boolean |
+| pointsLedgerId | UUID | Foreign key (PointsLedger) |
 | createdAt | DateTime |
 
 ---
@@ -175,19 +260,21 @@ eg. NEW10 (For New Customers 10% Discount), HBDAY200 (For Happy Birthday Flat Rs
 | review | String |
 | createdAt | DateTime |
 
----
-
-**Payment :** Payment gateway.
+**Notification :** Push notifications.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | id | UUID | Primary key |
-| bookingId | UUID | Foreign key (Booking) |
-| amount | Double |
-| paymentGatewayId | String |
+| userId | UUID | Foreign key (User) |
+| title | String |
+| message | String |
+| type | Enum | BOOKING, PAYMENT, OFFER, SYSTEM |
+| seen | boolean |
 | createdAt | DateTime |
 
 ---
+
+
 
 
 ## Authentication APIs

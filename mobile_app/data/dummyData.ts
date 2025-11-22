@@ -1,6 +1,6 @@
 // app/data/dummyData.ts
 export const services = [
-  { id: 1, name: "Haircut", price: "$25", duration: "30 min", icon: "✂️" },
+  { id: 1, name: "Haircut", price: "$55", duration: "30 min", icon: "✂️" },
   { id: 2, name: "Hair Color", price: "$80", duration: "90 min", icon: "🎨" },
   { id: 3, name: "Facial", price: "$60", duration: "60 min", icon: "✨" },
   { id: 4, name: "Manicure", price: "$30", duration: "45 min", icon: "💅" },

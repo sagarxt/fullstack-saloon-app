@@ -3,7 +3,7 @@ package com.loyalty_program_app.backend.service.impl;
 import com.loyalty_program_app.backend.dto.booking.BookingResponse;
 import com.loyalty_program_app.backend.dto.customer.CustomerDetailResponse;
 import com.loyalty_program_app.backend.dto.customer.CustomerResponse;
-import com.loyalty_program_app.backend.enums.UserRole;
+import com.loyalty_program_app.backend.enums.Role;
 import com.loyalty_program_app.backend.model.Booking;
 import com.loyalty_program_app.backend.model.User;
 import com.loyalty_program_app.backend.repository.BookingRepository;
@@ -25,7 +25,7 @@ public class AdminCustomerServiceImpl {
        GET ALL CUSTOMERS
     ---------------------------------------- */
     public List<CustomerResponse> getAllCustomers() {
-        return userRepo.findByRole(UserRole.ROLE_CUSTOMER)
+        return userRepo.findByRole(Role.ROLE_CUSTOMER)
                 .stream()
                 .map(this::toResponse)
                 .toList();
