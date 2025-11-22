@@ -8,8 +8,6 @@
 - **Web Framework:** React
 - **Mobile Framework:** React Native
 
-
-
 ## Overview
 
 This application is a **complete salon management + loyalty rewards system** that includes:
@@ -19,8 +17,8 @@ This application is a **complete salon management + loyalty rewards system** tha
 - Booking system
 - Review & Comments
 - Points & rewards system  
-- Referral system  
-- Admin panel 
+- Referral system
+- Admin panel
 - Staff management
 - Push notifications
 - Payment gateway

@@ -1,37 +1,27 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.2s ease-out;
-}
-
-@keyframes slideUp {
-  from {
+@keyframes slideFade {
+  0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px) scale(0.95);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0px);
+    transform: translateY(0) scale(1);
   }
 }
 
-.animate-slideUp {
-  animation: slideUp 0.3s ease-out;
+.animate-slideFade {
+  animation: slideFade 0.35s ease-out;
 }
 
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  50% { transform: translateX(6px); }
-  75% { transform: translateX(-6px); }
-  100% { transform: translateX(0); }
+.input-auth {
+  @apply w-full bg-white text-luxe-black border border-luxe-gray-light px-3 py-2 rounded-md
+         placeholder:text-luxe-gray-medium focus:ring-2 focus:ring-luxe-gold;
 }
 
-.animate-shake {
-  animation: shake 0.35s ease-in-out;
+.btn-auth {
+  @apply w-full bg-luxe-gold text-luxe-black py-3 rounded-full font-semibold hover:bg-luxe-gold-soft transition;
 }
