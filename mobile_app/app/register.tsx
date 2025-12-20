@@ -1,178 +1,112 @@
-// app/register.tsx
-import { router } from "expo-router";
-import React, { useState } from "react";
-import {
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { registerApi } from "../api/client";
+import { colors } from "../theme/colors";
 
-export default function RegisterScreen() {
+export default function Register() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleRegister = () => {
-    if (!name || !email || !phone || !password) {
-      return;
+  const handleRegister = async () => {
+    if (!name || !email || !password) {
+      return Alert.alert("Error", "All fields are required");
     }
-    router.push("/(tabs)/home" as any);
-  };
 
-  const goToLogin = () => {
-    router.push("/login" as any);
+    try {
+      await registerApi(name, email, password);
+      Alert.alert("Success", "Account created!");
+      router.replace("/login");
+    } catch (e: any) {
+      Alert.alert("Registration Failed", e.response?.data || "Server error");
+    }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-    >
-      <View style={styles.card}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logo}>💇‍♀️</Text>
-          <Text style={styles.title}>Glamour Salon</Text>
-          <Text style={styles.subtitle}>Create your account</Text>
-        </View>
+    <View style={styles.container}>
+      <Text style={styles.heading}>Create Account</Text>
 
-        <View style={styles.form}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            placeholder="Sarah Johnson"
-            placeholderTextColor="#B0B0B0"
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-          />
+      <TextInput
+        style={styles.input}
+        placeholder="Full Name"
+        placeholderTextColor={colors.luxe.gray.medium}
+        value={name}
+        onChangeText={setName}
+      />
 
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            placeholder="you@example.com"
-            placeholderTextColor="#B0B0B0"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        placeholderTextColor={colors.luxe.gray.medium}
+        value={email}
+        onChangeText={setEmail}
+      />
 
-          <Text style={styles.label}>Phone Number</Text>
-          <TextInput
-            placeholder="+1 234 567 890"
-            placeholderTextColor="#B0B0B0"
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        placeholderTextColor={colors.luxe.gray.medium}
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
 
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            placeholder="••••••••"
-            placeholderTextColor="#B0B0B0"
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+      <TouchableOpacity style={styles.button} onPress={handleRegister}>
+        <Text style={styles.buttonText}>REGISTER</Text>
+      </TouchableOpacity>
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleRegister}>
-            <Text style={styles.primaryButtonText}>Sign Up</Text>
-          </TouchableOpacity>
-
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={goToLogin}>
-              <Text style={styles.footerLink}>Login</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+      <TouchableOpacity onPress={() => router.back()}>
+        <Text style={styles.footer}>
+          Already have an account?{" "}
+          <Text style={styles.link}>Login</Text>
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFEDEE",
+    backgroundColor: colors.luxe.black,
+    padding: 22,
     justifyContent: "center",
-    paddingHorizontal: 20,
   },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  logoContainer: {
-    alignItems: "center",
+  heading: {
+    fontSize: 28,
+    color: colors.luxe.gold.DEFAULT,
+    textAlign: "center",
     marginBottom: 24,
   },
-  logo: {
-    fontSize: 60,
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#333333",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#777777",
-    marginTop: 4,
-  },
-  form: {
-    marginTop: 10,
-  },
-  label: {
-    fontSize: 14,
-    color: "#555555",
-    marginBottom: 6,
-    marginTop: 10,
-  },
   input: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#333333",
+    backgroundColor: colors.luxe.gray.dark,
+    borderColor: colors.luxe.gray.medium,
+    borderWidth: 1,
+    color: colors.luxe.white,
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 14,
   },
-  primaryButton: {
-    backgroundColor: "#FF6B6B",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 18,
+  button: {
+    backgroundColor: colors.luxe.gold.dark,
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 10,
   },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
+  buttonText: {
+    color: colors.luxe.black,
+    textAlign: "center",
     fontSize: 16,
-  },
-  footerRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 18,
-  },
-  footerText: {
-    fontSize: 14,
-    color: "#777777",
-  },
-  footerLink: {
-    fontSize: 14,
-    color: "#FF6B6B",
     fontWeight: "600",
   },
+  footer: {
+    color: colors.luxe.gray.light,
+    textAlign: "center",
+    marginTop: 16,
+  },
+  link: {
+    color: colors.luxe.gold.soft,
+  }
 });
