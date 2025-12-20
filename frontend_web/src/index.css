@@ -25,3 +25,5 @@
 .btn-auth {
   @apply w-full bg-luxe-gold text-luxe-black py-3 rounded-full font-semibold hover:bg-luxe-gold-soft transition;
 }
+
+
