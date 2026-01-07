@@ -46,6 +46,8 @@ public class Booking {
 
     private String note;
 
+    private Integer totalDurationMinutes;
+
     private String bookedBy;
 
     private LocalDateTime cancelledAt;

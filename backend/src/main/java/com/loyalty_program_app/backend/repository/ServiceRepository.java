@@ -9,5 +9,8 @@ import java.util.UUID;
 
 public interface ServiceRepository extends JpaRepository<ServiceEntity, UUID>, JpaSpecificationExecutor<ServiceEntity> {
 
-    List<ServiceEntity> findTop3ByOrderByCreatedAtDesc();
+    List<ServiceEntity> findByActiveTrue();
+
+    List<ServiceEntity> findTop6ByActiveTrueOrderByCreatedAtDesc();
+
 }

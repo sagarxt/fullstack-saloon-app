@@ -1,13 +1,11 @@
 package com.loyalty_program_app.backend.controller.customer;
 
-import com.loyalty_program_app.backend.dto.user.CustomerProfileUpdateRequest;
-import com.loyalty_program_app.backend.dto.user.UserResponse;
+import com.loyalty_program_app.backend.dto.user.*;
+import com.loyalty_program_app.backend.security.CustomUserDetails;
 import com.loyalty_program_app.backend.service.customer.CustomerProfileService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/customer/profile")
@@ -16,25 +14,35 @@ public class CustomerProfileController {
 
     private final CustomerProfileService profileService;
 
-    private UUID getCurrentUserId(HttpServletRequest request) {
-        return UUID.fromString((String) request.getAttribute("userId"));
-    }
-
-    @GetMapping("/me")
-    public UserResponse getProfile(HttpServletRequest request) {
-        return profileService.getProfile(getCurrentUserId(request));
-    }
-
-    @PutMapping("/me")
-    public UserResponse updateProfile(
-            HttpServletRequest request,
-            @RequestBody CustomerProfileUpdateRequest profileUpdateRequest
+    /* ===============================
+       Get my profile
+       =============================== */
+    @GetMapping
+    public CustomerProfileResponse getProfile(
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
-        return profileService.updateProfile(getCurrentUserId(request), profileUpdateRequest);
+        return profileService.getMyProfile(user.getId());
     }
 
-    @DeleteMapping("/me")
-    public void deactivateAccount(HttpServletRequest request) {
-        profileService.deactivateAccount(getCurrentUserId(request));
+    /* ===============================
+       Update profile
+       =============================== */
+    @PutMapping
+    public CustomerProfileResponse updateProfile(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestBody UpdateCustomerProfileRequest request
+    ) {
+        return profileService.updateMyProfile(user.getId(), request);
+    }
+
+    /* ===============================
+       Change password
+       =============================== */
+    @PutMapping("/change-password")
+    public void changePassword(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestBody ChangePasswordRequest request
+    ) {
+        profileService.changePassword(user.getId(), request);
     }
 }

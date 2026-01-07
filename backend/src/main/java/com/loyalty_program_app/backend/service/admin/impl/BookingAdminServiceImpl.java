@@ -37,7 +37,7 @@ public class BookingAdminServiceImpl implements BookingAdminService {
             String toDate,
             Pageable pageable
     ) {
-        Specification<Booking> spec = Specification.where(null);
+        Specification<Booking> spec = Specification.allOf();
 
         if (bookingId != null && !bookingId.isBlank()) {
             spec = spec.and((root, query, cb) ->
@@ -166,17 +166,17 @@ public class BookingAdminServiceImpl implements BookingAdminService {
         dto.setTotalAmount(b.getTotalAmount());
         dto.setPricePaid(b.getPricePaid());
         dto.setStatus(b.getStatus().name());
-        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt().toString() : null);
+        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt() : null);
         dto.setNote(b.getNote());
         dto.setBookedBy(b.getBookedBy());
 
-        if (b.getBookingItems() != null) {
-            dto.setItems(
-                    b.getBookingItems().stream()
-                            .map(this::toBookingItemResponse)
-                            .collect(Collectors.toList())
-            );
-        }
+//        if (b.getBookingItems() != null) {
+//            dto.setItems(
+//                    b.getBookingItems().stream()
+//                            .map(this::toBookingItemResponse)
+//                            .collect(Collectors.toList())
+//            );
+//        }
 
         return dto;
     }

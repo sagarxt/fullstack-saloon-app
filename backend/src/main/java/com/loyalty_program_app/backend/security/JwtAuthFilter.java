@@ -13,6 +13,7 @@ import io.jsonwebtoken.Claims;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -35,18 +36,41 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
 
             try {
+//                Claims claims = tokenProvider.validateToken(token);
+//
+//                String userId = claims.getSubject();
+//                String role = claims.get("role", String.class); // e.g. ROLE_ADMIN
+//
+//                request.setAttribute("userId", userId);
+//
+//                UsernamePasswordAuthenticationToken auth =
+//                        new UsernamePasswordAuthenticationToken(
+//                                userId,
+//                                null,
+//                                List.of(new SimpleGrantedAuthority(role)) // already ROLE_ prefixed
+//                        );
+//
+//                SecurityContextHolder.getContext().setAuthentication(auth);
+
                 Claims claims = tokenProvider.validateToken(token);
 
-                String userId = claims.getSubject();
-                String role = claims.get("role", String.class); // e.g. ROLE_ADMIN
+                UUID userId = UUID.fromString(claims.getSubject());
+                String email = claims.get("email", String.class);
+                String role = claims.get("role", String.class);
 
-                request.setAttribute("userId", userId);
+                CustomUserDetails userDetails =
+                        new CustomUserDetails(
+                                userId,
+                                email,
+                                null,
+                                List.of(new SimpleGrantedAuthority(role))
+                        );
 
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
-                                userId,
+                                userDetails,   // ✅ CustomUserDetails here
                                 null,
-                                List.of(new SimpleGrantedAuthority(role)) // already ROLE_ prefixed
+                                userDetails.getAuthorities()
                         );
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
@@ -58,7 +82,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
         }
-
         filterChain.doFilter(request, response);
     }
 }

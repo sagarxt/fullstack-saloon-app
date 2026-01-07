@@ -1,15 +1,20 @@
 package com.loyalty_program_app.backend.service.customer;
 
-import com.loyalty_program_app.backend.dto.user.CustomerProfileUpdateRequest;
-import com.loyalty_program_app.backend.dto.user.UserResponse;
+import com.loyalty_program_app.backend.dto.user.*;
 
 import java.util.UUID;
 
 public interface CustomerProfileService {
 
-    UserResponse getProfile(UUID userId);
+    CustomerProfileResponse getMyProfile(UUID userId);
 
-    UserResponse updateProfile(UUID userId, CustomerProfileUpdateRequest request);
+    CustomerProfileResponse updateMyProfile(
+            UUID userId,
+            UpdateCustomerProfileRequest request
+    );
 
-    void deactivateAccount(UUID userId);
+    void changePassword(
+            UUID userId,
+            ChangePasswordRequest request
+    );
 }

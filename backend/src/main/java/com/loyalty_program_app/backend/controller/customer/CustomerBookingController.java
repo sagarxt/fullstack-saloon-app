@@ -1,14 +1,15 @@
 package com.loyalty_program_app.backend.controller.customer;
 
-import com.loyalty_program_app.backend.dto.booking.BookingResponse;
-import com.loyalty_program_app.backend.dto.booking.CustomerCreateBookingRequest;
-import com.loyalty_program_app.backend.dto.booking.CustomerUpdateBookingRequest;
+import com.loyalty_program_app.backend.dto.booking.*;
+import com.loyalty_program_app.backend.model.User;
+import com.loyalty_program_app.backend.security.CustomUserDetails;
 import com.loyalty_program_app.backend.service.customer.CustomerBookingService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -18,51 +19,58 @@ public class CustomerBookingController {
 
     private final CustomerBookingService bookingService;
 
-    private UUID getCurrentUserId(HttpServletRequest request) {
-        return UUID.fromString((String) request.getAttribute("userId"));
-    }
-
-    @PostMapping
+    @PostMapping()
     public BookingResponse createBooking(
-            HttpServletRequest request,
-            @RequestBody CustomerCreateBookingRequest bookingRequest
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestBody CustomerCreateBookingRequest request
     ) {
-        return bookingService.createBooking(getCurrentUserId(request), bookingRequest);
+        return bookingService.createBooking(user.getId(), request);
     }
 
-    @GetMapping
-    public Page<BookingResponse> listMyBookings(
-            HttpServletRequest request,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+    @GetMapping()
+    public List<BookingResponse> getMyBookings(
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
-        Pageable pageable = PageRequest.of(page, size);
-        return bookingService.listMyBookings(getCurrentUserId(request), pageable);
+        return bookingService.getMyBookings(user.getId());
     }
 
     @GetMapping("/{id}")
-    public BookingResponse getMyBooking(
-            HttpServletRequest request,
+    public BookingDetailsResponse getBookingById(
+            @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable UUID id
     ) {
-        return bookingService.getMyBooking(getCurrentUserId(request), id);
+        return bookingService.getMyBookingById(user.getId(), id);
     }
 
-    @PutMapping("/{id}")
-    public BookingResponse updateMyBooking(
-            HttpServletRequest request,
-            @PathVariable UUID id,
-            @RequestBody CustomerUpdateBookingRequest updateRequest
+    @PostMapping("/preview")
+    public BookingPreviewResponse previewBooking(
+            @RequestBody BookingPreviewRequest request
     ) {
-        return bookingService.updateMyBooking(getCurrentUserId(request), id, updateRequest);
+        return bookingService.previewBooking(request);
     }
 
-    @PostMapping("/{id}/cancel")
-    public BookingResponse cancelMyBooking(
-            HttpServletRequest request,
-            @PathVariable UUID id,
-            @RequestParam(required = false) String note
+    @GetMapping("/slots")
+    public SlotAvailabilityResponse getUnavailableSlots(
+            @RequestParam LocalDate date,
+            @RequestParam UUID serviceId
     ) {
-        return bookingService.cancelMyBooking(getCurrentUserId(request), id, note);
+        return bookingService.getUnavailableSlots(date, serviceId);
+    }
+
+    @PutMapping("/{id}/reschedule")
+    public BookingResponse rescheduleBooking(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID id,
+            @RequestBody RescheduleBookingRequest request
+    ) {
+        return bookingService.rescheduleBooking(user.getId(), id, request);
+    }
+
+    @PutMapping("/{id}/cancel")
+    public BookingResponse cancelBooking(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID id
+    ) {
+        return bookingService.cancelBooking(user.getId(), id);
     }
 }

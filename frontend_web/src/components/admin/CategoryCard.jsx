@@ -4,7 +4,7 @@ export default function CategoryCard({ item, onEdit, onDelete }) {
   return (
     <div className="border rounded-lg p-4 bg-white shadow hover:shadow-gold transition">
       <img
-        src={item.image}
+        src={item.image || "https://res.cloudinary.com/dfdnljcyt/image/upload/v1767423470/salon_app/yzhjoomirjdibgfohzx5.png"}
         className="h-32 w-full object-cover rounded-md mb-3"
       />
       <h3 className="font-semibold text-lg text-luxe-black">{item.name}</h3>
@@ -14,7 +14,7 @@ export default function CategoryCard({ item, onEdit, onDelete }) {
           className="text-luxe-gold font-semibold"
           onClick={() => onEdit(item)}
         >
-          Edit
+          Editss
         </button>
 
         <button
