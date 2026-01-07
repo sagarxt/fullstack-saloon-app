@@ -1,174 +1,186 @@
-// src/components/admin/CategoryFormModal.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function CategoryFormModal({ open, onClose, onSave, initial }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [active, setActive] = useState(true);
+
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState("");
 
+  /* ===============================
+     Populate data on EDIT
+     =============================== */
   useEffect(() => {
-    if (initial) {
-      setName(initial.name || "");
-      setDescription(initial.description || "");
-      setActive(initial.active ?? true);
-      setPreview(initial.image || "");
-      setImageFile(null);
-    } else {
-      setName("");
-      setDescription("");
-      setActive(true);
-      setPreview("");
-      setImageFile(null);
+    if (open) {
+      if (initial) {
+        setName(initial.name || "");
+        setDescription(initial.description || "");
+        setActive(initial.active ?? true);
+
+        // Existing image from backend
+        setPreview(initial.image || "");
+        setImageFile(null);
+      } else {
+        // CREATE MODE
+        setName("");
+        setDescription("");
+        setActive(true);
+        setPreview("");
+        setImageFile(null);
+      }
     }
   }, [initial, open]);
 
   if (!open) return null;
 
+  /* ===============================
+     Handlers
+     =============================== */
   const handleImageChange = (file) => {
     if (!file) return;
     setImageFile(file);
     setPreview(URL.createObjectURL(file));
   };
 
-  const handleFileFromInput = (e) => {
-    const file = e.target.files?.[0];
-    handleImageChange(file);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    handleImageChange(file);
-  };
-
   const handleSubmit = () => {
     if (!name.trim()) return;
-    onSave({ name, description, active, imageFile });
+
+    onSave({
+      name,
+      description,
+      active,
+      imageFile, // <-- important
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-      <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl border border-luxe-gold/40 relative">
-        
-        {/* Close */}
-        <button
-          className="absolute top-3 right-4 text-gray-400 hover:text-black text-xl"
-          onClick={onClose}
-        >
-          ✕
-        </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
 
-        <h2 className="text-2xl font-serif font-semibold text-luxe-black mb-4">
-          {initial ? "Edit Category" : "Add Category"}
-        </h2>
+        {/* ================= HEADER ================= */}
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {initial ? "Edit Category" : "Add Category"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-xl"
+          >
+            ×
+          </button>
+        </div>
 
-        <div className="space-y-4">
+        {/* ================= BODY ================= */}
+        <div className="px-6 py-5 space-y-4">
 
-          {/* NAME */}
+          {/* Category Name */}
           <div>
-            <label className="text-sm font-medium text-gray-700">Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category Name
+            </label>
             <input
-              className="mt-1 w-full border border-luxe-gray-light rounded-md px-3 py-2 text-luxe-black focus:outline-none focus:ring-2 focus:ring-luxe-gold"
-              placeholder="e.g. Hair Care"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Hair Care"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm
+                focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 outline-none"
             />
           </div>
 
-          {/* DESCRIPTION */}
+          {/* Description */}
           <div>
-            <label className="text-sm font-medium text-gray-700">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
             <textarea
-              className="mt-1 w-full border border-luxe-gray-light rounded-md px-3 py-2 text-luxe-black focus:outline-none focus:ring-2 focus:ring-luxe-gold"
               rows={3}
-              placeholder="Short description about this category..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              placeholder="Short description"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm
+                focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 outline-none resize-none"
             />
           </div>
 
-          {/* IMAGE UPLOAD */}
+          {/* ================= IMAGE UPLOAD ================= */}
           <div>
-            <label className="text-sm font-medium text-gray-700">Category Image</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category Image
+            </label>
 
             <div
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
-              className="mt-1 border-2 border-dashed border-luxe-gold/40 hover:border-luxe-gold rounded-xl p-4 text-center cursor-pointer transition"
-              onClick={() => document.getElementById("categoryImgInput").click()}
+              onClick={() => document.getElementById("cat-img-input").click()}
+              className="mt-1 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-500 transition"
             >
               {!preview ? (
-                <>
-                  <p className="text-luxe-black text-sm">Drag & Drop or Click to Upload</p>
-                  <p className="text-xs text-luxe-gray-medium mt-1">PNG, JPG, JPEG</p>
-                </>
+                <p className="text-sm text-gray-500">
+                  Click to upload image
+                </p>
               ) : (
-                <div className="relative w-full flex justify-center">
+                <div className="relative inline-block">
                   <img
                     src={preview}
                     alt="Preview"
-                    className="w-40 h-40 rounded-xl object-cover shadow-md animate-slideFade"
+                    className="w-32 h-32 object-cover rounded-md border"
                   />
                   <button
-                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setPreview("");
                       setImageFile(null);
                     }}
-                    className="absolute -top-2 -right-2 bg-black/80 text-white px-2 py-[2px] rounded-full text-xs hover:bg-black"
+                    className="absolute -top-2 -right-2 bg-gray-800 text-white rounded-full w-6 h-6 text-xs"
                   >
-                    ✕
+                    ×
                   </button>
                 </div>
               )}
             </div>
 
             <input
-              id="categoryImgInput"
+              id="cat-img-input"
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={handleFileFromInput}
+              onChange={(e) => handleImageChange(e.target.files?.[0])}
             />
           </div>
 
-          {/* ACTIVE TOGGLE */}
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-700">Active</label>
-
+          {/* Active Toggle */}
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-sm font-medium text-gray-700">
+              Status
+            </span>
             <button
               type="button"
-              onClick={() => setActive((prev) => !prev)}
-              className={`px-3 py-1 text-xs rounded-full border transition ${
+              onClick={() => setActive(!active)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border ${
                 active
-                  ? "bg-emerald-100 text-emerald-700 border-emerald-300"
-                  : "bg-gray-200 text-gray-700 border-gray-300"
+                  ? "bg-green-100 text-green-700 border-green-300"
+                  : "bg-gray-100 text-gray-600 border-gray-300"
               }`}
             >
               {active ? "Active" : "Inactive"}
             </button>
           </div>
+        </div>
 
-          {/* FOOTER BUTTONS */}
-          <div className="pt-2 flex justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm rounded-full border border-gray-300 text-gray-700 hover:bg-gray-100"
-            >
-              Cancel
-            </button>
+        {/* ================= FOOTER ================= */}
+        <div className="flex justify-end gap-3 border-t px-6 py-4 bg-gray-50 rounded-b-xl">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100"
+          >
+            Cancel
+          </button>
 
-            <button
-              onClick={handleSubmit}
-              className="px-5 py-2 text-sm rounded-full bg-luxe-gold text-luxe-black font-semibold hover:bg-luxe-gold-soft"
-            >
-              {initial ? "Update Category" : "Create Category"}
-            </button>
-          </div>
-
+          <button
+            onClick={handleSubmit}
+            className="px-5 py-2 text-sm rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500/40"
+          >
+            {initial ? "Update Category" : "Create Category"}
+          </button>
         </div>
       </div>
     </div>

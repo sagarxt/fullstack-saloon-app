@@ -1,12 +1,12 @@
 package com.loyalty_program_app.backend.service.customer.impl;
 
-import com.loyalty_program_app.backend.dto.user.CustomerProfileUpdateRequest;
-import com.loyalty_program_app.backend.dto.user.UserResponse;
+import com.loyalty_program_app.backend.dto.user.*;
 import com.loyalty_program_app.backend.enums.Gender;
 import com.loyalty_program_app.backend.model.User;
 import com.loyalty_program_app.backend.repository.UserRepository;
 import com.loyalty_program_app.backend.service.customer.CustomerProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -16,52 +16,76 @@ import java.util.UUID;
 public class CustomerProfileServiceImpl implements CustomerProfileService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
-    public UserResponse getProfile(UUID userId) {
+    public CustomerProfileResponse getMyProfile(UUID userId) {
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return toDto(user);
+        return mapToResponse(user);
     }
 
     @Override
-    public UserResponse updateProfile(UUID userId, CustomerProfileUpdateRequest request) {
+    public CustomerProfileResponse updateMyProfile(
+            UUID userId,
+            UpdateCustomerProfileRequest request
+    ) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (request.getName() != null) user.setName(request.getName());
-        if (request.getPhone() != null) user.setPhone(request.getPhone());
-        if (request.getGender() != null)
+        if (request.getName() != null) {
+            user.setName(request.getName());
+        }
+        if (request.getDob() != null) {
+            user.setDob(request.getDob());
+        }
+        if (request.getGender() != null) {
             user.setGender(Gender.valueOf(request.getGender()));
-        if (request.getImage() != null) user.setImage(request.getImage());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
 
         userRepository.save(user);
-        return toDto(user);
+        return mapToResponse(user);
     }
 
     @Override
-    public void deactivateAccount(UUID userId) {
+    public void changePassword(
+            UUID userId,
+            ChangePasswordRequest request
+    ) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        user.setActive(false);
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(),
+                user.getPassword()
+        )) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        user.setPassword(
+                passwordEncoder.encode(request.getNewPassword())
+        );
+
         userRepository.save(user);
     }
 
-    private UserResponse toDto(User user) {
-        UserResponse dto = new UserResponse();
+    /* ===============================
+       Mapper
+       =============================== */
+    private CustomerProfileResponse mapToResponse(User user) {
+
+        CustomerProfileResponse dto = new CustomerProfileResponse();
         dto.setId(user.getId());
         dto.setName(user.getName());
-        dto.setEmail(user.getEmail());
+        dto.setDob(user.getDob());
+        dto.setGender(user.getGender().toString());
         dto.setPhone(user.getPhone());
-        dto.setImage(user.getImage());
-        dto.setGender(user.getGender() != null ? user.getGender().name() : null);
-        dto.setRole(user.getRole().name());
-        dto.setTier(user.getTier().name());
-        dto.setPoints(user.getPoints());
-        dto.setReferralCode(user.getReferralCode());
-        dto.setActive(user.isActive());
+        dto.setEmail(user.getEmail());
         return dto;
     }
 }

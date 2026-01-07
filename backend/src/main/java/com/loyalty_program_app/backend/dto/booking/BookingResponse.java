@@ -1,6 +1,8 @@
 package com.loyalty_program_app.backend.dto.booking;
 
 import lombok.Data;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,8 +16,9 @@ public class BookingResponse {
     private Double totalAmount;
     private Double pricePaid;
     private String status;
-    private String scheduledAt;
+    private LocalDateTime scheduledAt;
     private String note;
     private String bookedBy;
-    private List<BookingItemResponse> items;
+    private UUID serviceId;
+    private String serviceName;
 }

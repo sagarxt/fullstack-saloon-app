@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -36,7 +37,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    private LocalDateTime dob;
+    private LocalDate dob;
 
     @Enumerated(EnumType.STRING)
     private Role role;

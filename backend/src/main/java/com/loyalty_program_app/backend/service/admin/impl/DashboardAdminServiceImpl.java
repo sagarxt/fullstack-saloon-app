@@ -84,17 +84,17 @@ public class DashboardAdminServiceImpl implements DashboardAdminService {
         dto.setTotalAmount(b.getTotalAmount());
         dto.setPricePaid(b.getPricePaid());
         dto.setStatus(b.getStatus().name());
-        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt().toString() : null);
+        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt() : null);
         dto.setNote(b.getNote());
         dto.setBookedBy(b.getBookedBy());
-
-        if (b.getBookingItems() != null) {
-            dto.setItems(
-                    b.getBookingItems().stream()
-                            .map(this::toBookingItemResponse)
-                            .collect(Collectors.toList())
-            );
-        }
+//
+//        if (b.getBookingItems() != null) {
+//            dto.setItems(
+//                    b.getBookingItems().stream()
+//                            .map(this::toBookingItemResponse)
+//                            .collect(Collectors.toList())
+//            );
+//        }
 
         return dto;
     }

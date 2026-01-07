@@ -113,14 +113,14 @@ public class StaffDashboardServiceImpl implements StaffDashboardService {
         dto.setTotalAmount(b.getTotalAmount());
         dto.setPricePaid(b.getPricePaid());
         dto.setStatus(b.getStatus().name());
-        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt().toString() : null);
+        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt() : null);
         dto.setNote(b.getNote());
         dto.setBookedBy(b.getBookedBy());
 
-        List<BookingItemResponse> items = b.getBookingItems().stream()
-                .map(this::toItemDto)
-                .toList();
-        dto.setItems(items);
+//        List<BookingItemResponse> items = b.getBookingItems().stream()
+//                .map(this::toItemDto)
+//                .toList();
+//        dto.setItems(items);
 
         return dto;
     }

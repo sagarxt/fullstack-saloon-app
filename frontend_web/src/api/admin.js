@@ -26,3 +26,27 @@ export const updateAdminCategory = (id, formData) =>
 
 export const deleteAdminCategory = (id) =>
   axiosClient.delete(`/admin/categories/${id}`);
+
+export const getAdminServices = ({ page = 0, size = 20, search, active, categoryId } = {}) => {
+  const params = { page, size };
+  if (search) params.search = search;
+  if (active !== undefined && active !== "ALL") {
+    // active: true / false
+    params.active = active === "ACTIVE";
+  }
+  if (categoryId !== undefined && categoryId !== "ALL") params.categoryId = categoryId;
+  return axiosClient.get("/admin/services", { params });
+};
+export const createAdminService = (formData) =>
+  axiosClient.post("/admin/services", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+export const updateAdminService = (id, formData) =>
+  axiosClient.put(`/admin/services/${id}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+export const deleteAdminService = (id) =>
+  axiosClient.delete(`/admin/services/${id}`);
+
+export const getAdminStaff = () =>
+  axiosClient.get("/admin/staff");

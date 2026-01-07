@@ -1,22 +1,44 @@
 package com.loyalty_program_app.backend.service.customer;
 
-import com.loyalty_program_app.backend.dto.booking.BookingResponse;
-import com.loyalty_program_app.backend.dto.booking.CustomerCreateBookingRequest;
-import com.loyalty_program_app.backend.dto.booking.CustomerUpdateBookingRequest;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.loyalty_program_app.backend.dto.booking.*;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface CustomerBookingService {
 
-    BookingResponse createBooking(UUID userId, CustomerCreateBookingRequest request);
+    BookingResponse createBooking(
+            UUID userId,
+            CustomerCreateBookingRequest request
+    );
 
-    Page<BookingResponse> listMyBookings(UUID userId, Pageable pageable);
+    BookingPreviewResponse previewBooking(
+            BookingPreviewRequest request
+    );
 
-    BookingResponse getMyBooking(UUID userId, UUID bookingId);
+    SlotAvailabilityResponse getUnavailableSlots(
+            LocalDate date,
+            UUID serviceId
+    );
 
-    BookingResponse updateMyBooking(UUID userId, UUID bookingId, CustomerUpdateBookingRequest request);
+    List<BookingResponse> getMyBookings(
+            UUID userId
+    );
 
-    BookingResponse cancelMyBooking(UUID userId, UUID bookingId, String note);
+    BookingDetailsResponse getMyBookingById(
+            UUID userId,
+            UUID bookingId
+    );
+
+    BookingResponse rescheduleBooking(
+            UUID userId,
+            UUID bookingId,
+            RescheduleBookingRequest request
+    );
+
+    BookingResponse cancelBooking(
+            UUID userId,
+            UUID bookingId
+    );
 }
