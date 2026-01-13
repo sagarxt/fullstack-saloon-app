@@ -29,18 +29,4 @@ public class EmailServiceImpl implements EmailService {
             throw new RuntimeException("Error sending email", e);
         }
     }
-
-    @Override
-    public void sendOtpEmail(String to, String otp) {
-        String content = """
-                <h3>Your OTP Code</h3>
-                <p>Your verification OTP is:</p>
-                <h2 style="color:#673AB7;">%s</h2>
-                <p>This OTP is valid for 10 minutes.</p>
-                """.formatted(otp);
-
-        String html = templateService.buildTemplate("Your OTP Code", content);
-
-        sendHtmlEmail(to, "Your OTP Code", html);
-    }
 }

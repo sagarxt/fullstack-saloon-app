@@ -74,14 +74,23 @@ public class PublicHomeServiceImpl implements PublicHomeService {
 
     private ServiceResponse toServiceResponse(ServiceEntity s) {
         ServiceResponse dto = new ServiceResponse();
+
         dto.setId(s.getId());
         dto.setName(s.getName());
         dto.setDescription(s.getDescription());
         dto.setImage(s.getImage());
-        dto.setPrice(s.getPrice());
-        dto.setDurationMinutes(s.getDurationMinutes());
+
         dto.setCategoryId(s.getCategory().getId());
         dto.setCategoryName(s.getCategory().getName());
+
+        dto.setPrice(s.getPrice());
+        dto.setMrp(s.getMrp());
+        dto.setGender(s.getGender().toString());
+        dto.setRewards(s.getRewards());
+        dto.setDurationMinutes(s.getDurationMinutes());
+        dto.setActive(s.isActive());
+
         return dto;
     }
+
 }

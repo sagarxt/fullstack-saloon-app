@@ -50,11 +50,16 @@ public class AuthController {
     // OTP
     @PostMapping("/send-otp")
     public ResponseEntity<String> sendOtp(@RequestBody SendOtpRequest request) {
-        return ResponseEntity.ok(otpService.generateOtp(request.getEmail()));
+        return ResponseEntity.ok(otpService.generateOtp(request.getEmail()) ? "success" : "failed");
     }
 
     @PostMapping("/verify-otp")
     public ResponseEntity<String> verifyOtp(@RequestBody VerifyOtpRequest request) {
-        return ResponseEntity.ok(otpService.verifyOtp(request.getEmail(), request.getOtp()) ? "OTP verified successfully" : "Invalid OTP");
+        return ResponseEntity.ok(otpService.verifyOtp(request.getEmail(), request.getOtp()) ? "success" : "failed");
+    }
+
+    @GetMapping("/logout")
+    public ResponseEntity<String> logout() {
+        return ResponseEntity.ok("Logout successful");
     }
 }

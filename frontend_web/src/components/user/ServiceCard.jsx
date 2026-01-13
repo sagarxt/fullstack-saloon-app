@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 export default function ServiceCard({ service }) {
   const navigate = useNavigate();
 
+  console.log("Rendering ServiceCard for service:", service);
+
   const genderColor = {
     MALE: "bg-blue-600",
     FEMALE: "bg-pink-600",
@@ -25,7 +27,7 @@ export default function ServiceCard({ service }) {
         />
 
         {service.mrp && (
-          <span className="absolute top-2 right-2 text-xs text-green-600 ml-2">
+          <span className="absolute top-2 right-2 text-xs text-green-600 ml-2 px-2 py-1 rounded-full bg-green-100 font-semibold">
             {Math.round(((service.mrp - service.price) / service.mrp) * 100)}% OFF
           </span>
         )}
