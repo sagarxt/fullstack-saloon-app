@@ -54,7 +54,7 @@ export default function AuthModal({ open, onClose }) {
       });
 
       const token = res.data.token;
-			const role = res.data.user.role;
+      const role = res.data.user.role;
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
@@ -74,16 +74,25 @@ export default function AuthModal({ open, onClose }) {
   // --------------------------------
   const handleSendOtp = async () => {
     if (!form.email) {
-      addToast("Enter email to send OTP");
+      addToast("Please enter your email");
       return;
     }
 
     try {
       setLoading(true);
-      await sendOtpApi({ email: form.email });
 
-      addToast("OTP sent to email");
-      setOtpSent(true);
+      console.log("Sending OTP to:", form.email);
+
+      const otpRes = await sendOtpApi({ email: form.email });
+
+      console.log(otpRes);
+
+      if (otpRes.data === 'success') {
+        addToast("OTP sent to your email");
+        setOtpSent(true);
+      } else {
+        addToast("Failed to send OTP. Please try again.");
+      }
     } catch (err) {
       addToast(err.response?.data?.message || "Failed to send OTP");
     } finally {
@@ -95,37 +104,56 @@ export default function AuthModal({ open, onClose }) {
   // VERIFY OTP → AUTO REGISTER
   // --------------------------------
   const handleVerifyOtp = async () => {
+    if (!form.otp) {
+      addToast("Please enter OTP");
+      return;
+    }
+
     try {
       setLoading(true);
 
-      await verifyOtpApi({ email: form.email, otp: form.otp });
-      addToast("OTP verified!");
-
-      const regRes = await registerApi({
-        name: form.name,
+      const verRes = await verifyOtpApi({
         email: form.email,
-        phone: form.phone,
-        password: form.password,
+        otp: form.otp,
       });
 
-      const loginRes = await loginApi({
-        email: form.email,
-        password: form.password,
-      });
+      console.log(verRes);
 
-      localStorage.setItem("token", loginRes.data.token);
+      if (verRes.data === 'success') {
 
-      addToast("Account created successfully!");
+        addToast("OTP verified successfully");
 
-      setTimeout(() => {
-        window.location.href = "/customer/home";
-      }, 800);
+        await registerApi({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          password: form.password,
+        });
+
+        addToast("Account created successfully");
+
+        const loginRes = await loginApi({
+          email: form.email,
+          password: form.password,
+        });
+
+        localStorage.setItem("token", loginRes.data.token);
+        localStorage.setItem("role", loginRes.data.user.role);
+
+        setTimeout(() => {
+          window.location.href = "/customer/home";
+        }, 800);
+      } else {
+        addToast("Invalid OTP. Please try again.");
+      }
+
     } catch (err) {
       addToast(err.response?.data?.message || "OTP verification failed");
     } finally {
       setLoading(false);
     }
   };
+
 
   // =============================
   //  UI
