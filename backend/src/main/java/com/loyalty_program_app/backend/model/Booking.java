@@ -21,12 +21,25 @@ public class Booking {
     @GeneratedValue
     private UUID id;
 
+    @Column(name = "booking_code", unique = true, length = 32)
+    private String bookingCode;
+
+    @PrePersist
+    public void ensureBookingCode() {
+        if (this.bookingCode == null || this.bookingCode.isBlank()) {
+            this.bookingCode = com.loyalty_program_app.backend.util.BookingCodeGenerator.generateCode();
+        }
+    }
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
 
-    @OneToMany(mappedBy = "booking")
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL)
     private List<BookingItem> bookingItems;
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookingProduct> bookingProducts;
 
     @ManyToOne
     @JoinColumn(name = "payment_id")

@@ -11,5 +11,7 @@ public interface CustomerPaymentService {
     Page<PaymentResponse> getMyPayments(UUID userId, Pageable pageable);
 
     PaymentResponse getMyPayment(UUID userId, UUID paymentId);
+
+    PaymentResponse checkoutPayment(UUID userId, com.loyalty_program_app.backend.dto.payment.PaymentCheckoutRequest request);
 }
 

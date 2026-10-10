@@ -28,6 +28,7 @@ public class Reward {
 
     private LocalDateTime expiryDate;
 
+    @Builder.Default
     private boolean active = true;
 
     @CreationTimestamp

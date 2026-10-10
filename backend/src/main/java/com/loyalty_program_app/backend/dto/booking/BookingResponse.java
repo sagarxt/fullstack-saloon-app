@@ -9,6 +9,7 @@ import java.util.UUID;
 @Data
 public class BookingResponse {
     private UUID id;
+    private String bookingCode;
     private UUID userId;
     private String userName;
     private UUID paymentId;
@@ -21,4 +22,5 @@ public class BookingResponse {
     private String bookedBy;
     private UUID serviceId;
     private String serviceName;
+    private List<com.loyalty_program_app.backend.dto.product.BookingProductResponse> products;
 }

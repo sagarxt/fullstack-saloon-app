@@ -1,54 +1,78 @@
-import { Routes, Route } from "react-router-dom";
-
-/* Public */
+import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./pages/landing/LandingPage";
+import PrivateRoute from "./auth/PrivateRoute";
 
-/* ADMIN */
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import CategoryPage from "./pages/admin/CategoryPage";
-import ServicesAdmin from "./pages/admin/ServicesAdmin";
+// Public Pages
+import PublicCategoriesPage from "./pages/public/CategoriesPage";
+import CategoryDetailPage from "./pages/public/CategoryDetailPage";
+import PublicServicesPage from "./pages/public/ServicesPage";
+import ServiceDetailPage from "./pages/public/ServiceDetailPage";
+import PublicProductsPage from "./pages/public/ProductsPage";
 
-/* STAFF */
+// Customer Pages
+import MyBookingsPage from "./pages/customer/MyBookingsPage";
+import RewardsPage from "./pages/customer/RewardsPage";
+import ProfilePage from "./pages/customer/ProfilePage";
+
+// Admin Pages
+import AdminLayout from "./layouts/AdminLayout";
+import DashboardPage from "./pages/admin/DashboardPage";
+import BookingsPage from "./pages/admin/BookingsPage";
+import CategoriesPage from "./pages/admin/CategoriesPage";
+import ServicesPage from "./pages/admin/ServicesPage";
+import ProductsPage from "./pages/admin/ProductsPage";
+import CustomersPage from "./pages/admin/CustomersPage";
+import StaffPage from "./pages/admin/StaffPage";
+import CouponsPage from "./pages/admin/CouponsPage";
+import PaymentsPage from "./pages/admin/PaymentsPage";
+import ReviewsPage from "./pages/admin/ReviewsPage";
+
+// Staff Pages
 import StaffDashboard from "./pages/staff/StaffDashboard";
-
-/* CUSTOMER */
-import CustomerDashboard from "./pages/customer/UserHome";
-import BookingPage from "./pages/customer/BookingPage";
-import ConfirmBooking from "./pages/customer/ConfirmBooking";
-import ServiceDetail from "./pages/customer/ServiceDetail";
-import MyBookings from "./pages/customer/MyBookings";
-import BookingDetails from "./pages/customer/BookingDetails";
-import CustomerProfile from "./pages/customer/CustomerProfile";
 
 function App() {
   return (
     <Routes>
-      {/* ================= PUBLIC ================= */}
+      {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/categories" element={<PublicCategoriesPage />} />
+      <Route path="/categories/:categoryId" element={<CategoryDetailPage />} />
+      <Route path="/category/:categoryId" element={<CategoryDetailPage />} />
+      <Route path="/services" element={<PublicServicesPage />} />
+      <Route path="/services/:serviceId" element={<ServiceDetailPage />} />
+      <Route path="/products" element={<PublicProductsPage />} />
 
-      {/* ================= ADMIN ================= */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="categories" element={<CategoryPage />} />
-        <Route path="services" element={<ServicesAdmin />} />
+      {/* Customer Protected Routes */}
+      <Route element={<PrivateRoute roles={["CUSTOMER", "ADMIN", "STAFF"]} />}>
+        <Route path="/customer/bookings" element={<MyBookingsPage />} />
+        <Route path="/customer/rewards" element={<RewardsPage />} />
+        <Route path="/customer/profile" element={<ProfilePage />} />
       </Route>
 
-      {/* ================= STAFF ================= */}
-      <Route path="/staff/dashboard" element={<StaffDashboard />} />
-
-      {/* ================= CUSTOMER ================= */}
-      <Route path="/customer">
-        <Route path="home" element={<CustomerDashboard />} />
-        <Route path="service/:id" element={<ServiceDetail />} />
-        <Route path="book/:id" element={<BookingPage />} />
-        <Route path="confirm-booking" element={<ConfirmBooking />} />
-        <Route path="bookings" element={<MyBookings />} />
-        <Route path="bookings/:id" element={<BookingDetails />} />
-        <Route path="profile" element={<CustomerProfile />} />
-        {/* <Route path="profile/change-password" element={<CustomerProfile />} /> */}
+      {/* Staff Protected Routes */}
+      <Route element={<PrivateRoute roles={["STAFF", "ADMIN"]} />}>
+        <Route path="/staff/dashboard" element={<StaffDashboard />} />
       </Route>
+
+      {/* Admin Portal Protected Routes */}
+      <Route element={<PrivateRoute roles={["ADMIN"]} />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="bookings" element={<BookingsPage />} />
+          <Route path="categories" element={<CategoriesPage />} />
+          <Route path="services" element={<ServicesPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="staffs" element={<StaffPage />} />
+          <Route path="coupons" element={<CouponsPage />} />
+          <Route path="payments" element={<PaymentsPage />} />
+          <Route path="reviews" element={<ReviewsPage />} />
+        </Route>
+      </Route>
+
+      {/* Catch-all redirect */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

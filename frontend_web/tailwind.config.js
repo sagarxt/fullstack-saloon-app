@@ -8,32 +8,58 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Official Groomish Now Color Palette
+        groomish: {
+          coral: "#FC6957",
+          coralLight: "#FFF0ED",
+          slate: "#373A43",
+          slateDark: "#23252B",
+          slateLight: "#545864",
+          gold: "#FED652",
+          goldLight: "#FFFBEA",
+          goldDark: "#E5BE32",
+          cream: "#FAF6ED",
+          creamDark: "#F0E9DA",
+          green: "#34A955",
+          greenLight: "#E8F7ED",
+          crimson: "#EA4158",
+          crimsonLight: "#FDECEF",
+          orange: "#FA7B47",
+          orangeLight: "#FFF1EC",
+          orangeDark: "#E05E29",
+          blue: "#207FBD",
+          blueLight: "#E8F4FA",
+        },
+
+        // Backward compatibility mappings
         luxe: {
-          black: "#0C0C0C",
+          black: "#373A43",
           white: "#FFFFFF",
-
           gold: {
-            DEFAULT: "#D4AF37",   // Premium Gold
-            soft: "#E5C76E",       // Soft Gold for hover
-            dark: "#B38A1E",       // Dark gold for depth
+            DEFAULT: "#FA7B47",
+            soft: "#FC6957",
+            dark: "#E05E29",
           },
-
           gray: {
-            light: "#F5F5F4",      // stone-light
-            medium: "#57534E",     // stone-gray
-            dark: "#1F1F1F",       // deep neutral
+            light: "#FAF6ED",
+            medium: "#7A7E89",
+            dark: "#373A43",
           }
         },
       },
 
       fontFamily: {
         serif: ["Playfair Display", "serif"],
-        sans: ["Inter", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "Inter", "sans-serif"],
+        heading: ["Outfit", "Plus Jakarta Sans", "sans-serif"],
       },
 
       boxShadow: {
-        gold: "0px 4px 20px rgba(212, 175, 55, 0.25)",
-        goldSoft: "0px 2px 15px rgba(229, 199, 110, 0.22)",
+        soft: "0 4px 20px -2px rgba(55, 58, 67, 0.08)",
+        card: "0 10px 30px -5px rgba(55, 58, 67, 0.12)",
+        glowOrange: "0 8px 25px -4px rgba(250, 123, 71, 0.35)",
+        glowGold: "0 8px 25px -4px rgba(254, 214, 82, 0.4)",
+        glowCoral: "0 8px 25px -4px rgba(252, 105, 87, 0.35)",
       },
     },
   },

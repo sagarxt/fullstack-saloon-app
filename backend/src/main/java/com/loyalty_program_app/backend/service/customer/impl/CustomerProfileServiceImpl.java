@@ -17,6 +17,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
 
     @Override
     public CustomerProfileResponse getMyProfile(UUID userId) {
@@ -72,6 +73,8 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
         );
 
         userRepository.save(user);
+
+        emailService.sendPasswordChangedEmail(user.getEmail(), user.getName());
     }
 
     /* ===============================

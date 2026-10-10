@@ -30,6 +30,7 @@ public class Notification {
     @Enumerated(EnumType.STRING)
     private NotificationType type;
 
+    @Builder.Default
     private boolean seen = false;
 
     @CreationTimestamp

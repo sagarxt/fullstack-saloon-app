@@ -28,6 +28,7 @@ public class Coupon {
     private Double discount;
     private LocalDateTime expiryDate;
 
+    @Builder.Default
     private boolean active = true;
 
     @CreationTimestamp

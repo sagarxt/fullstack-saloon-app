@@ -30,22 +30,39 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
     public ServiceResponse createService(String name, UUID categoryId, String description, String gender,
                                          Double mrp, Double price, Integer rewards, Integer durationMinutes,
                                          MultipartFile image) {
+        return createService(name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, null);
+    }
+
+    @Override
+    public ServiceResponse createService(String name, UUID categoryId, String description, String gender,
+                                         Double mrp, Double price, Integer rewards, Integer durationMinutes,
+                                         MultipartFile image, String imageUrl) {
 
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        String imageUrl = cloudinaryService.uploadImage(image);
+        String finalImageUrl = null;
+        if (image != null && !image.isEmpty()) {
+            finalImageUrl = cloudinaryService.uploadImage(image, "groomishnow/service");
+        } else if (imageUrl != null && !imageUrl.isBlank()) {
+            String trimmedUrl = imageUrl.trim();
+            if (!trimmedUrl.contains("cloudinary.com")) {
+                finalImageUrl = cloudinaryService.upload(trimmedUrl, "groomishnow/service");
+            } else {
+                finalImageUrl = trimmedUrl;
+            }
+        }
 
         ServiceEntity s = new ServiceEntity();
         s.setName(name);
         s.setCategory(category);
         s.setDescription(description);
-        s.setGender(ServiceGender.valueOf(gender));
-        s.setMrp(mrp);
+        s.setGender(gender != null ? ServiceGender.valueOf(gender.toUpperCase()) : ServiceGender.UNISEX);
+        s.setMrp(mrp != null ? mrp : price);
         s.setPrice(price);
-        s.setRewards(rewards);
-        s.setDurationMinutes(durationMinutes);
-        s.setImage(imageUrl);
+        s.setRewards(rewards != null ? rewards : (int) Math.round(price / 10.0));
+        s.setDurationMinutes(durationMinutes != null ? durationMinutes : 30);
+        s.setImage(finalImageUrl);
         s.setActive(true);
 
         serviceRepository.save(s);
@@ -56,13 +73,20 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
     public ServiceResponse updateService(UUID id, String name, UUID categoryId, String description,
                                          String gender, Double mrp, Double price, Integer rewards,
                                          Integer durationMinutes, MultipartFile image) {
+        return updateService(id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, null);
+    }
+
+    @Override
+    public ServiceResponse updateService(UUID id, String name, UUID categoryId, String description,
+                                         String gender, Double mrp, Double price, Integer rewards,
+                                         Integer durationMinutes, MultipartFile image, String imageUrl) {
 
         ServiceEntity s = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
 
         if (name != null) s.setName(name);
         if (description != null) s.setDescription(description);
-        if (gender != null) s.setGender(ServiceGender.valueOf(gender));
+        if (gender != null) s.setGender(ServiceGender.valueOf(gender.toUpperCase()));
         if (mrp != null) s.setMrp(mrp);
         if (price != null) s.setPrice(price);
         if (rewards != null) s.setRewards(rewards);
@@ -75,8 +99,15 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
         }
 
         if (image != null && !image.isEmpty()) {
-            String url = cloudinaryService.uploadImage(image);
+            String url = cloudinaryService.uploadImage(image, "groomishnow/service");
             s.setImage(url);
+        } else if (imageUrl != null && !imageUrl.isBlank()) {
+            String trimmedUrl = imageUrl.trim();
+            if (!trimmedUrl.contains("cloudinary.com")) {
+                s.setImage(cloudinaryService.upload(trimmedUrl, "groomishnow/service"));
+            } else {
+                s.setImage(trimmedUrl);
+            }
         }
 
         serviceRepository.save(s);
@@ -103,7 +134,7 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
                                                 Boolean active, Double minPrice, Double maxPrice,
                                                 Pageable pageable) {
 
-        Specification<ServiceEntity> spec = Specification.where(null);
+        Specification<ServiceEntity> spec = Specification.allOf();
 
         if (name != null && !name.isBlank()) {
             spec = spec.and((root, query, cb) ->

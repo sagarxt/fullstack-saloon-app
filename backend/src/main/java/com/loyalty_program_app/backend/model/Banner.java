@@ -27,6 +27,7 @@ public class Banner {
 
     private String redirectUrl;
 
+    @Builder.Default
     private boolean active = true;
 
     private LocalDateTime createdAt;

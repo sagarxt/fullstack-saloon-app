@@ -42,9 +42,11 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Builder.Default
     private Integer points = 0;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Tier tier = Tier.SILVER;
 
     @Column(unique = true)
@@ -53,6 +55,7 @@ public class User {
     private UUID createdBy;
     private UUID updatedBy;
 
+    @Builder.Default
     private boolean active = true;
 
     private LocalDateTime lastLoginAt;

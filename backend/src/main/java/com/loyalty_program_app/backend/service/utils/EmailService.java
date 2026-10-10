@@ -1,6 +1,35 @@
 package com.loyalty_program_app.backend.service.utils;
 
+import com.loyalty_program_app.backend.dto.mail.BillItemDto;
+import java.time.LocalDateTime;
+import java.util.List;
+
 public interface EmailService {
+
     void sendHtmlEmail(String to, String subject, String htmlContent);
-//    void sendOtpEmail(String to, String otp);
+
+    void sendWelcomeEmail(String to, String name, String referralCode);
+
+    void sendBookingConfirmationEmail(String to, String name, String bookingId, String serviceName, LocalDateTime scheduledAt, Double pricePaid);
+
+    void sendBookingStatusEmail(String to, String name, String bookingId, String serviceName, String status, String note);
+
+    void sendRewardRedeemedEmail(String to, String name, String rewardTitle, int pointsSpent, int remainingPoints);
+
+    void sendPasswordChangedEmail(String to, String name);
+
+    void sendPaymentBillEmail(
+            String to,
+            String name,
+            String invoiceNumber,
+            String bookingId,
+            List<BillItemDto> items,
+            Double subtotal,
+            Double discount,
+            Double tax,
+            Double totalAmount,
+            String paymentMethod,
+            int pointsEarned,
+            LocalDateTime completedAt
+    );
 }

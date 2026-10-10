@@ -1,5 +1,6 @@
 package com.loyalty_program_app.backend.controller.admin;
 
+import com.loyalty_program_app.backend.dto.service.ServiceRequest;
 import com.loyalty_program_app.backend.dto.service.ServiceResponse;
 import com.loyalty_program_app.backend.service.admin.ServiceAdminService;
 import lombok.RequiredArgsConstructor;
@@ -18,25 +19,42 @@ public class ServiceAdminController {
 
     private final ServiceAdminService serviceAdminService;
 
-    @PostMapping
-    public ServiceResponse createService(
+    @PostMapping(consumes = {"multipart/form-data"})
+    public ServiceResponse createServiceMultipart(
             @RequestParam String name,
             @RequestParam UUID categoryId,
             @RequestParam(required = false) String description,
-            @RequestParam String gender,
+            @RequestParam(defaultValue = "UNISEX") String gender,
             @RequestParam Double mrp,
             @RequestParam Double price,
-            @RequestParam Integer rewards,
-            @RequestParam Integer durationMinutes,
-            @RequestParam(required = false) MultipartFile image
+            @RequestParam(required = false) Integer rewards,
+            @RequestParam(defaultValue = "30") Integer durationMinutes,
+            @RequestParam(required = false) MultipartFile image,
+            @RequestParam(required = false) String imageUrl
     ) {
         return serviceAdminService.createService(
-                name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image
+                name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl
         );
     }
 
-    @PutMapping("/{id}")
-    public ServiceResponse updateService(
+    @PostMapping(consumes = {"application/json"})
+    public ServiceResponse createServiceJson(@RequestBody ServiceRequest request) {
+        return serviceAdminService.createService(
+                request.getName(),
+                request.getCategoryId(),
+                request.getDescription(),
+                request.getGender() != null ? request.getGender() : "UNISEX",
+                request.getMrp() != null ? request.getMrp() : request.getPrice(),
+                request.getPrice(),
+                request.getRewards(),
+                request.getDurationMinutes(),
+                null,
+                request.getImage()
+        );
+    }
+
+    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
+    public ServiceResponse updateServiceMultipart(
             @PathVariable UUID id,
             @RequestParam(required = false) String name,
             @RequestParam(required = false) UUID categoryId,
@@ -46,10 +64,28 @@ public class ServiceAdminController {
             @RequestParam(required = false) Double price,
             @RequestParam(required = false) Integer rewards,
             @RequestParam(required = false) Integer durationMinutes,
-            @RequestParam(required = false) MultipartFile image
+            @RequestParam(required = false) MultipartFile image,
+            @RequestParam(required = false) String imageUrl
     ) {
         return serviceAdminService.updateService(
-                id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image
+                id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl
+        );
+    }
+
+    @PutMapping(value = "/{id}", consumes = {"application/json"})
+    public ServiceResponse updateServiceJson(@PathVariable UUID id, @RequestBody ServiceRequest request) {
+        return serviceAdminService.updateService(
+                id,
+                request.getName(),
+                request.getCategoryId(),
+                request.getDescription(),
+                request.getGender(),
+                request.getMrp(),
+                request.getPrice(),
+                request.getRewards(),
+                request.getDurationMinutes(),
+                null,
+                request.getImage()
         );
     }
 
@@ -75,8 +111,6 @@ public class ServiceAdminController {
             @RequestParam(defaultValue = "20") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        return serviceAdminService.searchServices(
-                name, categoryId, gender, active, minPrice, maxPrice, pageable
-        );
+        return serviceAdminService.searchServices(name, categoryId, gender, active, minPrice, maxPrice, pageable);
     }
 }

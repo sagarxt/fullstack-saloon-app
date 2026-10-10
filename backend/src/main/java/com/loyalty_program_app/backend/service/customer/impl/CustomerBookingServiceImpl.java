@@ -22,6 +22,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
     private final BookingRepository bookingRepository;
     private final CouponRepository couponRepository;
     private final BookingItemRepository bookingItemRepository;
+    private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
+    private final NotificationRepository notificationRepository;
 
     /* =====================================================
        CREATE BOOKING
@@ -38,6 +40,9 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             throw new RuntimeException("Booking date/time is required");
         }
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         ServiceEntity service = serviceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Service not found"));
 
@@ -50,12 +55,17 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
 
         // calculate price
         double finalPrice = service.getPrice();
-        if (coupon != null) {
-            finalPrice = applyCoupon(finalPrice, coupon.getCode());
+        if (coupon != null && coupon.isActive() && !coupon.getExpiryDate().isBefore(LocalDateTime.now())) {
+            double discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
+            if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
+                discount = coupon.getMaxDiscount();
+            }
+            finalPrice = Math.max(service.getPrice() - discount, 0.0);
         }
 
         Booking booking = new Booking();
-        booking.setUser(userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found")));
+        booking.setUser(user);
+        booking.setBookingCode(com.loyalty_program_app.backend.util.BookingCodeGenerator.generateUniqueCode(bookingRepository));
         booking.setScheduledAt(request.getScheduledAt());
         booking.setNote(request.getNote());
         booking.setCoupon(coupon);
@@ -78,9 +88,29 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
 
         bookingItemRepository.save(item);
 
+        // In-app Notification
+        Notification notification = Notification.builder()
+                .user(user)
+                .title("Appointment Booked")
+                .message("Your appointment for " + service.getName() + " on " + booking.getScheduledAt() + " is confirmed. Booking ID: " + booking.getBookingCode())
+                .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                .build();
+        notificationRepository.save(notification);
+
+        // Real-time Gmail Email
+        emailService.sendBookingConfirmationEmail(
+                user.getEmail(),
+                user.getName(),
+                booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString(),
+                service.getName(),
+                booking.getScheduledAt(),
+                booking.getPricePaid()
+        );
+
         BookingResponse response = new BookingResponse();
 
         response.setId(booking.getId());
+        response.setBookingCode(booking.getBookingCode());
         response.setServiceId(service.getId());
         response.setServiceName(service.getName());
 
@@ -93,10 +123,6 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         response.setStatus(booking.getStatus().name());
 
         return response;
-    }
-
-    private Double applyCoupon(Double price, String coupon){
-        return price;
     }
 
     /* =====================================================
@@ -243,6 +269,29 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         booking.setBookedBy("MODIFIED_BY_SELF");
 
         bookingRepository.save(booking);
+
+        // In-app Notification
+        Notification rescheduleNotif = Notification.builder()
+                .user(booking.getUser())
+                .title("Appointment Rescheduled")
+                .message("Your appointment has been rescheduled to " + newStart + ".")
+                .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                .build();
+        notificationRepository.save(rescheduleNotif);
+
+        // Real-time Email
+        String sName = (booking.getBookingItems() != null && !booking.getBookingItems().isEmpty())
+                ? booking.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Appointment";
+        String displayCode = booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString();
+        emailService.sendBookingStatusEmail(
+                booking.getUser().getEmail(),
+                booking.getUser().getName(),
+                displayCode,
+                sName,
+                "RESCHEDULED",
+                "Your appointment has been rescheduled to " + newStart
+        );
+
         return toBookingResponse(booking);
     }
 
@@ -266,6 +315,30 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         booking.setCancelledAt(LocalDateTime.now());
 
         bookingRepository.save(booking);
+
+        String displayCode = booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString();
+
+        // In-app Notification
+        Notification cancelNotif = Notification.builder()
+                .user(booking.getUser())
+                .title("Appointment Cancelled")
+                .message("Your appointment (ID: " + displayCode + ") has been cancelled.")
+                .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                .build();
+        notificationRepository.save(cancelNotif);
+
+        // Real-time Email
+        String sName = (booking.getBookingItems() != null && !booking.getBookingItems().isEmpty())
+                ? booking.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Appointment";
+        emailService.sendBookingStatusEmail(
+                booking.getUser().getEmail(),
+                booking.getUser().getName(),
+                displayCode,
+                sName,
+                "CANCELLED",
+                "Your appointment has been cancelled as requested."
+        );
+
         return toBookingResponse(booking);
     }
 
@@ -276,6 +349,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
 
         BookingResponse dto = new BookingResponse();
         dto.setId(b.getId());
+        dto.setBookingCode(b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase());
         dto.setUserId(b.getUser().getId());
         dto.setUserName(b.getUser().getName());
         dto.setPaymentId(
@@ -342,6 +416,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         BookingDetailsResponse dto = new BookingDetailsResponse();
 
         dto.setId(booking.getId());
+        dto.setBookingCode(booking.getBookingCode() != null ? booking.getBookingCode() : "GN-" + booking.getId().toString().substring(0, 8).toUpperCase());
         dto.setStatus(booking.getStatus().name());
         dto.setScheduledAt(
                 booking.getScheduledAt() != null
