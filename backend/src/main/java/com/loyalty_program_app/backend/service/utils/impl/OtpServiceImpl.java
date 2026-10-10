@@ -30,22 +30,25 @@ public class OtpServiceImpl implements OtpService {
         Boolean otp_send = false;
 
         try {
-            String html = Files.readString(
-                    new ClassPathResource("templates/mail/send-otp.html").getFile().toPath(),
-                    StandardCharsets.UTF_8
-            );
+            ClassPathResource resource = new ClassPathResource("templates/mail/send-otp.html");
+            String html;
+            try (java.io.InputStream is = resource.getInputStream()) {
+                html = org.springframework.util.StreamUtils.copyToString(is, StandardCharsets.UTF_8);
+            } catch (Exception ex) {
+                html = "<div style='font-family:sans-serif;padding:20px;text-align:center;'>"
+                        + "<h2>Your OTP Verification Code</h2>"
+                        + "<h1 style='color:#5b4bdb;letter-spacing:5px;'>" + otp + "</h1>"
+                        + "<p>This code is valid for 10 minutes.</p>"
+                        + "</div>";
+            }
 
             html = html.replace("{{otp}}", otp);
-
             emailService.sendHtmlEmail(email, subject, html);
-
             otp_send = true;
-
         } catch (Exception e) {
-            throw new RuntimeException("Unable to send OTP ", e);
-        } finally {
-             return otp_send;
+            System.err.println("Unable to send OTP: " + e.getMessage());
         }
+        return otp_send;
     }
 
     @Override

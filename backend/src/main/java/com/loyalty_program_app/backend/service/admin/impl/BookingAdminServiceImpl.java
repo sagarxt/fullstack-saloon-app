@@ -40,8 +40,12 @@ public class BookingAdminServiceImpl implements BookingAdminService {
         Specification<Booking> spec = Specification.allOf();
 
         if (bookingId != null && !bookingId.isBlank()) {
+            final String q = bookingId.trim().toLowerCase();
             spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("id").as(String.class), bookingId));
+                    cb.or(
+                            cb.like(cb.lower(root.get("id").as(String.class)), "%" + q + "%"),
+                            cb.like(cb.lower(root.get("bookingCode")), "%" + q + "%")
+                    ));
         }
 
         if (customerName != null && !customerName.isBlank()) {
@@ -159,6 +163,7 @@ public class BookingAdminServiceImpl implements BookingAdminService {
     private BookingResponse toBookingResponse(Booking b) {
         BookingResponse dto = new BookingResponse();
         dto.setId(b.getId());
+        dto.setBookingCode(b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase());
         dto.setUserId(b.getUser().getId());
         dto.setUserName(b.getUser().getName());
         dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);

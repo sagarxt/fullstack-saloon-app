@@ -37,6 +37,7 @@ public class ServiceEntity {
     private Integer rewards;
     private Integer durationMinutes;
 
+    @Builder.Default
     private boolean active = true;
 
     @CreationTimestamp

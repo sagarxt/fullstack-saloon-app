@@ -1,46 +1,86 @@
-import { createContext, useContext, useState } from "react";
+import { CheckCircle2, AlertCircle, AlertTriangle, Sparkles, X } from "lucide-react";
+import { useToast } from "../context/useToast";
 
-const ToastContext = createContext();
-export const useToast = () => useContext(ToastContext);
+export { useToast };
 
-export function ToastProvider({ children }) {
-    const [toast, setToast] = useState(null);
+export default function Toast({ id, message, type = "success", title, onClose }) {
+  const configs = {
+    success: {
+      bg: "bg-white",
+      border: "border-emerald-200",
+      accent: "bg-emerald-500",
+      text: "text-emerald-900",
+      subText: "text-emerald-700/80",
+      icon: CheckCircle2,
+      iconColor: "text-emerald-500",
+      defaultTitle: "Success",
+    },
+    error: {
+      bg: "bg-white",
+      border: "border-rose-200",
+      accent: "bg-rose-500",
+      text: "text-rose-900",
+      subText: "text-rose-700/80",
+      icon: AlertCircle,
+      iconColor: "text-rose-500",
+      defaultTitle: "Action Failed",
+    },
+    warning: {
+      bg: "bg-white",
+      border: "border-amber-200",
+      accent: "bg-amber-500",
+      text: "text-amber-900",
+      subText: "text-amber-700/80",
+      icon: AlertTriangle,
+      iconColor: "text-amber-500",
+      defaultTitle: "Attention Required",
+    },
+    info: {
+      bg: "bg-white",
+      border: "border-groomish-slate/15",
+      accent: "bg-groomish-orange",
+      text: "text-groomish-slate",
+      subText: "text-groomish-slate/70",
+      icon: Sparkles,
+      iconColor: "text-groomish-orange",
+      defaultTitle: "Notice",
+    },
+  };
 
-    const showToast = (message, type = "error") => {
-        setToast({ message, type });
+  const cfg = configs[type] || configs.info;
+  const Icon = cfg.icon;
 
-        // Auto hide in 3 seconds
-        setTimeout(() => setToast(null), 3000);
-    };
+  return (
+    <div
+      className={`pointer-events-auto relative overflow-hidden flex items-start gap-3 p-3.5 pr-4 rounded-2xl shadow-xl border ${cfg.bg} ${cfg.border} animate-slide-in backdrop-blur-md transition-all max-w-sm w-full select-none`}
+      role="alert"
+    >
+      <div className={`p-1.5 rounded-xl ${cfg.accent}/10 shrink-0 mt-0.5`}>
+        <Icon className={`w-4 h-4 ${cfg.iconColor}`} />
+      </div>
 
-    return (
-        <ToastContext.Provider value={{ showToast }}>
-            {children}
+      <div className="flex-1 min-w-0 pr-2">
+        <h4 className={`text-xs font-bold leading-tight ${cfg.text}`}>
+          {title || cfg.defaultTitle}
+        </h4>
+        <p className={`text-[11px] font-medium leading-relaxed mt-0.5 ${cfg.subText}`}>
+          {message}
+        </p>
+      </div>
 
-            {/* Toast UI */}
-            {toast && (
-                <div className="fixed bottom-10 inset-x-0 flex items-center justify-center z-50">
-                    <div
-                        className={`px-6 py-4 rounded-2xl shadow-2xl animate-fadeIn
-        ${toast.type === "error"
-                                ? "bg-red-100 text-red-700 border border-red-300"
-                                : ""
-                            }
-        ${toast.type === "success"
-                                ? "bg-green-100 text-green-700 border border-green-300"
-                                : ""
-                            }
-        ${toast.type === "info"
-                                ? "bg-blue-100 text-blue-700 border border-blue-300"
-                                : ""
-                            }
-        ${toast.type === "warning" ? "bg-yellow-100 text-yellow-800 border border-yellow-300" : ""}
-      `}
-                    >
-                        {toast.message}
-                    </div>
-                </div>
-            )}
-        </ToastContext.Provider>
-    );
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1 rounded-lg text-groomish-slate/40 hover:text-groomish-slate hover:bg-groomish-cream transition shrink-0"
+          aria-label="Close notification"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      )}
+
+      {/* Subtle indicator bar */}
+      <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${cfg.accent}`} />
+    </div>
+  );
 }

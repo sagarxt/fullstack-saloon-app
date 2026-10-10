@@ -1,62 +1,121 @@
-import { Edit2, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { deactivateServiceApi } from "../../api/admin";
+import EditServiceModal from "../modals/EditServiceModal";
+import { Scissors, Edit3, Clock, Tag } from "lucide-react";
 
-export default function ServiceCard({ item, onEdit, onDelete }) {
+export default function ServiceCard({ service, categories, refresh }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const categoryName =
+    categories.find((c) => c.id === service.categoryId)?.name ||
+    service.categoryName ||
+    "Salon Care";
+
+  const handleDeactivate = async () => {
+    setLoading(true);
+    try {
+      await deactivateServiceApi(service.id);
+      refresh();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const defaultServiceImages = {
+    MALE: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=400&q=80",
+    FEMALE: "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=400&q=80",
+    UNISEX: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=80",
+  };
+
+  const imgSrc = service.image || defaultServiceImages[service.gender] || defaultServiceImages.UNISEX;
+
   return (
-    <div className="bg-white border rounded-lg shadow-sm hover:shadow-md transition overflow-hidden">
-
-      {/* {item.image && ( */}
+    <>
+      <div className="bg-white rounded-2xl border border-groomish-slate/10 p-5 flex flex-col sm:flex-row gap-5 items-start sm:items-center shadow-soft hover:shadow-card transition">
+        {/* Service Image */}
         <img
-          src={item.image || "https://res.cloudinary.com/dfdnljcyt/image/upload/v1767424595/salon_app/qjd0qo8qshkncwie1e9u.png"}
-          alt={item.name}
-          className="h-40 w-full object-cover"
+          src={imgSrc}
+          alt={service.name}
+          className="h-20 w-20 object-cover rounded-2xl border border-groomish-slate/10 shrink-0"
         />
-      {/* )} */}
 
-      <div className="p-4 space-y-2">
-        <h3 className="font-semibold text-gray-900">{item.name}</h3>
-
-        <p className="text-xs text-gray-500">
-          Category: {item.categoryName}
-        </p>
-
-        <p className="text-sm text-gray-600 line-clamp-2">
-          {item.description}
-        </p>
-
-        <div className="flex justify-between items-center pt-2 text-sm">
-          <span className="font-medium text-gray-900">
-            ₹{item.price}{" "}
-            <span className="line-through text-gray-400 ml-1">
-              ₹{item.mrp}
+        {/* Details */}
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-heading font-bold text-base text-groomish-slate">
+              {service.name}
+            </h3>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-groomish-orangeLight text-groomish-orange uppercase">
+              {service.gender}
             </span>
-          </span>
-
-          <span className="text-xs px-2 py-1 rounded-full bg-gray-100">
-            {item.gender}
-          </span>
-        </div>
-
-        <div className="flex justify-between items-center pt-3">
-          <span className="text-xs text-gray-500">
-            ⏱ {item.durationMinutes} min
-          </span>
-
-          <div className="flex gap-2">
-            <button
-              onClick={onEdit}
-              className="p-2 rounded-md border hover:bg-gray-100"
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-groomish-cream text-groomish-slate/70">
+              {categoryName}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                service.active
+                  ? "bg-groomish-greenLight text-groomish-green"
+                  : "bg-groomish-crimsonLight text-groomish-crimson"
+              }`}
             >
-              <Edit2 size={16} />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-2 rounded-md border hover:bg-red-50 text-red-500"
-            >
-              <Trash2 size={16} />
-            </button>
+              {service.active ? "Active" : "Disabled"}
+            </span>
+          </div>
+
+          <p className="text-xs text-groomish-slate/60 line-clamp-1">
+            {service.description || "Premium styling & beauty treatment."}
+          </p>
+
+          <div className="flex items-center gap-4 text-xs text-groomish-slate/70 pt-1 flex-wrap">
+            <span className="flex items-center gap-1 text-groomish-slate/60">
+              <Clock className="w-3.5 h-3.5 text-groomish-orange" />
+              {service.durationMinutes} mins
+            </span>
+            <span className="font-extrabold text-sm text-groomish-slate">
+              ₹{service.price}
+              {service.mrp > service.price && (
+                <span className="text-xs font-normal text-groomish-slate/40 line-through ml-1.5">
+                  ₹{service.mrp}
+                </span>
+              )}
+            </span>
           </div>
         </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            onClick={() => setEditOpen(true)}
+            className="p-2 rounded-xl bg-groomish-cream hover:bg-groomish-orange/15 text-groomish-slate transition"
+            title="Edit Service"
+          >
+            <Edit3 className="w-4 h-4" />
+          </button>
+
+          <button
+            disabled={loading}
+            onClick={handleDeactivate}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
+              service.active
+                ? "bg-groomish-crimsonLight text-groomish-crimson hover:bg-groomish-crimson hover:text-white"
+                : "bg-groomish-greenLight text-groomish-green hover:bg-groomish-green hover:text-white"
+            }`}
+          >
+            {service.active ? "Deactivate" : "Activate"}
+          </button>
+        </div>
       </div>
-    </div>
+
+      <EditServiceModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        service={service}
+        categories={categories}
+        refresh={refresh}
+      />
+    </>
   );
 }

@@ -24,6 +24,8 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
     private final RewardRepository rewardRepository;
     private final UserRepository userRepository;
     private final PointsLedgerRepository pointsLedgerRepository;
+    private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
+    private final com.loyalty_program_app.backend.repository.NotificationRepository notificationRepository;
 
     @Override
     public Page<RewardResponse> getAvailableRewards(UUID userId, Pageable pageable) {
@@ -100,6 +102,24 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
             reward.setStock(reward.getStock() - 1);
             rewardRepository.save(reward);
         }
+
+        // In-app Notification
+        com.loyalty_program_app.backend.model.Notification notif = com.loyalty_program_app.backend.model.Notification.builder()
+                .user(user)
+                .title("Reward Redeemed")
+                .message("You redeemed " + reward.getTitle() + " for " + pointsToDeduct + " points.")
+                .type(com.loyalty_program_app.backend.enums.NotificationType.OFFER)
+                .build();
+        notificationRepository.save(notif);
+
+        // Real-time Email
+        emailService.sendRewardRedeemedEmail(
+                user.getEmail(),
+                user.getName(),
+                reward.getTitle(),
+                pointsToDeduct,
+                user.getPoints()
+        );
 
         return toDto(reward);
     }

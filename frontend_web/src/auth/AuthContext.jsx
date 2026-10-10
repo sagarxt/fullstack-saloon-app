@@ -20,24 +20,42 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const res = await axiosClient.post("/auth/login", { email, password });
-
-      setUser({
+      const rawToken = res.data.token || res.data.accessToken;
+      const userObj = res.data.user || {
         id: res.data.userId,
         email: res.data.email,
         name: res.data.name,
-      });
+        role: res.data.role,
+      };
 
-      setToken(res.data.accessToken);
+      const normalizedUser = {
+        ...userObj,
+        token: rawToken,
+      };
 
-      // role stored inside JWT? Extract manually OR include role in response
-      const decoded = JSON.parse(atob(res.data.accessToken.split('.')[1]));
-      const role = decoded.role;
+      setUser(normalizedUser);
+      setToken(rawToken);
+      if (rawToken) localStorage.setItem("token", rawToken);
+      localStorage.setItem("user", JSON.stringify(normalizedUser));
 
-      if (role === "ROLE_ADMIN") navigate("/admin");
-      else navigate("/customer");
+      let role = userObj.role;
+      if (!role && rawToken) {
+        try {
+          const decoded = JSON.parse(atob(rawToken.split('.')[1]));
+          role = decoded.role || (decoded.roles && decoded.roles[0]);
+        } catch {
+          // ignore
+        }
+      }
 
+      if (role && (role.includes("ADMIN") || role.includes("ROLE_ADMIN"))) {
+        navigate("/admin");
+      } else if (role && (role.includes("STAFF") || role.includes("ROLE_STAFF"))) {
+        navigate("/staff");
+      } else {
+        navigate("/customer");
+      }
     } catch (err) {
-      // alert(err.response?.data?.error || "Login failed");
       throw err;
     }
   };

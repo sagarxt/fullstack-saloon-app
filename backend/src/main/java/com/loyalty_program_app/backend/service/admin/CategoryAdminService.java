@@ -11,7 +11,11 @@ public interface CategoryAdminService {
 
     CategoryResponse createCategory(String name, String description, MultipartFile image);
 
+    CategoryResponse createCategory(String name, String description, MultipartFile image, String imageUrl);
+
     CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image);
+
+    CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image, String imageUrl);
 
     void softDeleteCategory(UUID id);
 

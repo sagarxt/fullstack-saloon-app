@@ -4,4 +4,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface CloudinaryService {
     String uploadImage(MultipartFile file);
+    String uploadImage(MultipartFile file, String folder);
+    String upload(Object fileSource, String folder);
 }

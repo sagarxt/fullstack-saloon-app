@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import { AuthContext } from "../../auth/AuthContext";
 import Navbar from "../../components/Navbar";
 import { useToast } from "../../components/Toast";
+import CustomSelect from "../../components/common/CustomSelect";
 
 export default function Register() {
   const { register } = useContext(AuthContext);
@@ -115,26 +116,21 @@ export default function Register() {
             {/* Phone with Country Code */}
             <div className="flex gap-3">
               {/* Country Code */}
-              <select
-                className="
-    w-32 p-3 rounded-xl
-    bg-white/30 text-white
-    border border-white/40 outline-none
-    appearance-none
-    focus:border-white
-    cursor-pointer
-  "
+              <CustomSelect
                 value={form.countryCode}
                 onChange={(e) =>
-                  setForm({ ...form, countryCode: e.target.value })
+                  setForm({ ...form, countryCode: e.value || e.target.value })
                 }
-              >
-                <option className="text-black" value="+91">IN +91</option>
-                <option className="text-black" value="+1">US +1</option>
-                <option className="text-black" value="+44">GB +44</option>
-                <option className="text-black" value="+61">AU +61</option>
-                <option className="text-black" value="+81">JP +81</option>
-              </select>
+                options={[
+                  { value: "+91", label: "IN +91" },
+                  { value: "+1", label: "US +1" },
+                  { value: "+44", label: "GB +44" },
+                  { value: "+61", label: "AU +61" },
+                  { value: "+81", label: "JP +81" },
+                ]}
+                containerClassName="w-32 shrink-0"
+                className="!bg-white/30 !text-white !border-white/40 !p-3 !rounded-xl"
+              />
 
 
               {/* Phone Input */}

@@ -1,23 +1,17 @@
-import { useContext } from "react";
 import { Navigate, Outlet } from "react-router-dom";
-import { AuthContext } from "./AuthContext";
+import { useAuth } from "../context/useAuth";
 
 export default function PrivateRoute({ roles }) {
-  const { token } = useContext(AuthContext);
+  const { user } = useAuth();
 
-  console.log("👉 PrivateRoute running", roles);
-  console.log("👉 Token:", token);
-
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const decoded = JSON.parse(atob(token.split(".")[1]));
-
-  if (roles && !roles.includes(decoded.role)) {
+  if (!user || !user.token) {
     return <Navigate to="/" replace />;
   }
 
-  // Render the child route
+  // user.role is normalized without ROLE_ prefix (e.g. "CUSTOMER", "ADMIN", "STAFF")
+  if (roles && !roles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+
   return <Outlet />;
 }

@@ -27,6 +27,7 @@ public class Referral {
     @JoinColumn(name = "referred_id")
     private User referred;
 
+    @Builder.Default
     private boolean rewardGiven = false;
 
     @OneToOne

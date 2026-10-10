@@ -1,35 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>{{subject}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0; padding:0; font-family: Arial, sans-serif; background:#f4f4f4;">
+<body style="margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color:#FAF6ED; color:#373A43;">
 
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4; padding:20px 0;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAF6ED; padding:32px 12px;">
     <tr>
-        <td>
-            <table width="600" cellpadding="0" cellspacing="0" align="center" style="background:#ffffff; border-radius:8px; overflow:hidden;">
+        <td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 30px rgba(55,58,67,0.08); border:1px solid rgba(55,58,67,0.08);">
 
-                <!-- HEADER -->
+                <!-- BRAND HEADER -->
                 <tr>
-                    <td style="background:#673AB7; padding:20px; text-align:center; color:#fff;">
-                        <h2 style="margin:0;">LOYALTY APP</h2>
+                    <td style="background: linear-gradient(135deg, #373A43 0%, #1e2025 100%); padding:28px 24px; text-align:center;">
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                                <td align="center">
+                                    <div style="display:inline-block; vertical-align:middle; margin-bottom:6px;">
+                                        <span style="font-size:24px; font-weight:800; color:#ffffff; letter-spacing:-0.5px;">Groomish</span>
+                                        <span style="display:inline-block; background-color:#FC6957; color:#ffffff; font-size:14px; font-weight:900; padding:3px 8px; border-radius:6px; margin-left:4px; text-transform:uppercase; letter-spacing:1px;">NOW</span>
+                                    </div>
+                                    <div style="font-size:12px; font-weight:500; color:#FED652; text-transform:uppercase; letter-spacing:2px; margin-top:2px;">
+                                        Premium Salon Experience & Loyalty Club
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
 
-                <!-- BODY -->
+                <!-- TOP ACCENT STRIP -->
                 <tr>
-                    <td style="padding:30px; color:#333;">
+                    <td height="4" style="background: linear-gradient(90deg, #FC6957 0%, #FED652 50%, #FA7B47 100%); font-size:0; line-height:0;">&nbsp;</td>
+                </tr>
+
+                <!-- CONTENT BODY -->
+                <tr>
+                    <td style="padding:36px 32px; font-size:14px; line-height:1.6; color:#373A43;">
                         {{content}}
                     </td>
                 </tr>
 
                 <!-- FOOTER -->
                 <tr>
-                    <td style="background:#f4f4f4; padding:20px; text-align:center; font-size:12px; color:#777;">
-                        © 2026 Loyalty App. All rights reserved.<br>
-                        This is an automated email. Do not reply.
+                    <td style="background-color:#FAF6ED; padding:24px 32px; text-align:center; border-top:1px solid rgba(55,58,67,0.08); font-size:12px; color:#7A7E89; line-height:1.6;">
+                        <p style="margin:0 0 8px 0; font-weight:700; color:#373A43; font-size:13px;">
+                            Groomish Now Salon & Spa
+                        </p>
+                        <p style="margin:0 0 8px 0;">
+                            Certified Stylists • Premium Organic Formulations • VIP Loyalty Rewards
+                        </p>
+                        <p style="margin:0; font-size:11px; color:#A0A4AE;">
+                            © {{year}} Groomish Now. All rights reserved.<br>
+                            This is an automated notification. For support, please reach out at support@groomishnow.com
+                        </p>
                     </td>
                 </tr>
 

@@ -23,6 +23,7 @@ public class Category {
     private String description;
     private String image;
 
+    @Builder.Default
     private boolean active = true;
 
     @CreationTimestamp

@@ -21,6 +21,19 @@ public interface ServiceAdminService {
             MultipartFile image
     );
 
+    ServiceResponse createService(
+            String name,
+            UUID categoryId,
+            String description,
+            String gender,
+            Double mrp,
+            Double price,
+            Integer rewards,
+            Integer durationMinutes,
+            MultipartFile image,
+            String imageUrl
+    );
+
     ServiceResponse updateService(
             UUID id,
             String name,
@@ -32,6 +45,20 @@ public interface ServiceAdminService {
             Integer rewards,
             Integer durationMinutes,
             MultipartFile image
+    );
+
+    ServiceResponse updateService(
+            UUID id,
+            String name,
+            UUID categoryId,
+            String description,
+            String gender,
+            Double mrp,
+            Double price,
+            Integer rewards,
+            Integer durationMinutes,
+            MultipartFile image,
+            String imageUrl
     );
 
     void softDeleteService(UUID id);

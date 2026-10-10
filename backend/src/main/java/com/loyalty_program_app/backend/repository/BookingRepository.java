@@ -19,6 +19,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
 
     List<Booking> findByUserId(UUID userId);
 
+    boolean existsByBookingCode(String bookingCode);
+
+    java.util.Optional<Booking> findByBookingCode(String bookingCode);
+
     @Query("""
         SELECT b FROM Booking b
         WHERE DATE(b.scheduledAt) = :date

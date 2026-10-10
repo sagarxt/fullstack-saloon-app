@@ -47,6 +47,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
         Booking booking = new Booking();
         booking.setUser(customer);
+        booking.setBookingCode(com.loyalty_program_app.backend.util.BookingCodeGenerator.generateUniqueCode(bookingRepository));
         booking.setScheduledAt(scheduledAt);
         booking.setStatus(BookingStatus.PENDING);
         booking.setNote(request.getNote());
@@ -167,6 +168,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
     private BookingResponse toDto(Booking b) {
         BookingResponse dto = new BookingResponse();
         dto.setId(b.getId());
+        dto.setBookingCode(b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase());
         dto.setUserId(b.getUser().getId());
         dto.setUserName(b.getUser().getName());
         dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);

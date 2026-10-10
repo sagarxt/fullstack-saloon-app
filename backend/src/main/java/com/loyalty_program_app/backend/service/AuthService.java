@@ -21,6 +21,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
 
     // ----------------------------------------------------------
     // CUSTOMER REGISTRATION
@@ -61,6 +62,10 @@ public class AuthService {
 
         userRepository.save(user);
 
+        if (role == Role.ROLE_CUSTOMER) {
+            emailService.sendWelcomeEmail(user.getEmail(), user.getName(), user.getReferralCode());
+        }
+
         return toUserResponse(user);
     }
 
@@ -89,7 +94,13 @@ public class AuthService {
     // UTILS
     // ----------------------------------------------------------
     private String generateReferralCode(String name) {
-        return name.substring(0, 3).toUpperCase() + (int)(Math.random() * 900 + 100);
+        String clean = (name != null ? name.replaceAll("[^A-Za-z]", "") : "").toUpperCase();
+        if (clean.length() < 3) {
+            clean = (clean + "LUXE").substring(0, 3);
+        } else {
+            clean = clean.substring(0, 3);
+        }
+        return clean + (int)(Math.random() * 900 + 100);
     }
 
     // MANUAL MAPPER (Entity → Response DTO)

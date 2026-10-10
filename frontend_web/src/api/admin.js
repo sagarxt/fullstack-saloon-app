@@ -1,52 +1,94 @@
 import axiosClient from "./axiosClient";
 
-// Expected backend: GET /api/v1/admin/dashboard
-export const getAdminDashboard = () =>
-  axiosClient.get("/admin/dashboard");
+/* CATEGORIES */
+export const getCategoriesApi = () =>
+  axiosClient.get("/admin/categories");
 
-export const getAdminCategories = ({ page = 0, size = 20, search, active } = {}) => {
-  const params = { page, size };
-  if (search) params.search = search;
-  if (active !== undefined && active !== "ALL") {
-    // active: true / false
-    params.active = active === "ACTIVE";
-  }
-  return axiosClient.get("/admin/categories", { params });
-};
+export const addCategoryApi = (data) =>
+  axiosClient.post("/admin/categories", data);
 
-export const createAdminCategory = (formData) =>
-  axiosClient.post("/admin/categories", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+export const updateCategoryApi = (id, data) =>
+  axiosClient.put(`/admin/categories/${id}`, data);
 
-export const updateAdminCategory = (id, formData) =>
-  axiosClient.put(`/admin/categories/${id}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-
-export const deleteAdminCategory = (id) =>
+export const deactivateCategoryApi = (id) =>
   axiosClient.delete(`/admin/categories/${id}`);
 
-export const getAdminServices = ({ page = 0, size = 20, search, active, categoryId } = {}) => {
-  const params = { page, size };
-  if (search) params.search = search;
-  if (active !== undefined && active !== "ALL") {
-    // active: true / false
-    params.active = active === "ACTIVE";
-  }
-  if (categoryId !== undefined && categoryId !== "ALL") params.categoryId = categoryId;
-  return axiosClient.get("/admin/services", { params });
-};
-export const createAdminService = (formData) =>
-  axiosClient.post("/admin/services", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-export const updateAdminService = (id, formData) =>
-  axiosClient.put(`/admin/services/${id}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-export const deleteAdminService = (id) =>
+/* SERVICES */
+export const getServicesByCategoryApi = (categoryId) =>
+  axiosClient.get(`/admin/services?categoryId=${categoryId}`);
+
+export const getServicesApi = () =>
+  axiosClient.get("/admin/services");
+
+export const addServiceApi = (data) =>
+  axiosClient.post("/admin/services", data);
+
+export const updateServiceApi = (id, data) =>
+  axiosClient.put(`/admin/services/${id}`, data);
+
+export const deactivateServiceApi = (id) =>
   axiosClient.delete(`/admin/services/${id}`);
 
-export const getAdminStaff = () =>
-  axiosClient.get("/admin/staff");
+/* BOOKINGS */
+export const getBookings = (status) =>
+  axiosClient.get(`/admin/bookings${status ? `?status=${status}` : ""}`);
+
+export const updateBookingStatus = (id, status) =>
+  axiosClient.put(`/admin/bookings/${id}/status?status=${status}`);
+
+export const getBookingDetails = (id) =>
+  axiosClient.get(`/admin/bookings/${id}`);
+
+export const cancelBookingByAdmin = (id, note) =>
+  axiosClient.post(`/admin/bookings/${id}/cancel?note=${encodeURIComponent(note || "")}`);
+
+/* DASHBOARD */
+export const getDashboardMetrics = () =>
+  axiosClient.get("/admin/dashboard");
+
+/* USERS & STAFF */
+export const getUsersApi = (role, page = 0, size = 50) =>
+  axiosClient.get(`/admin/users${role ? `?role=${role}&` : "?"}page=${page}&size=${size}`);
+
+export const createStaffApi = (data) =>
+  axiosClient.post("/admin/users/staff", data);
+
+export const createCustomerByAdminApi = (data) =>
+  axiosClient.post("/admin/users/customer", data);
+
+export const deactivateUserApi = (id) =>
+  axiosClient.delete(`/admin/users/${id}`);
+
+/* COUPONS */
+export const getCouponsApi = () =>
+  axiosClient.get("/admin/coupons");
+
+export const createCouponApi = (data) =>
+  axiosClient.post("/admin/coupons", data);
+
+export const updateCouponApi = (id, data) =>
+  axiosClient.put(`/admin/coupons/${id}`, data);
+
+export const deleteCouponApi = (id) =>
+  axiosClient.delete(`/admin/coupons/${id}`);
+
+/* PAYMENTS */
+export const getPaymentsApi = (page = 0, size = 50) =>
+  axiosClient.get(`/admin/payments?page=${page}&size=${size}`);
+
+/* BANNERS */
+export const getBannersApi = () =>
+  axiosClient.get("/admin/banners");
+
+export const createBannerApi = (data) =>
+  axiosClient.post("/admin/banners", data);
+
+export const deleteBannerApi = (id) =>
+  axiosClient.delete(`/admin/banners/${id}`);
+
+/* REVIEWS */
+export const getAllReviewsApi = (page = 0, size = 50) =>
+  axiosClient.get(`/admin/reviews?page=${page}&size=${size}`);
+
+export const deleteReviewByAdminApi = (id) =>
+  axiosClient.delete(`/admin/reviews/${id}`);
