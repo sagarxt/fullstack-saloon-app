@@ -11,3 +11,13 @@ export const sendOtpApi = (data) =>
 
 export const verifyOtpApi = (data) =>
   axiosClient.post("/auth/verify-otp", data);
+
+export const verifyReferralApi = (code) =>
+  axiosClient.get(`/auth/verify-referral?code=${encodeURIComponent(code)}`);
+
+export const forgotPasswordApi = (email) =>
+  axiosClient.post("/auth/forgot-password", { email });
+
+export const resetPasswordApi = (data) =>
+  axiosClient.post("/auth/reset-password", data);
+

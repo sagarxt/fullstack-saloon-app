@@ -18,6 +18,8 @@ import {
   ArrowRight,
   Gift,
   CheckCircle2,
+  Crown,
+  Gem,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -250,91 +252,126 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Silver */}
-              <div className="card-groomish p-6 bg-white border-groomish-slate/10 flex flex-col justify-between">
+              <div className="card-groomish p-6 bg-white border-groomish-slate/10 flex flex-col justify-between hover:shadow-card transition duration-300">
                 <div>
-                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500 font-extrabold mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500 font-extrabold mb-4 text-base">
                     Ag
                   </div>
                   <h3 className="text-xl font-bold text-groomish-slate">Silver Tier</h3>
                   <p className="text-xs text-groomish-slateLight mt-1">Starting level for all members</p>
-                  <ul className="mt-6 space-y-3 text-xs text-groomish-slate">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0" />
-                      <span>Earn 1 point for every ₹100 spent</span>
+                  
+                  <div className="my-4 py-2 px-3 rounded-xl bg-gray-50 border border-gray-100">
+                    <span className="text-xs font-extrabold text-groomish-slate">1 pt per ₹100</span>
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-groomish-slate">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
+                      <span>Standard online bookings & OTP receipts.</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0" />
-                      <span>Welcome discount coupon (10% off)</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0" />
-                      <span>Birthday surprise loyalty perks</span>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
+                      <span>Welcome salon perks & referral points</span>
                     </li>
                   </ul>
                 </div>
-                <div className="mt-8 pt-4 border-t border-groomish-slate/10 text-xs font-bold text-groomish-slateLight">
-                  Entry: 0 – 499 Points
+                <div className="mt-6 pt-4 border-t border-groomish-slate/10 text-xs font-bold text-groomish-slateLight flex items-center justify-between">
+                  <span>Entry Milestone</span>
+                  <span className="text-groomish-slate font-extrabold">0 Points</span>
                 </div>
               </div>
 
               {/* Gold */}
-              <div className="card-groomish p-6 bg-gradient-to-b from-white to-groomish-goldLight/30 border-groomish-gold/40 relative shadow-glowGold flex flex-col justify-between">
-                <span className="absolute -top-3 right-6 px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-gold text-groomish-slate tracking-wider uppercase">
-                  POPULAR
-                </span>
+              <div className="card-groomish p-6 bg-gradient-to-b from-white to-groomish-goldLight/30 border-groomish-gold/40 relative shadow-glowGold flex flex-col justify-between hover:scale-[1.02] transition duration-300">
                 <div>
-                  <div className="w-12 h-12 rounded-2xl bg-groomish-goldLight flex items-center justify-center text-groomish-goldDark font-extrabold mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-groomish-goldLight flex items-center justify-center text-groomish-goldDark font-extrabold mb-4 text-base">
                     Au
                   </div>
                   <h3 className="text-xl font-bold text-groomish-slate">Gold Tier</h3>
-                  <p className="text-xs text-groomish-slateLight mt-1">For frequent styling enthusiasts</p>
-                  <ul className="mt-6 space-y-3 text-xs text-groomish-slate">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0" />
-                      <span>Earn 1.5x points multiplier on all services</span>
+                  <p className="text-xs text-groomish-slateLight mt-1">For regular salon enthusiasts</p>
+
+                  <div className="my-4 py-2 px-3 rounded-xl bg-groomish-goldLight/60 border border-groomish-gold/30">
+                    <span className="text-xs font-extrabold text-groomish-goldDark">1.25x Points Multiplier</span>
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-groomish-slate">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
+                      <span>Complimentary scalp analysis & priority slots.</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0" />
-                      <span>Priority booking slots during peak hours</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0" />
-                      <span>Complimentary beverage & scalp massage</span>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
+                      <span>1.25x point boost on all services</span>
                     </li>
                   </ul>
                 </div>
-                <div className="mt-8 pt-4 border-t border-groomish-gold/30 text-xs font-bold text-groomish-goldDark">
-                  Milestone: 500 – 999 Points
+                <div className="mt-6 pt-4 border-t border-groomish-gold/30 text-xs font-bold text-groomish-goldDark flex items-center justify-between">
+                  <span>Requirement</span>
+                  <span className="font-extrabold">50 Points</span>
                 </div>
               </div>
 
               {/* Platinum */}
-              <div className="card-groomish p-6 bg-groomish-slate text-white border-groomish-slate flex flex-col justify-between">
+              <div className="card-groomish p-6 bg-gradient-to-b from-white to-groomish-blueLight/30 border-groomish-blue/40 flex flex-col justify-between hover:scale-[1.02] transition duration-300">
                 <div>
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-groomish-gold font-extrabold mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-groomish-blueLight flex items-center justify-center text-groomish-blue font-extrabold mb-4 text-base">
                     Pt
                   </div>
-                  <h3 className="text-xl font-bold text-white">Platinum Elite</h3>
-                  <p className="text-xs text-gray-300 mt-1">Ultimate VIP salon privilege</p>
-                  <ul className="mt-6 space-y-3 text-xs text-gray-200">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-gold shrink-0" />
-                      <span>2x points on all treatments & retail</span>
+                  <h3 className="text-xl font-bold text-groomish-slate">Platinum Tier</h3>
+                  <p className="text-xs text-groomish-slateLight mt-1">Elite VIP luxury styling</p>
+
+                  <div className="my-4 py-2 px-3 rounded-xl bg-groomish-blueLight/60 border border-groomish-blue/30">
+                    <span className="text-xs font-extrabold text-groomish-blue">1.5x Points Multiplier</span>
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-groomish-slate">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-groomish-blue shrink-0 mt-0.5" />
+                      <span>Senior stylist preference & birthday gift.</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-gold shrink-0" />
-                      <span>Dedicated Master Stylist reservations</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-gold shrink-0" />
-                      <span>Complimentary quarterly hair spa ritual</span>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-groomish-blue shrink-0 mt-0.5" />
+                      <span>1.5x point boost on all bookings</span>
                     </li>
                   </ul>
                 </div>
-                <div className="mt-8 pt-4 border-t border-white/10 text-xs font-bold text-groomish-gold">
-                  Milestone: 1,000+ Points
+                <div className="mt-6 pt-4 border-t border-groomish-blue/30 text-xs font-bold text-groomish-blue flex items-center justify-between">
+                  <span>Requirement</span>
+                  <span className="font-extrabold">150 Points</span>
+                </div>
+              </div>
+
+              {/* Diamond */}
+              <div className="card-groomish p-6 bg-gradient-to-br from-groomish-slate via-groomish-slateDark to-black text-white border-groomish-coral/40 relative shadow-card flex flex-col justify-between hover:scale-[1.02] transition duration-300">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-groomish-coral font-extrabold mb-4 text-base border border-white/10">
+                    <Gem className="w-6 h-6 text-groomish-coral" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-1.5">
+                    Diamond Tier
+                  </h3>
+                  <p className="text-xs text-gray-300 mt-1">Supreme concierge & prestige</p>
+
+                  <div className="my-4 py-2 px-3 rounded-xl bg-white/10 border border-white/10">
+                    <span className="text-xs font-extrabold text-groomish-coral">2.0x Points Multiplier</span>
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-gray-200">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-groomish-coral shrink-0 mt-0.5" />
+                      <span>Complimentary head massage & concierge.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-groomish-coral shrink-0 mt-0.5" />
+                      <span>2.0x double point boost & VIP lounge</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-6 pt-4 border-t border-white/10 text-xs font-bold text-groomish-coral flex items-center justify-between">
+                  <span>Requirement</span>
+                  <span className="font-extrabold">300 Points</span>
                 </div>
               </div>
             </div>

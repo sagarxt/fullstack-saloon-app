@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getDashboardMetrics } from "../../api/admin";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   DollarSign,
   Calendar,
@@ -187,7 +187,13 @@ export default function DashboardPage() {
                 {metrics.recentBookings.map((b) => (
                   <tr key={b.id} className="hover:bg-groomish-cream/30 transition">
                     <td className="py-4 px-6 font-mono font-bold text-groomish-slate">
-                      {b.id?.slice(0, 8)}
+                      <Link
+                        to={`/admin/bookings/${b.id}`}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-mono font-extrabold text-groomish-orange bg-groomish-orangeLight border border-groomish-orange/20 tracking-wider hover:bg-groomish-orange/25 transition"
+                        title="Click to view appointment details"
+                      >
+                        {b.bookingCode || (b.id ? `GN-${b.id.slice(0, 8).toUpperCase()}` : "GN-NEW")}
+                      </Link>
                     </td>
                     <td className="py-4 px-6 text-groomish-slate/80">
                       {b.scheduledAt
@@ -216,12 +222,14 @@ export default function DashboardPage() {
                       ₹{b.pricePaid}
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => navigate("/admin/bookings")}
-                        className="text-xs font-bold text-groomish-orange hover:underline"
+                      <Link
+                        to={`/admin/bookings/${b.id}`}
+                        className="text-xs font-bold text-groomish-orange hover:text-groomish-orangeDark hover:underline inline-flex items-center gap-0.5"
+                        title="Manage appointment"
                       >
-                        Manage
-                      </button>
+                        <span>Manage</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Link>
                     </td>
                   </tr>
                 ))}

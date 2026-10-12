@@ -45,6 +45,9 @@ public class User {
     @Builder.Default
     private Integer points = 0;
 
+    @Builder.Default
+    private Integer lifetimePoints = 0;
+
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private Tier tier = Tier.SILVER;
@@ -54,6 +57,10 @@ public class User {
 
     private UUID createdBy;
     private UUID updatedBy;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "store_id")
+    private Store store;
 
     @Builder.Default
     private boolean active = true;

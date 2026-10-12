@@ -8,20 +8,45 @@ import com.loyalty_program_app.backend.model.User;
 import com.loyalty_program_app.backend.enums.Gender;
 import com.loyalty_program_app.backend.enums.Role;
 import com.loyalty_program_app.backend.enums.Tier;
+import com.loyalty_program_app.backend.model.Referral;
+import com.loyalty_program_app.backend.repository.ReferralRepository;
 import com.loyalty_program_app.backend.repository.UserRepository;
 import com.loyalty_program_app.backend.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final ReferralRepository referralRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final BCryptPasswordEncoder passwordEncoder;
     private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
+    private final com.loyalty_program_app.backend.service.utils.OtpService otpService;
+
+    // ----------------------------------------------------------
+    // VERIFY REFERRAL CODE
+    // ----------------------------------------------------------
+    public Map<String, Object> verifyReferralCode(String code) {
+        if (code == null || code.trim().isBlank()) {
+            return Map.of("valid", false, "message", "Invalid Referral Code");
+        }
+        return userRepository.findByReferralCode(code.trim().toUpperCase())
+                .map(user -> Map.<String, Object>of(
+                        "valid", true,
+                        "referrerName", user.getName(),
+                        "message", "Valid referral code from " + user.getName()
+                ))
+                .orElse(Map.of(
+                        "valid", false,
+                        "message", "Invalid Referral Code"
+                ));
+    }
 
     // ----------------------------------------------------------
     // CUSTOMER REGISTRATION
@@ -48,6 +73,13 @@ public class AuthService {
             throw new RuntimeException("Email already exists");
         }
 
+        User referrer = null;
+        if (request.getReferralCode() != null && !request.getReferralCode().trim().isBlank()) {
+            String refCode = request.getReferralCode().trim().toUpperCase();
+            referrer = userRepository.findByReferralCode(refCode)
+                    .orElseThrow(() -> new RuntimeException("Invalid Referral Code"));
+        }
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -62,11 +94,28 @@ public class AuthService {
 
         userRepository.save(user);
 
+        if (referrer != null) {
+            Referral referral = Referral.builder()
+                    .referrer(referrer)
+                    .referred(user)
+                    .rewardGiven(false)
+                    .build();
+            referralRepository.save(referral);
+        }
+
         if (role == Role.ROLE_CUSTOMER) {
             emailService.sendWelcomeEmail(user.getEmail(), user.getName(), user.getReferralCode());
         }
 
-        return toUserResponse(user);
+        String token = jwtTokenProvider.generateToken(
+                user.getId().toString(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        UserResponse userResponse = toUserResponse(user);
+        userResponse.setToken(token);
+        return userResponse;
     }
 
     // ----------------------------------------------------------
@@ -91,16 +140,48 @@ public class AuthService {
     }
 
     // ----------------------------------------------------------
+    // FORGOT PASSWORD & RESET PASSWORD
+    // ----------------------------------------------------------
+    public void sendForgotPasswordOtp(String email) {
+        if (email == null || email.trim().isBlank()) {
+            throw new RuntimeException("Email is required");
+        }
+        String cleanEmail = email.trim().toLowerCase();
+        userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new RuntimeException("No registered account found with this email"));
+
+        Boolean sent = otpService.generateOtp(cleanEmail);
+        if (!Boolean.TRUE.equals(sent)) {
+            throw new RuntimeException("Failed to dispatch OTP. Please verify your email address.");
+        }
+    }
+
+    public void resetPassword(com.loyalty_program_app.backend.dto.user.ResetPasswordRequest request) {
+        if (request == null || request.getEmail() == null || request.getOtp() == null || request.getNewPassword() == null) {
+            throw new RuntimeException("Email, OTP, and new password are required");
+        }
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new RuntimeException("No registered account found with this email"));
+
+        boolean validOtp = otpService.verifyOtp(cleanEmail, request.getOtp().trim());
+        if (!validOtp) {
+            throw new RuntimeException("Invalid or expired OTP");
+        }
+
+        if (request.getNewPassword().trim().length() < 4) {
+            throw new RuntimeException("Password must be at least 4 characters long");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+        userRepository.save(user);
+    }
+
+    // ----------------------------------------------------------
     // UTILS
     // ----------------------------------------------------------
     private String generateReferralCode(String name) {
-        String clean = (name != null ? name.replaceAll("[^A-Za-z]", "") : "").toUpperCase();
-        if (clean.length() < 3) {
-            clean = (clean + "LUXE").substring(0, 3);
-        } else {
-            clean = clean.substring(0, 3);
-        }
-        return clean + (int)(Math.random() * 900 + 100);
+        return com.loyalty_program_app.backend.util.ReferralCodeGenerator.generateUniqueReferralCode(name, userRepository);
     }
 
     // MANUAL MAPPER (Entity → Response DTO)

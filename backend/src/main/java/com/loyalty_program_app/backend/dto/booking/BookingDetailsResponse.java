@@ -21,6 +21,20 @@ public class BookingDetailsResponse {
 
     private String couponApplied;
 
+    private UUID storeId;
+    private String storeName;
+    private String storeAddress;
+
+    private UUID paymentId;
+    private String paymentMethod;
+    private String paymentStatus;
+    private String invoiceNumber;
+    private Long graceMinutesRemaining;
+    private Boolean warning1HourSent;
+    private Integer expectedRewardPoints;
+    private Boolean pointsConfirmed;
+
     private List<BookingItemDetailsResponse> items;
     private List<com.loyalty_program_app.backend.dto.product.BookingProductResponse> products;
+    private List<BookingTimelineResponse> timeline;
 }

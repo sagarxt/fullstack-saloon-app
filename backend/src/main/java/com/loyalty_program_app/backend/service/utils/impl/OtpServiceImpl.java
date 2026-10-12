@@ -23,9 +23,13 @@ public class OtpServiceImpl implements OtpService {
 
     @Override
     public Boolean generateOtp(String email) {
-        String subject = "Your OTP for Loyalty App";
+        if (email == null || email.trim().isBlank()) {
+            return false;
+        }
+        String cleanEmail = email.trim().toLowerCase();
+        String subject = "Your OTP for Groomish Now";
         String otp = String.valueOf((int)(Math.random() * 900000 + 100000));
-        otpStore.put(email, new OtpData(otp, LocalDateTime.now().plusMinutes(10)));
+        otpStore.put(cleanEmail, new OtpData(otp, LocalDateTime.now().plusMinutes(10)));
 
         Boolean otp_send = false;
 
@@ -43,7 +47,7 @@ public class OtpServiceImpl implements OtpService {
             }
 
             html = html.replace("{{otp}}", otp);
-            emailService.sendHtmlEmail(email, subject, html);
+            emailService.sendHtmlEmail(cleanEmail, subject, html);
             otp_send = true;
         } catch (Exception e) {
             System.err.println("Unable to send OTP: " + e.getMessage());
@@ -53,18 +57,20 @@ public class OtpServiceImpl implements OtpService {
 
     @Override
     public boolean verifyOtp(String email, String otp) {
-        if (!otpStore.containsKey(email)) return false;
+        if (email == null || otp == null || email.trim().isBlank()) return false;
+        String cleanEmail = email.trim().toLowerCase();
+        if (!otpStore.containsKey(cleanEmail)) return false;
 
-        OtpData data = otpStore.get(email);
+        OtpData data = otpStore.get(cleanEmail);
 
         if (data.expiry.isBefore(LocalDateTime.now())) {
-            otpStore.remove(email);
+            otpStore.remove(cleanEmail);
             return false;
         }
 
-        boolean valid = data.otp.equals(otp);
+        boolean valid = data.otp.equals(otp.trim());
 
-        if (valid) otpStore.remove(email);
+        if (valid) otpStore.remove(cleanEmail);
 
         return valid;
     }

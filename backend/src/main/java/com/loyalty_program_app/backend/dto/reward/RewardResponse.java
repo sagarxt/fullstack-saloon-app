@@ -11,6 +11,10 @@ public class RewardResponse {
     private String description;
     private Integer pointsRequired;
     private Integer stock;
+    private UUID serviceId;
+    private String serviceName;
+    private Integer discountPercent;
+    private Integer validityDays;
     private String expiryDate;
     private Boolean active;
 }

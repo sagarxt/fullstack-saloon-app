@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CustomerBookingDetailsModal from "../modals/CustomerBookingDetailsModal";
 import LeaveReviewModal from "../modals/LeaveReviewModal";
-import { Calendar, Clock, CreditCard, ChevronRight, Star, Scissors } from "lucide-react";
+import { Calendar, Clock, CreditCard, ChevronRight, Star, Scissors, MapPin } from "lucide-react";
 
 export default function BookingCard({ booking, refresh }) {
+  const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -62,10 +64,29 @@ export default function BookingCard({ booking, refresh }) {
               <Calendar className="w-3.5 h-3.5 text-groomish-slate/40" />
               {formattedDate}
             </span>
+            {booking.storeName && (
+              <span className="flex items-center gap-1.5 text-groomish-orange font-semibold">
+                <MapPin className="w-3.5 h-3.5" />
+                {booking.storeName}
+              </span>
+            )}
             <span className="flex items-center gap-1.5 font-bold text-groomish-slate">
               <CreditCard className="w-3.5 h-3.5 text-groomish-slate/40" />
               ₹{booking.pricePaid}
             </span>
+            {booking.status === "COMPLETED" ? (
+              <span className="text-[11px] font-bold text-groomish-green bg-groomish-greenLight px-2 py-0.5 rounded-lg border border-groomish-green/20">
+                ✓ +{booking.expectedRewardPoints || Math.floor(booking.pricePaid / 100)} pts Confirmed
+              </span>
+            ) : booking.status === "CANCELLED" ? (
+              <span className="text-[11px] font-bold text-groomish-slate/40 bg-gray-100 px-2 py-0.5 rounded-lg border border-gray-200">
+                0 pts (Cancelled)
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-300">
+                ⏳ +{booking.expectedRewardPoints || Math.floor(booking.pricePaid / 100)} pts Pending
+              </span>
+            )}
           </div>
         </div>
 
@@ -82,8 +103,8 @@ export default function BookingCard({ booking, refresh }) {
           )}
 
           <button
-            onClick={() => setDetailsOpen(true)}
-            className="btn-secondary text-xs px-4 py-2"
+            onClick={() => navigate(`/customer/bookings/${booking.id}`)}
+            className="btn-primary text-xs px-4 py-2"
           >
             <span>View Details</span>
             <ChevronRight className="w-3.5 h-3.5" />

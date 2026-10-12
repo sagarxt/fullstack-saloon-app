@@ -17,7 +17,7 @@ export const uploadImageApi = async (fileOrUrl, folder = "groomishnow") => {
 
   const res = await axiosClient.post("/admin/upload", formData, {
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": undefined,
     },
   });
 

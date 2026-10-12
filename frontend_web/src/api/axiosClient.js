@@ -46,7 +46,16 @@ axiosClient.interceptors.response.use(
       localStorage.removeItem("user");
       localStorage.removeItem("token");
 
-      if (!isHandling401) {
+      const reqUrl = error.config?.url || "";
+      const isAuthEndpoint =
+        reqUrl.includes("/auth/login") ||
+        reqUrl.includes("/auth/register") ||
+        reqUrl.includes("/auth/send-otp") ||
+        reqUrl.includes("/auth/verify-otp") ||
+        reqUrl.includes("/auth/verify-referral");
+
+      // Don't pop up "Session expired" or redirect if it was just an auth form attempt
+      if (!isAuthEndpoint && !isHandling401) {
         isHandling401 = true;
 
         // Show popup toast message
@@ -55,12 +64,15 @@ axiosClient.interceptors.response.use(
           "Authentication Required"
         );
 
+        // Remember current path so user can be redirected back to the exact page they were browsing
+        const currentPath = window.location.pathname + window.location.search;
+        sessionStorage.setItem("redirectAfterLogin", currentPath);
+
         // Redirect to Login if not already on authentication pages
-        const currentPath = window.location.pathname;
-        if (currentPath !== "/login" && currentPath !== "/register") {
+        if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
           setTimeout(() => {
             isHandling401 = false;
-            window.location.href = "/login";
+            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
           }, 1200);
         } else {
           setTimeout(() => {

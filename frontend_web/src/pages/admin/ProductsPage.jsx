@@ -6,9 +6,13 @@ import {
   deleteAdminProduct,
 } from "../../api/products";
 import ModalWrapper from "../../components/modals/ModalWrapper";
-import CloudinaryImageUploader from "../../components/common/CloudinaryImageUploader";
+import CloudinaryMultiImageUploader from "../../components/common/CloudinaryMultiImageUploader";
 import CustomSelect from "../../components/common/CustomSelect";
+import Pagination from "../../components/common/Pagination";
 import { extractList } from "../../utils/dataHelper";
+import { storeApi } from "../../api/store";
+import StaffBranchInventoryTab from "../../components/staff/StaffBranchInventoryTab";
+import { showConfirm } from "../../context/ConfirmContext";
 import {
   Package,
   Plus,
@@ -23,11 +27,14 @@ import {
   Store,
 } from "lucide-react";
 
+const PAGE_SIZE = 20;
+
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -48,11 +55,18 @@ export default function ProductsPage() {
     active: true,
   });
 
+  const [stores, setStores] = useState([]);
+  const [selectedStoreId, setSelectedStoreId] = useState("GLOBAL");
+
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await getAdminProducts(0, 50);
+      const [res, storeRes] = await Promise.all([
+        getAdminProducts(0, 200),
+        storeApi.getAdminStores().catch(() => ({ data: [] })),
+      ]);
       setProducts(extractList(res.data));
+      setStores(Array.isArray(storeRes.data) ? storeRes.data : []);
     } catch (err) {
       console.error(err);
       setProducts([]);
@@ -65,8 +79,15 @@ export default function ProductsPage() {
     loadProducts();
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [categoryFilter, search, selectedStoreId]);
+
+  const selectedStore = stores.find((s) => s.id === selectedStoreId);
+
   const handleOpenCreate = () => {
     setEditingProduct(null);
+    const defaultImgs = ["https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=600&q=80"];
     setForm({
       name: "",
       brand: "Groomish Pro",
@@ -75,7 +96,8 @@ export default function ProductsPage() {
       mrp: "",
       volumeOrSize: "100ml",
       stockQuantity: 50,
-      image: "https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=600&q=80",
+      image: defaultImgs[0],
+      images: defaultImgs,
       description: "",
       inStorePickupOnly: true,
       active: true,
@@ -87,6 +109,10 @@ export default function ProductsPage() {
 
   const handleOpenEdit = (p) => {
     setEditingProduct(p);
+    const prodImages = Array.isArray(p.images) && p.images.length > 0
+      ? p.images
+      : p.image ? [p.image] : [];
+
     setForm({
       name: p.name || "",
       brand: p.brand || "Groomish Pro",
@@ -95,7 +121,8 @@ export default function ProductsPage() {
       mrp: p.mrp ?? "",
       volumeOrSize: p.volumeOrSize || "",
       stockQuantity: p.stockQuantity ?? 50,
-      image: p.image || "",
+      image: prodImages[0] || p.image || "",
+      images: prodImages,
       description: p.description || "",
       inStorePickupOnly: p.inStorePickupOnly ?? true,
       active: p.active ?? true,
@@ -117,8 +144,14 @@ export default function ProductsPage() {
     setSuccess("");
 
     try {
+      const imgList = Array.isArray(form.images) && form.images.length > 0
+        ? form.images
+        : form.image ? [form.image] : [];
+
       const payload = {
         ...form,
+        image: imgList[0] || form.image || "",
+        images: imgList,
         price: Number(form.price),
         mrp: form.mrp ? Number(form.mrp) : Number(form.price),
         stockQuantity: Number(form.stockQuantity) || 0,
@@ -144,7 +177,13 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to deactivate this product from the shop?")) return;
+    const ok = await showConfirm({
+      title: "Deactivate Product",
+      message: "Are you sure you want to deactivate this product from the shop catalog?",
+      confirmText: "Deactivate",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       await deleteAdminProduct(id);
       loadProducts();
@@ -209,6 +248,46 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Branch Scope Selector Bar */}
+      <div className="bg-white rounded-3xl p-4 border border-groomish-slate/10 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
+            <Store className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs font-bold text-groomish-slate block">
+              Inventory View & Branch Scope
+            </span>
+            <span className="text-[10px] text-groomish-slate/50">
+              Select Global Master Catalog or switch to a branch to track real-time stock and adjust inventory
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedStoreId}
+            onChange={(e) => setSelectedStoreId(e.target.value)}
+            className="py-2 px-3.5 rounded-xl bg-groomish-cream/80 border border-groomish-slate/15 text-xs font-bold text-groomish-slate focus:outline-none focus:ring-2 focus:ring-groomish-orange/40"
+          >
+            <option value="GLOBAL">🌐 Global Master Catalog (All Branches)</option>
+            {stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                📍 Branch: {s.name} ({s.code || s.city})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {selectedStoreId !== "GLOBAL" && selectedStore ? (
+        <StaffBranchInventoryTab
+          storeId={selectedStore.id}
+          storeName={selectedStore.name}
+          isAdmin={true}
+        />
+      ) : (
+        <>
       {/* Filter and Search Bar */}
       <div className="bg-white p-4 rounded-3xl border border-groomish-slate/10 shadow-soft flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-72">
@@ -266,15 +345,24 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-groomish-slate/10">
-                {filtered.map((p) => (
+                {filtered
+                  .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                  .map((p) => (
                   <tr key={p.id} className="hover:bg-groomish-cream/30 transition">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={p.image || "https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=100&q=80"}
-                          alt={p.name}
-                          className="w-10 h-10 rounded-xl object-contain bg-white border border-groomish-slate/10 p-1 shrink-0"
-                        />
+                        <div className="relative shrink-0">
+                          <img
+                            src={p.image || "https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=100&q=80"}
+                            alt={p.name}
+                            className="w-10 h-10 rounded-xl object-contain bg-white border border-groomish-slate/10 p-1"
+                          />
+                          {p.images && p.images.length > 1 && (
+                            <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full bg-groomish-slate text-white text-[8px] font-bold shadow-sm">
+                              {p.images.length}
+                            </span>
+                          )}
+                        </div>
                         <div>
                           <p className="font-bold text-groomish-slate">{p.name}</p>
                           <p className="text-[10px] text-groomish-slate/50">
@@ -350,7 +438,21 @@ export default function ProductsPage() {
             </table>
           </div>
         )}
+
+        {filtered.length > 0 && (
+          <div className="p-4 border-t border-groomish-slate/10 bg-white">
+            <Pagination
+              currentPage={page}
+              totalItems={filtered.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+              itemName="products"
+            />
+          </div>
+        )}
       </div>
+        </>
+      )}
 
       {/* CREATE / EDIT MODAL */}
       <ModalWrapper
@@ -484,11 +586,18 @@ export default function ProductsPage() {
               />
             </div>
 
-            <CloudinaryImageUploader
-              value={form.image}
-              onChange={(url) => setForm({ ...form, image: url })}
+            <CloudinaryMultiImageUploader
+              value={form.images || (form.image ? [form.image] : [])}
+              onChange={(urls) =>
+                setForm((prev) => ({
+                  ...prev,
+                  images: urls,
+                  image: urls[0] || "",
+                }))
+              }
+              maxImages={6}
               folder="groomishnow/product"
-              label="Retail Product Photo"
+              label="Product Photos & Gallery Angles (Up to 6)"
             />
 
             <div>

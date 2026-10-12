@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { changePassword } from "../../api/customer";
+import { showAlert } from "../../context/ConfirmContext";
 
 export default function ChangePasswordModal({ open, onClose }) {
   const [form, setForm] = useState({
@@ -12,16 +13,28 @@ export default function ChangePasswordModal({ open, onClose }) {
 
   const handleSubmit = async () => {
     if (form.newPassword !== form.confirmPassword) {
-      alert("Passwords do not match");
+      await showAlert({
+        title: "Password Mismatch",
+        message: "New password and confirm password do not match.",
+        variant: "warning",
+      });
       return;
     }
 
     try {
       await changePassword(form);
-      alert("Password changed successfully");
+      await showAlert({
+        title: "Success",
+        message: "Your password has been changed successfully.",
+        variant: "success",
+      });
       onClose();
     } catch {
-      alert("Failed to change password");
+      await showAlert({
+        title: "Error",
+        message: "Failed to update password. Please check your current password.",
+        variant: "danger",
+      });
     }
   };
 

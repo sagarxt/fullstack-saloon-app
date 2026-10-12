@@ -19,4 +19,8 @@ public interface StaffBookingService {
     Page<BookingResponse> getCustomerBookings(UUID customerId, Pageable pageable);
 
     BookingResponse getBooking(UUID bookingId);
+
+    BookingResponse addServiceToBooking(UUID staffId, UUID bookingId, UUID serviceId);
+
+    BookingResponse removeServiceFromBooking(UUID staffId, UUID bookingId, UUID itemId);
 }

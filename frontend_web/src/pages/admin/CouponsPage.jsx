@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getCouponsApi, createCouponApi, deleteCouponApi } from "../../api/admin";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import { extractList } from "../../utils/dataHelper";
+import { showConfirm } from "../../context/ConfirmContext";
 import { Tag, Plus, Trash2, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
 
 export default function CouponsPage() {
@@ -71,7 +72,13 @@ export default function CouponsPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to remove this promo coupon?")) return;
+    const ok = await showConfirm({
+      title: "Remove Promo Coupon",
+      message: "Are you sure you want to remove this promo coupon from active promotions?",
+      confirmText: "Remove Coupon",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       await deleteCouponApi(id);
       loadCoupons();

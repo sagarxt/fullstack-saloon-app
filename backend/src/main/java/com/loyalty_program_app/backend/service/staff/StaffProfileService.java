@@ -1,13 +1,16 @@
 package com.loyalty_program_app.backend.service.staff;
 
-import com.loyalty_program_app.backend.dto.user.CustomerProfileUpdateRequest;
-import com.loyalty_program_app.backend.dto.user.UserResponse;
+import com.loyalty_program_app.backend.dto.staff.StaffProfileResponse;
+import com.loyalty_program_app.backend.dto.staff.UpdateStaffProfileRequest;
+import com.loyalty_program_app.backend.dto.user.ChangePasswordRequest;
 
 import java.util.UUID;
 
 public interface StaffProfileService {
 
-    UserResponse getProfile(UUID staffId);
+    StaffProfileResponse getProfile(UUID staffId);
 
-    UserResponse updateProfile(UUID staffId, CustomerProfileUpdateRequest request);
+    StaffProfileResponse updateProfile(UUID staffId, UpdateStaffProfileRequest request);
+
+    void changePassword(UUID staffId, ChangePasswordRequest request);
 }

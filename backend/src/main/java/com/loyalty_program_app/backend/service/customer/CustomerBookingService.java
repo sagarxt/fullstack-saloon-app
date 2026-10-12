@@ -41,4 +41,16 @@ public interface CustomerBookingService {
             UUID userId,
             UUID bookingId
     );
+
+    BookingDetailsResponse addServiceToBooking(
+            UUID userId,
+            UUID bookingId,
+            UUID serviceId
+    );
+
+    BookingDetailsResponse removeServiceFromBooking(
+            UUID userId,
+            UUID bookingId,
+            UUID itemId
+    );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSlotAvailability } from "../../api/customer";
-import { generateSlots } from "../../utils/slots";
+import { generateSlots, isPastSlot, getTodayDateString } from "../../utils/slots";
 import { Calendar, Clock } from "lucide-react";
 
 export default function SlotPicker({
@@ -13,6 +13,7 @@ export default function SlotPicker({
   const [slots, setSlots] = useState([]);
   const [unavailableSlots, setUnavailableSlots] = useState([]);
   const [loading, setLoading] = useState(false);
+  const todayStr = getTodayDateString(0);
 
   useEffect(() => {
     if (!date) return;
@@ -34,6 +35,8 @@ export default function SlotPicker({
     loadSlots();
   }, [date, serviceId]);
 
+  const availableSlots = date === todayStr ? slots.filter((s) => !isPastSlot(date, s)) : slots;
+
   return (
     <div className="space-y-4">
       {/* DATE */}
@@ -46,7 +49,7 @@ export default function SlotPicker({
           type="date"
           className="input-groomish"
           value={date}
-          min={new Date().toISOString().split("T")[0]}
+          min={todayStr}
           onChange={(e) => onDateChange(e.target.value)}
         />
       </div>
@@ -63,10 +66,16 @@ export default function SlotPicker({
             <div className="text-center py-4 text-xs text-groomish-slate/50">
               Loading slots...
             </div>
+          ) : availableSlots.length === 0 ? (
+            <div className="text-center py-4 text-xs text-groomish-slate/50 bg-groomish-cream rounded-xl">
+              {date === todayStr
+                ? "No upcoming salon slots remaining today. Please select another date."
+                : "No slots available for selected date."}
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-2 max-h-44 overflow-y-auto p-1">
-              {slots.map((slot) => {
-                const disabled = unavailableSlots.includes(slot);
+              {availableSlots.map((slot) => {
+                const disabled = unavailableSlots.includes(slot) || isPastSlot(date, slot);
                 const isSelected = selectedSlot === slot;
 
                 return (

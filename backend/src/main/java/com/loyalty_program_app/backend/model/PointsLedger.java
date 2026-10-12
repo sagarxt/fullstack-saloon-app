@@ -30,6 +30,7 @@ public class PointsLedger {
     private PointReason reason;
 
     private UUID relatedId;
+    private String note;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

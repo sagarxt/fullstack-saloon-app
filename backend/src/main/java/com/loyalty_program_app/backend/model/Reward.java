@@ -26,6 +26,11 @@ public class Reward {
     private Integer pointsRequired;
     private Integer stock;
 
+    private UUID serviceId;
+    private String serviceName;
+    private Integer discountPercent;
+    private Integer validityDays;
+
     private LocalDateTime expiryDate;
 
     @Builder.Default

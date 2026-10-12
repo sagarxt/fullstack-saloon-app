@@ -24,6 +24,11 @@ public class CustomerNotificationServiceImpl implements CustomerNotificationServ
     }
 
     @Override
+    public long getUnreadCount(UUID userId) {
+        return notificationRepository.countByUserIdAndSeenFalse(userId);
+    }
+
+    @Override
     public void markSeen(UUID userId, UUID notificationId) {
         Notification n = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new RuntimeException("Notification not found"));
@@ -33,6 +38,29 @@ public class CustomerNotificationServiceImpl implements CustomerNotificationServ
         }
 
         n.setSeen(true);
+        notificationRepository.save(n);
+    }
+
+    @Override
+    public void markAllSeen(UUID userId) {
+        notificationRepository.markAllSeenByUserId(userId);
+    }
+
+    @Override
+    public void clearAll(UUID userId) {
+        notificationRepository.deleteAllByUserId(userId);
+    }
+
+    @Override
+    public void createNotification(com.loyalty_program_app.backend.model.User user, String title, String message, com.loyalty_program_app.backend.enums.NotificationType type) {
+        if (user == null) return;
+        Notification n = Notification.builder()
+                .user(user)
+                .title(title)
+                .message(message)
+                .type(type)
+                .seen(false)
+                .build();
         notificationRepository.save(n);
     }
 

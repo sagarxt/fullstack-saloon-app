@@ -1,11 +1,14 @@
 package com.loyalty_program_app.backend.controller.staff;
 
+import com.loyalty_program_app.backend.dto.staff.StaffAnalyticsResponse;
 import com.loyalty_program_app.backend.dto.staff.StaffDashboardResponse;
 import com.loyalty_program_app.backend.service.staff.StaffDashboardService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -22,5 +25,15 @@ public class StaffDashboardController {
     @GetMapping
     public StaffDashboardResponse getDashboard(HttpServletRequest req) {
         return staffDashboardService.getDashboard(getStaffId(req));
+    }
+
+    @GetMapping("/analytics")
+    public StaffAnalyticsResponse getBranchAnalytics(
+            HttpServletRequest req,
+            @RequestParam(value = "period", defaultValue = "WEEK") String period,
+            @RequestParam(value = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(value = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return staffDashboardService.getBranchAnalytics(getStaffId(req), period, startDate, endDate);
     }
 }

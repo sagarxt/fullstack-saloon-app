@@ -9,6 +9,10 @@ public class RewardRequest {
     private String description;
     private Integer pointsRequired;
     private Integer stock;
+    private java.util.UUID serviceId;
+    private String serviceName;
+    private Integer discountPercent;
+    private Integer validityDays;
     private String expiryDate;
     private Boolean active;
 }

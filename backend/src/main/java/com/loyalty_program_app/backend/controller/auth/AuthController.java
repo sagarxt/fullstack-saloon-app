@@ -29,6 +29,16 @@ public class AuthController {
         return ResponseEntity.ok(authService.registerCustomer(request));
     }
 
+    // VERIFY REFERRAL CODE (public)
+    @GetMapping("/verify-referral")
+    public ResponseEntity<?> verifyReferral(@RequestParam("code") String code) {
+        java.util.Map<String, Object> result = authService.verifyReferralCode(code);
+        if (Boolean.TRUE.equals(result.get("valid"))) {
+            return ResponseEntity.ok(result);
+        }
+        return ResponseEntity.badRequest().body(result);
+    }
+
     // ADMIN creates STAFF
     @PostMapping("/admin/register-staff")
     public ResponseEntity<UserResponse> registerStaff(@RequestBody RegisterRequest request) {
@@ -56,6 +66,20 @@ public class AuthController {
     @PostMapping("/verify-otp")
     public ResponseEntity<String> verifyOtp(@RequestBody VerifyOtpRequest request) {
         return ResponseEntity.ok(otpService.verifyOtp(request.getEmail(), request.getOtp()) ? "success" : "failed");
+    }
+
+    // FORGOT PASSWORD
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody SendOtpRequest request) {
+        authService.sendForgotPasswordOtp(request.getEmail());
+        return ResponseEntity.ok(java.util.Map.of("message", "OTP sent to your registered email address."));
+    }
+
+    // RESET PASSWORD
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody com.loyalty_program_app.backend.dto.user.ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(java.util.Map.of("message", "Password reset successfully. Please sign in with your new password."));
     }
 
     @GetMapping("/logout")

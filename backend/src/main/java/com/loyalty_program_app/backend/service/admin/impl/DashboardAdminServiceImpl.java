@@ -11,6 +11,7 @@ import com.loyalty_program_app.backend.repository.UserRepository;
 import com.loyalty_program_app.backend.service.admin.DashboardAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -60,8 +61,8 @@ public class DashboardAdminServiceImpl implements DashboardAdminService {
 
         dto.setTodaysBookings(todaysBookings);
 
-        // ========== RECENT BOOKINGS (latest 10) ==========
-        var recentBookings = bookingRepository.findAll(PageRequest.of(0, 10))
+        // ========== RECENT BOOKINGS (latest 10 by creation date) ==========
+        var recentBookings = bookingRepository.findAll(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt")))
                 .getContent()
                 .stream()
                 .map(this::toBookingResponse)
@@ -77,24 +78,31 @@ public class DashboardAdminServiceImpl implements DashboardAdminService {
     private BookingResponse toBookingResponse(Booking b) {
         BookingResponse dto = new BookingResponse();
         dto.setId(b.getId());
-        dto.setUserId(b.getUser().getId());
-        dto.setUserName(b.getUser().getName());
+        dto.setBookingCode(b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase());
+        if (b.getUser() != null) {
+            dto.setUserId(b.getUser().getId());
+            dto.setUserName(b.getUser().getName());
+            dto.setUserEmail(b.getUser().getEmail());
+            dto.setUserPhone(b.getUser().getPhone());
+        }
         dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
         dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
         dto.setTotalAmount(b.getTotalAmount());
-        dto.setPricePaid(b.getPricePaid());
+        dto.setPricePaid(b.getPricePaid() != null ? b.getPricePaid() : b.getTotalAmount());
         dto.setStatus(b.getStatus().name());
         dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt() : null);
         dto.setNote(b.getNote());
         dto.setBookedBy(b.getBookedBy());
-//
-//        if (b.getBookingItems() != null) {
-//            dto.setItems(
-//                    b.getBookingItems().stream()
-//                            .map(this::toBookingItemResponse)
-//                            .collect(Collectors.toList())
-//            );
-//        }
+        dto.setCreatedAt(b.getCreatedAt());
+
+        if (b.getStore() != null) {
+            dto.setStoreId(b.getStore().getId());
+            dto.setStoreName(b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : b.getStore().getName());
+            dto.setStoreAddress(b.getStoreAddressSnapshot() != null ? b.getStoreAddressSnapshot() : b.getStore().getAddress());
+        } else if (b.getStoreNameSnapshot() != null) {
+            dto.setStoreName(b.getStoreNameSnapshot());
+            dto.setStoreAddress(b.getStoreAddressSnapshot());
+        }
 
         return dto;
     }

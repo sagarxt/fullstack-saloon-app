@@ -24,6 +24,7 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
     private final RewardRepository rewardRepository;
     private final UserRepository userRepository;
     private final PointsLedgerRepository pointsLedgerRepository;
+    private final com.loyalty_program_app.backend.repository.RedeemedVoucherRepository redeemedVoucherRepository;
     private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
     private final com.loyalty_program_app.backend.repository.NotificationRepository notificationRepository;
 
@@ -89,13 +90,45 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         user.setPoints(user.getPoints() - pointsToDeduct);
         userRepository.save(user);
 
+        // Calculate voucher expiration date
+        LocalDateTime expiresAt;
+        if (reward.getValidityDays() != null && reward.getValidityDays() > 0) {
+            expiresAt = LocalDateTime.now().plusDays(reward.getValidityDays());
+        } else if (reward.getExpiryDate() != null) {
+            expiresAt = reward.getExpiryDate();
+        } else {
+            expiresAt = LocalDateTime.now().plusDays(30);
+        }
+
+        // Generate clean unique voucher code
+        String voucherCode = "VCH-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+
+        // Create redeemed voucher
+        com.loyalty_program_app.backend.model.RedeemedVoucher voucher = com.loyalty_program_app.backend.model.RedeemedVoucher.builder()
+                .user(user)
+                .reward(reward)
+                .voucherCode(voucherCode)
+                .title(reward.getTitle())
+                .description(reward.getDescription())
+                .image(reward.getImage())
+                .serviceId(reward.getServiceId())
+                .serviceName(reward.getServiceName())
+                .discountPercent(reward.getDiscountPercent() != null ? reward.getDiscountPercent() : 100)
+                .pointsSpent(pointsToDeduct)
+                .status(com.loyalty_program_app.backend.enums.VoucherStatus.ACTIVE)
+                .redeemedAt(LocalDateTime.now())
+                .expiresAt(expiresAt)
+                .build();
+        voucher = redeemedVoucherRepository.save(voucher);
+
+        // Record points in ledger
         PointsLedger ledger = new PointsLedger();
         ledger.setUser(user);
         ledger.setChangeAmount(-pointsToDeduct);
         ledger.setReason(PointReason.REWARD_REDEEM);
-//        ledger.setNote("Redeemed reward: " + reward.getTitle());
+        ledger.setRelatedId(voucher.getId());
+        ledger.setNote("Redeemed: " + reward.getTitle() + " (" + voucherCode + ")");
         ledger.setCreatedAt(LocalDateTime.now());
-
         pointsLedgerRepository.save(ledger);
 
         if (reward.getStock() != null) {
@@ -106,8 +139,8 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         // In-app Notification
         com.loyalty_program_app.backend.model.Notification notif = com.loyalty_program_app.backend.model.Notification.builder()
                 .user(user)
-                .title("Reward Redeemed")
-                .message("You redeemed " + reward.getTitle() + " for " + pointsToDeduct + " points.")
+                .title("Reward Redeemed! 🎁")
+                .message("You redeemed " + reward.getTitle() + " (Code: " + voucherCode + "). Valid until " + expiresAt.toLocalDate() + ".")
                 .type(com.loyalty_program_app.backend.enums.NotificationType.OFFER)
                 .build();
         notificationRepository.save(notif);
@@ -124,6 +157,41 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         return toDto(reward);
     }
 
+    @Override
+    public List<com.loyalty_program_app.backend.dto.reward.RedeemedVoucherResponse> getMyVouchers(UUID userId) {
+        List<com.loyalty_program_app.backend.model.RedeemedVoucher> list = redeemedVoucherRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        LocalDateTime now = LocalDateTime.now();
+
+        return list.stream().map(v -> {
+            com.loyalty_program_app.backend.dto.reward.RedeemedVoucherResponse dto = new com.loyalty_program_app.backend.dto.reward.RedeemedVoucherResponse();
+            dto.setId(v.getId());
+            dto.setVoucherCode(v.getVoucherCode());
+            dto.setTitle(v.getTitle());
+            dto.setDescription(v.getDescription());
+            dto.setImage(v.getImage());
+            dto.setServiceId(v.getServiceId());
+            dto.setServiceName(v.getServiceName());
+            dto.setDiscountPercent(v.getDiscountPercent());
+            dto.setPointsSpent(v.getPointsSpent());
+
+            if (v.getStatus() == com.loyalty_program_app.backend.enums.VoucherStatus.ACTIVE && v.getExpiresAt() != null && v.getExpiresAt().isBefore(now)) {
+                dto.setStatus("EXPIRED");
+            } else {
+                dto.setStatus(v.getStatus().name());
+            }
+
+            dto.setRedeemedAt(v.getRedeemedAt() != null ? v.getRedeemedAt().toString() : null);
+            dto.setExpiresAt(v.getExpiresAt() != null ? v.getExpiresAt().toString() : null);
+
+            if (v.getExpiresAt() != null && v.getExpiresAt().isAfter(now)) {
+                dto.setDaysRemaining(java.time.Duration.between(now, v.getExpiresAt()).toDays());
+            } else {
+                dto.setDaysRemaining(0L);
+            }
+            return dto;
+        }).toList();
+    }
+
     private RewardResponse toDto(Reward r) {
         RewardResponse dto = new RewardResponse();
         dto.setId(r.getId());
@@ -132,6 +200,10 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         dto.setDescription(r.getDescription());
         dto.setPointsRequired(r.getPointsRequired());
         dto.setStock(r.getStock());
+        dto.setServiceId(r.getServiceId());
+        dto.setServiceName(r.getServiceName());
+        dto.setDiscountPercent(r.getDiscountPercent());
+        dto.setValidityDays(r.getValidityDays());
         dto.setExpiryDate(r.getExpiryDate() != null ? r.getExpiryDate().toString() : null);
         dto.setActive(r.isActive());
         return dto;

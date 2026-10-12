@@ -26,6 +26,7 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
     private final PointsLedgerRepository pointsLedgerRepository;
     private final NotificationRepository notificationRepository;
     private final EmailService emailService;
+    private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
 
     @Override
     public Page<PaymentResponse> getMyPayments(UUID userId, Pageable pageable) {
@@ -69,61 +70,60 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
             method = PaymentMethod.UPI;
         }
 
-        String invoiceNumber = "INV-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 900 + 100);
+        String invoiceNumber = "INV-GN-" + System.currentTimeMillis() + "-" + (int) (Math.random() * 900 + 100);
         String gatewayId = request.getPaymentGatewayId() != null && !request.getPaymentGatewayId().isBlank()
                 ? request.getPaymentGatewayId()
                 : "PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-        Payment payment = Payment.builder()
-                .invoiceNumber(invoiceNumber)
-                .user(user)
-                .amount(booking.getPricePaid())
-                .paymentMethod(method)
-                .paymentModeDetails(request.getPaymentModeDetails() != null ? request.getPaymentModeDetails() : method.name())
-                .status(PaymentStatus.COMPLETED)
-                .paymentGatewayId(gatewayId)
-                .build();
+        Payment payment = booking.getPayment();
+        if (payment == null) {
+            payment = Payment.builder()
+                    .invoiceNumber(invoiceNumber)
+                    .user(user)
+                    .amount(booking.getPricePaid())
+                    .build();
+        }
+        payment.setPaymentMethod(method);
+        payment.setPaymentModeDetails(request.getPaymentModeDetails() != null ? request.getPaymentModeDetails() : method.name());
+        payment.setStatus(PaymentStatus.COMPLETED);
+        payment.setPaymentGatewayId(gatewayId);
+        if (payment.getInvoiceNumber() == null) {
+            payment.setInvoiceNumber(invoiceNumber);
+        }
 
         Payment savedPayment = paymentRepository.save(payment);
 
         booking.setPayment(savedPayment);
         booking.setStatus(BookingStatus.CONFIRMED);
-        bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
 
-        // Calculate and award reward points
-        int pointsToAward = 25; // default minimum
+        bookingTimelineService.recordTimeline(
+                savedBooking,
+                "PAYMENT_RECORDED",
+                "Online Payment Verified",
+                "Online payment of ₹" + savedPayment.getAmount() + " confirmed via " + savedPayment.getPaymentMethod() + ". Invoice: " + savedPayment.getInvoiceNumber(),
+                user.getName(),
+                "CUSTOMER",
+                user.getEmail()
+        );
+
+        // Calculate expected points (kept PENDING until appointment completion)
+        int pendingPoints = Math.max(1, (int) (savedPayment.getAmount() / 100));
         if (booking.getBookingItems() != null && !booking.getBookingItems().isEmpty()) {
             int calculated = booking.getBookingItems().stream()
                     .filter(i -> i.getService() != null && i.getService().getRewards() != null)
                     .mapToInt(i -> i.getService().getRewards())
                     .sum();
             if (calculated > 0) {
-                pointsToAward = calculated;
+                pendingPoints = calculated;
             }
         }
-
-        user.setPoints(user.getPoints() + pointsToAward);
-        if (user.getPoints() >= 1000) {
-            user.setTier(Tier.PLATINUM);
-        } else if (user.getPoints() >= 500) {
-            user.setTier(Tier.GOLD);
-        }
-        userRepository.save(user);
-
-        // Record in points ledger
-        PointsLedger ledger = new PointsLedger();
-        ledger.setUser(user);
-        ledger.setChangeAmount(pointsToAward);
-        ledger.setReason(PointReason.BOOKING_COMPLETED);
-        ledger.setRelatedId(booking.getId());
-        ledger.setCreatedAt(LocalDateTime.now());
-        pointsLedgerRepository.save(ledger);
 
         // In-app Notification
         Notification notif = Notification.builder()
                 .user(user)
-                .title("Payment Successful")
-                .message("Payment of ₹" + savedPayment.getAmount() + " for booking confirmed! You earned " + pointsToAward + " loyalty points.")
+                .title("Payment Received Online")
+                .message("Online payment of ₹" + savedPayment.getAmount() + " received! +" + pendingPoints + " VIP loyalty points are pending and will be confirmed upon appointment completion at the salon.")
                 .type(NotificationType.PAYMENT)
                 .build();
         notificationRepository.save(notif);

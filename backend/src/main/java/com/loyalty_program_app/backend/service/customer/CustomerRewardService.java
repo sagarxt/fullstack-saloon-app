@@ -13,4 +13,6 @@ public interface CustomerRewardService {
     Page<RewardResponse> getAllActiveRewards(Pageable pageable);
 
     RewardResponse redeemReward(UUID userId, UUID rewardId);
+
+    java.util.List<com.loyalty_program_app.backend.dto.reward.RedeemedVoucherResponse> getMyVouchers(UUID userId);
 }

@@ -62,4 +62,22 @@ public class StaffBookingController {
     public BookingResponse getBooking(@PathVariable UUID id) {
         return staffBookingService.getBooking(id);
     }
+
+    @PostMapping("/{id}/services/{serviceId}")
+    public BookingResponse addServiceToBooking(
+            HttpServletRequest request,
+            @PathVariable UUID id,
+            @PathVariable UUID serviceId
+    ) {
+        return staffBookingService.addServiceToBooking(getCurrentStaffId(request), id, serviceId);
+    }
+
+    @DeleteMapping("/{id}/items/{itemId}")
+    public BookingResponse removeServiceFromBooking(
+            HttpServletRequest request,
+            @PathVariable UUID id,
+            @PathVariable UUID itemId
+    ) {
+        return staffBookingService.removeServiceFromBooking(getCurrentStaffId(request), id, itemId);
+    }
 }

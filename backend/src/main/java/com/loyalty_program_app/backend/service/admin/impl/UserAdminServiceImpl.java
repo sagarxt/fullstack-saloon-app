@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class UserAdminServiceImpl implements UserAdminService {
 
     private final UserRepository userRepository;
+    private final com.loyalty_program_app.backend.repository.StoreRepository storeRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     // ------------------------------------------
@@ -33,10 +34,18 @@ public class UserAdminServiceImpl implements UserAdminService {
         List<User> all = userRepository.findAll();
 
         List<UserResponse> filtered = all.stream()
-                .filter(u -> search == null ||
-                        u.getName().toLowerCase().contains(search.toLowerCase()) ||
-                        u.getEmail().toLowerCase().contains(search.toLowerCase()))
-                .filter(u -> role == null || u.getRole().name().equalsIgnoreCase(role))
+                .filter(u -> search == null || search.isBlank() ||
+                        (u.getName() != null && u.getName().toLowerCase().contains(search.toLowerCase())) ||
+                        (u.getEmail() != null && u.getEmail().toLowerCase().contains(search.toLowerCase())) ||
+                        (u.getPhone() != null && u.getPhone().contains(search)))
+                .filter(u -> {
+                    if (role == null || role.isBlank() || role.equalsIgnoreCase("ALL")) return true;
+                    if (u.getRole() == null) return false;
+                    String r = u.getRole().name();
+                    return r.equalsIgnoreCase(role) ||
+                           r.equalsIgnoreCase("ROLE_" + role) ||
+                           r.replace("ROLE_", "").equalsIgnoreCase(role.replace("ROLE_", ""));
+                })
                 .filter(u -> active == null || u.isActive() == active)
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -76,6 +85,10 @@ public class UserAdminServiceImpl implements UserAdminService {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
+        if (request.getStoreId() != null) {
+            storeRepository.findById(request.getStoreId()).ifPresent(user::setStore);
+        }
+
         userRepository.save(user);
         return toDto(user);
     }
@@ -113,6 +126,10 @@ public class UserAdminServiceImpl implements UserAdminService {
         user.setPoints(0);
         user.setActive(true);
 
+        if (request.getStoreId() != null) {
+            storeRepository.findById(request.getStoreId()).ifPresent(user::setStore);
+        }
+
         userRepository.save(user);
         return toDto(user);
     }
@@ -137,6 +154,7 @@ public class UserAdminServiceImpl implements UserAdminService {
         user.setTier(Tier.SILVER);
         user.setPoints(0);
         user.setActive(true);
+        user.setReferralCode(com.loyalty_program_app.backend.util.ReferralCodeGenerator.generateUniqueReferralCode(request.getName(), userRepository));
 
         userRepository.save(user);
         return toDto(user);
@@ -158,6 +176,11 @@ public class UserAdminServiceImpl implements UserAdminService {
         dto.setPoints(user.getPoints());
         dto.setReferralCode(user.getReferralCode());
         dto.setActive(user.isActive());
+        if (user.getStore() != null) {
+            dto.setStoreId(user.getStore().getId());
+            dto.setStoreName(user.getStore().getName());
+            dto.setStoreCode(user.getStore().getCode());
+        }
         return dto;
     }
 }

@@ -16,4 +16,8 @@ public class UserResponse {
     private Integer points;
     private String referralCode;
     private Boolean active;
+    private UUID storeId;
+    private String storeName;
+    private String storeCode;
+    private String token;
 }

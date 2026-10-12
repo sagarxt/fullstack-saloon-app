@@ -73,4 +73,22 @@ public class CustomerBookingController {
     ) {
         return bookingService.cancelBooking(user.getId(), id);
     }
+
+    @PostMapping("/{id}/services/{serviceId}")
+    public BookingDetailsResponse addServiceToBooking(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID id,
+            @PathVariable UUID serviceId
+    ) {
+        return bookingService.addServiceToBooking(user.getId(), id, serviceId);
+    }
+
+    @DeleteMapping("/{id}/items/{itemId}")
+    public BookingDetailsResponse removeServiceFromBooking(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID id,
+            @PathVariable UUID itemId
+    ) {
+        return bookingService.removeServiceFromBooking(user.getId(), id, itemId);
+    }
 }
