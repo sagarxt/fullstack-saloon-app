@@ -40,6 +40,8 @@ public class ProductServiceImpl implements ProductService {
     private final NotificationRepository notificationRepository;
     private final EmailService emailService;
     private final com.loyalty_program_app.backend.service.utils.CloudinaryService cloudinaryService;
+    private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
+    private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
 
     @Override
     public List<ProductResponse> getAllActiveProducts() {
@@ -85,9 +87,19 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse createProduct(ProductRequest request) {
+        List<String> images = request.getImages() != null ? new ArrayList<>(request.getImages()) : new ArrayList<>();
         String finalImageUrl = request.getImage();
+        if ((finalImageUrl == null || finalImageUrl.isBlank()) && !images.isEmpty()) {
+            finalImageUrl = images.get(0);
+        } else if (finalImageUrl != null && !finalImageUrl.isBlank() && images.isEmpty()) {
+            images.add(finalImageUrl);
+        }
+
         if (finalImageUrl != null && !finalImageUrl.isBlank() && !finalImageUrl.contains("cloudinary.com")) {
             finalImageUrl = cloudinaryService.upload(finalImageUrl.trim(), "groomishnow/product");
+            if (!images.isEmpty()) {
+                images.set(0, finalImageUrl);
+            }
         }
 
         Product product = Product.builder()
@@ -100,6 +112,7 @@ public class ProductServiceImpl implements ProductService {
                 .volumeOrSize(request.getVolumeOrSize())
                 .stockQuantity(request.getStockQuantity() != null ? request.getStockQuantity() : 50)
                 .image(finalImageUrl)
+                .images(images)
                 .inStorePickupOnly(request.getInStorePickupOnly() != null ? request.getInStorePickupOnly() : true)
                 .active(request.getActive() != null ? request.getActive() : true)
                 .build();
@@ -127,6 +140,12 @@ public class ProductServiceImpl implements ProductService {
                 updatedImage = cloudinaryService.upload(updatedImage.trim(), "groomishnow/product");
             }
             product.setImage(updatedImage);
+        }
+        if (request.getImages() != null) {
+            product.setImages(new ArrayList<>(request.getImages()));
+            if (!request.getImages().isEmpty() && (request.getImage() == null || request.getImage().isBlank())) {
+                product.setImage(request.getImages().get(0));
+            }
         }
         if (request.getInStorePickupOnly() != null) product.setInStorePickupOnly(request.getInStorePickupOnly());
         if (request.getActive() != null) product.setActive(request.getActive());
@@ -159,7 +178,15 @@ public class ProductServiceImpl implements ProductService {
         int qty = request.getQuantity() != null && request.getQuantity() > 0 ? request.getQuantity() : 1;
         double itemTotal = product.getPrice() * qty;
 
-        // Decrement product stock if available
+        // Enforce branch stock availability and decrement branch inventory
+        if (booking.getStore() != null) {
+            if (!branchCatalogService.isProductAvailableAtStore(booking.getStore().getId(), product.getId(), qty)) {
+                throw new RuntimeException("Product '" + product.getName() + "' is out of stock or disabled for " + booking.getStore().getName() + ".");
+            }
+            branchCatalogService.decrementStoreStock(booking.getStore().getId(), product.getId(), qty);
+        }
+
+        // Decrement global product stock if available
         if (product.getStockQuantity() != null && product.getStockQuantity() >= qty) {
             product.setStockQuantity(product.getStockQuantity() - qty);
             productRepository.save(product);
@@ -183,6 +210,15 @@ public class ProductServiceImpl implements ProductService {
         booking.setPricePaid(currentPaid + itemTotal);
 
         Booking savedBooking = bookingRepository.save(booking);
+        bookingTimelineService.recordTimeline(
+                savedBooking,
+                "PRODUCT_ADDED",
+                "Retail Product Added",
+                "Added " + product.getName() + " (Qty: " + qty + ", ₹" + itemTotal + ") to appointment bill.",
+                savedBooking.getBookedBy() != null ? savedBooking.getBookedBy() : "Salon Staff",
+                "STAFF",
+                null
+        );
         return toBookingResponse(savedBooking);
     }
 
@@ -196,10 +232,15 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new RuntimeException("BookingProduct not found with id: " + bookingProductId));
 
         // Restore stock
-        if (bp.getProduct() != null && bp.getProduct().getStockQuantity() != null) {
+        if (bp.getProduct() != null) {
             Product prod = bp.getProduct();
-            prod.setStockQuantity(prod.getStockQuantity() + bp.getQuantity());
-            productRepository.save(prod);
+            if (prod.getStockQuantity() != null) {
+                prod.setStockQuantity(prod.getStockQuantity() + bp.getQuantity());
+                productRepository.save(prod);
+            }
+            if (booking.getStore() != null) {
+                branchCatalogService.restoreStoreStock(booking.getStore().getId(), prod.getId(), bp.getQuantity());
+            }
         }
 
         double diff = bp.getTotalPrice() != null ? bp.getTotalPrice() : 0.0;
@@ -211,6 +252,15 @@ public class ProductServiceImpl implements ProductService {
 
         bookingProductRepository.delete(bp);
         Booking saved = bookingRepository.save(booking);
+        bookingTimelineService.recordTimeline(
+                saved,
+                "PRODUCT_REMOVED",
+                "Retail Product Removed",
+                "Removed product: " + bp.getProductNameSnapshot() + " from appointment bill.",
+                saved.getBookedBy() != null ? saved.getBookedBy() : "Salon Staff",
+                "STAFF",
+                null
+        );
         return toBookingResponse(saved);
     }
 
@@ -259,16 +309,45 @@ public class ProductServiceImpl implements ProductService {
         double originalTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : finalAmount;
         double discount = Math.max(0, originalTotal - finalAmount);
 
-        // Calculate and award points (1 point per ₹100 spent)
-        int pointsEarned = Math.max(1, (int) (finalAmount / 100));
-
         User customer = booking.getUser();
+        // Calculate points based on user's tier multiplier (Silver: 1x, Gold: 1.25x, Platinum: 1.5x, Diamond: 2.0x)
+        double multiplier = 1.0;
+        if (customer != null && customer.getTier() != null) {
+            switch (customer.getTier()) {
+                case DIAMOND -> multiplier = 2.0;
+                case PLATINUM -> multiplier = 1.5;
+                case GOLD -> multiplier = 1.25;
+                case SILVER -> multiplier = 1.0;
+            }
+        }
+        int pointsEarned = Math.max(1, (int) Math.round((finalAmount / 100.0) * multiplier));
+
         if (customer != null) {
             customer.setPoints((customer.getPoints() != null ? customer.getPoints() : 0) + pointsEarned);
-            if (customer.getPoints() >= 1000) {
+            int currentLifetime = (customer.getLifetimePoints() != null && customer.getLifetimePoints() > 0)
+                    ? customer.getLifetimePoints()
+                    : ((customer.getPoints() != null ? customer.getPoints() : 0) - pointsEarned);
+            customer.setLifetimePoints(currentLifetime + pointsEarned);
+
+            Tier previousTier = customer.getTier();
+            int evalPoints = customer.getLifetimePoints();
+            if (evalPoints >= 300) {
+                customer.setTier(Tier.DIAMOND);
+            } else if (evalPoints >= 150) {
                 customer.setTier(Tier.PLATINUM);
-            } else if (customer.getPoints() >= 500) {
+            } else if (evalPoints >= 50) {
                 customer.setTier(Tier.GOLD);
+            } else {
+                customer.setTier(Tier.SILVER);
+            }
+            if (previousTier != customer.getTier()) {
+                Notification tierNotif = Notification.builder()
+                        .user(customer)
+                        .title("VIP Tier Upgrade! 👑")
+                        .message("Congratulations " + customer.getName() + "! You have unlocked the " + customer.getTier() + " VIP Tier! Enjoy exclusive salon perks & bonuses.")
+                        .type(NotificationType.OFFER)
+                        .build();
+                notificationRepository.save(tierNotif);
             }
             userRepository.save(customer);
 
@@ -320,6 +399,15 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Booking saved = bookingRepository.save(booking);
+        bookingTimelineService.recordTimeline(
+                saved,
+                "COMPLETED",
+                "Treatment Completed & Invoiced",
+                "Treatment completed. Final tax invoice and itemized receipt dispatched to client.",
+                saved.getBookedBy() != null ? saved.getBookedBy() : "Salon Staff",
+                "STAFF",
+                null
+        );
         return toBookingResponse(saved);
     }
 
@@ -335,6 +423,7 @@ public class ProductServiceImpl implements ProductService {
                 .volumeOrSize(p.getVolumeOrSize())
                 .stockQuantity(p.getStockQuantity())
                 .image(p.getImage())
+                .images(p.getImages() != null && !p.getImages().isEmpty() ? p.getImages() : (p.getImage() != null ? List.of(p.getImage()) : List.of()))
                 .inStorePickupOnly(p.getInStorePickupOnly())
                 .active(p.getActive())
                 .createdAt(p.getCreatedAt())
@@ -379,6 +468,8 @@ public class ProductServiceImpl implements ProductService {
         } else {
             dto.setProducts(new ArrayList<>());
         }
+
+        dto.setTimeline(bookingTimelineService.getTimelineForBooking(b));
 
         return dto;
     }

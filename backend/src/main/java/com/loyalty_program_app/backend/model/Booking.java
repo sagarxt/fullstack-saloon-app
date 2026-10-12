@@ -41,6 +41,10 @@ public class Booking {
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BookingProduct> bookingProducts;
 
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC")
+    private List<BookingTimeline> timeline;
+
     @ManyToOne
     @JoinColumn(name = "payment_id")
     private Payment payment;
@@ -48,6 +52,13 @@ public class Booking {
     @ManyToOne
     @JoinColumn(name = "coupon_id")
     private Coupon coupon;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
+    private String storeNameSnapshot;
+    private String storeAddressSnapshot;
 
     private LocalDateTime scheduledAt;
 
@@ -65,6 +76,18 @@ public class Booking {
 
     private LocalDateTime cancelledAt;
     private LocalDateTime completedAt;
+
+    @Builder.Default
+    private Boolean reminderOneHourSent = false;
+
+    @Builder.Default
+    private Boolean reminderStartSent = false;
+
+    @Builder.Default
+    private Boolean warningPostOneHourSent = false;
+
+    @Builder.Default
+    private Boolean autoCancelled = false;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

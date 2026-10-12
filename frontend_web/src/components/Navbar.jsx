@@ -3,8 +3,10 @@ import { useAuth } from "../context/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
 import AuthModal from "./modals/AuthModal";
 import NotificationDrawer from "./modals/NotificationDrawer";
-import { getRewardBalance, getNotifications } from "../api/customer";
+import { getRewardBalance, getNotifications, getUnreadNotificationCount } from "../api/customer";
 import { extractList } from "../utils/dataHelper";
+import StoreSelectorDropdown from "./StoreSelectorDropdown";
+import { useStore } from "../context/StoreContext";
 import {
   Bell,
   Calendar,
@@ -17,10 +19,13 @@ import {
   Menu,
   X,
   Sparkles,
+  MapPin,
+  Ticket,
 } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { selectedStore } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -46,13 +51,19 @@ export default function Navbar() {
         })
         .catch(() => {});
 
-      getNotifications()
+      getUnreadNotificationCount()
         .then((res) => {
-          const list = extractList(res.data);
-          const unread = list.filter((n) => !n.seen).length;
-          setUnreadCount(unread);
+          setUnreadCount(Number(res.data?.unreadCount) || 0);
         })
-        .catch(() => {});
+        .catch(() => {
+          getNotifications()
+            .then((res) => {
+              const list = extractList(res.data);
+              const unread = list.filter((n) => !n.seen).length;
+              setUnreadCount(unread);
+            })
+            .catch(() => {});
+        });
     }
   }, [user, isCustomer]);
 
@@ -64,17 +75,22 @@ export default function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-groomish-slate/10 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* BRAND LOGO - Only groomish_logo_2 which contains both logo and name */}
-          <div
-            className="flex items-center cursor-pointer group"
-            onClick={() => navigate("/")}
-          >
-            <img
-              src="/groomish_logo_2.png"
-              alt="Groomish Now"
-              className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-            />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          {/* BRAND LOGO & STORE SELECTOR */}
+          <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 min-w-0">
+            <div
+              className="flex items-center cursor-pointer group shrink-0"
+              onClick={() => navigate("/")}
+            >
+              <img
+                src="/groomish_logo_2.png"
+                alt="Groomish Now"
+                className="h-8 xs:h-9 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              />
+            </div>
+
+            {/* STORE SELECTOR PILL */}
+            <StoreSelectorDropdown />
           </div>
 
           {/* DESKTOP NAV LINKS */}
@@ -121,28 +137,16 @@ export default function Navbar() {
             </button>
 
             {isCustomer && (
-              <>
-                <button
-                  onClick={() => navigate("/customer/bookings")}
-                  className={`text-xs uppercase tracking-wider font-bold transition ${
-                    location.pathname.startsWith("/customer/bookings")
-                      ? "text-groomish-orange border-b-2 border-groomish-orange pb-0.5"
-                      : "text-groomish-slate/80 hover:text-groomish-orange"
-                  }`}
-                >
-                  My Bookings
-                </button>
-                <button
-                  onClick={() => navigate("/customer/rewards")}
-                  className={`text-xs uppercase tracking-wider font-bold transition ${
-                    location.pathname.startsWith("/customer/rewards")
-                      ? "text-groomish-orange border-b-2 border-groomish-orange pb-0.5"
-                      : "text-groomish-slate/80 hover:text-groomish-orange"
-                  }`}
-                >
-                  Loyalty Rewards
-                </button>
-              </>
+              <button
+                onClick={() => navigate("/customer/bookings")}
+                className={`text-xs uppercase tracking-wider font-bold transition ${
+                  location.pathname.startsWith("/customer/bookings")
+                    ? "text-groomish-orange border-b-2 border-groomish-orange pb-0.5"
+                    : "text-groomish-slate/80 hover:text-groomish-orange"
+                }`}
+              >
+                My Bookings
+              </button>
             )}
 
             {isAdmin && (
@@ -156,32 +160,17 @@ export default function Navbar() {
           </nav>
 
           {/* RIGHT UTILITY ICONS & USER SECTION */}
-          <div className="flex items-center gap-3">
-            {/* Loyalty Points Pill (Customer Only) */}
-            {user && isCustomer && points !== null && (
-              <div
-                onClick={() => navigate("/customer/rewards")}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-groomish-goldLight border border-groomish-gold/40 text-groomish-slate cursor-pointer hover:shadow-soft transition"
-                title="View your Groomish loyalty reward points"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-groomish-orange fill-groomish-orange" />
-                <span className="text-xs font-extrabold">{points}</span>
-                <span className="text-[10px] font-semibold text-groomish-slate/60 uppercase">
-                  pts ({tier})
-                </span>
-              </div>
-            )}
-
+          <div className="flex items-center gap-1.5 xs:gap-2.5 sm:gap-3 shrink-0">
             {/* Notification Bell */}
             {user && (
               <button
                 onClick={() => setNotifOpen(true)}
-                className="relative p-2 rounded-full hover:bg-groomish-cream text-groomish-slate transition"
+                className="relative p-1.5 sm:p-2 rounded-full hover:bg-groomish-cream text-groomish-slate transition"
                 aria-label="Notifications"
               >
-                <Bell className="w-5 h-5 text-groomish-slate/80" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-groomish-slate/80" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-groomish-crimson text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                  <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-groomish-crimson text-white text-[9px] sm:text-[10px] font-bold flex items-center justify-center animate-pulse">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
@@ -193,26 +182,26 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setUserDropdown(!userDropdown)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-groomish-cream hover:bg-groomish-creamDark border border-groomish-slate/15 transition"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full bg-groomish-cream hover:bg-groomish-creamDark border border-groomish-slate/15 transition"
                 >
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-groomish-orange to-groomish-coral text-white font-bold text-xs flex items-center justify-center shadow-sm">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-tr from-groomish-orange to-groomish-coral text-white font-bold text-xs flex items-center justify-center shadow-sm">
                     {user.name ? user.name.charAt(0).toUpperCase() : "U"}
                   </div>
-                  <span className="text-xs font-semibold text-groomish-slate max-w-[85px] truncate hidden sm:inline">
+                  <span className="text-xs font-semibold text-groomish-slate max-w-[85px] truncate hidden md:inline">
                     {user.name || "My Account"}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-groomish-slateLight" />
                 </button>
 
-                {/* Dropdown Menu - Simplified to strictly Profile & Logout */}
+                {/* Dropdown Menu */}
                 {userDropdown && (
-                  <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-groomish-slate/10 py-2 z-50 animate-fade-in">
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-groomish-slate/10 py-2 z-50 animate-fade-in">
                     <div className="px-4 py-2 border-b border-groomish-slate/10">
                       <p className="text-[10px] text-groomish-slate/50 uppercase tracking-wider font-semibold">Signed in</p>
                       <p className="text-xs font-bold text-groomish-slate truncate">{user.email}</p>
                     </div>
 
-                    {/* ONLY Profile */}
+                    {/* My Profile */}
                     <button
                       onClick={() => {
                         setUserDropdown(false);
@@ -223,6 +212,33 @@ export default function Navbar() {
                       <User className="w-4 h-4 text-groomish-orange" />
                       <span>My Profile</span>
                     </button>
+
+                    {/* Loyalty Rewards below My Profile */}
+                    {isCustomer && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setUserDropdown(false);
+                            navigate("/customer/rewards");
+                          }}
+                          className="w-full px-4 py-2 text-left text-xs font-semibold text-groomish-slate hover:bg-groomish-cream flex items-center gap-2.5 transition"
+                        >
+                          <Gift className="w-4 h-4 text-groomish-orange" />
+                          <span>Loyalty Rewards</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setUserDropdown(false);
+                            navigate("/customer/vouchers");
+                          }}
+                          className="w-full px-4 py-2 text-left text-xs font-semibold text-groomish-slate hover:bg-groomish-cream flex items-center gap-2.5 transition"
+                        >
+                          <Ticket className="w-4 h-4 text-groomish-goldDark" />
+                          <span>My Redeemed Vouchers</span>
+                        </button>
+                      </>
+                    )}
 
                     {isAdmin && (
                       <button
@@ -270,16 +286,18 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => setAuthOpen(true)}
-                className="btn-primary text-xs px-4 py-2 shadow-glowOrange"
+                className="btn-primary text-xs px-2.5 xs:px-3 sm:px-4 py-1.5 sm:py-2 shadow-glowOrange whitespace-nowrap"
               >
-                Sign In / Register
+                <span className="hidden xs:inline">Sign In / Register</span>
+                <span className="xs:hidden">Sign In</span>
               </button>
             )}
 
             {/* Mobile Hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 md:hidden text-groomish-slate rounded-lg hover:bg-black/5"
+              className="p-1.5 sm:p-2 md:hidden text-groomish-slate rounded-lg hover:bg-black/5"
+              aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -288,7 +306,27 @@ export default function Navbar() {
 
         {/* MOBILE MENU ACCORDION */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-groomish-slate/10 px-4 py-4 space-y-2 shadow-lg">
+          <div className="md:hidden bg-white border-t border-groomish-slate/10 px-4 py-4 space-y-2 shadow-lg animate-fade-in">
+            {/* Active Salon Branch in Mobile Drawer */}
+            <div className="p-3 bg-groomish-cream/70 rounded-2xl border border-groomish-slate/10 flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-full bg-groomish-orange/15 flex items-center justify-center text-groomish-orange shrink-0">
+                  <MapPin className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase font-bold text-groomish-orange tracking-wider">Current Salon Branch</p>
+                  <p className="text-xs font-bold text-groomish-slate truncate">
+                    {selectedStore ? selectedStore.name : "Select a Salon Branch"}
+                  </p>
+                </div>
+              </div>
+              {selectedStore?.distanceKm !== null && selectedStore?.distanceKm !== undefined && (
+                <span className="text-[10px] font-bold text-groomish-orange bg-groomish-orange/10 px-2 py-0.5 rounded-full shrink-0">
+                  {selectedStore.distanceKm} km
+                </span>
+              )}
+            </div>
+
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -333,27 +371,32 @@ export default function Navbar() {
                     setMobileMenuOpen(false);
                     navigate("/customer/bookings");
                   }}
-                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2"
+                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2 flex items-center gap-2"
                 >
-                  My Bookings
+                  <Calendar className="w-4 h-4 text-groomish-orange" />
+                  <span>My Bookings</span>
                 </button>
+
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     navigate("/customer/rewards");
                   }}
-                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2"
+                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2 flex items-center gap-2"
                 >
-                  Loyalty Rewards
+                  <Gift className="w-4 h-4 text-groomish-orange" />
+                  <span>Loyalty Rewards</span>
                 </button>
+
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
                     navigate("/customer/profile");
                   }}
-                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2"
+                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2 flex items-center gap-2"
                 >
-                  Profile
+                  <User className="w-4 h-4 text-groomish-orange" />
+                  <span>Profile</span>
                 </button>
               </>
             )}
@@ -369,13 +412,33 @@ export default function Navbar() {
                 Admin Panel
               </button>
             )}
+
+            {user && (
+              <div className="border-t border-groomish-slate/10 pt-2 mt-1">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout();
+                    navigate("/");
+                  }}
+                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-crimson py-2 flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </header>
 
       {/* MODALS */}
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
-      <NotificationDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
+      <NotificationDrawer
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        onCountChange={setUnreadCount}
+      />
     </>
   );
 }

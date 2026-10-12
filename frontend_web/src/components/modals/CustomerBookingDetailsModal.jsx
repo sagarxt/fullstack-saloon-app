@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ModalWrapper from "./ModalWrapper";
 import {
   getMyBookingDetails,
   cancelBooking,
 } from "../../api/customer";
 import RescheduleBookingModal from "./RescheduleBookingModal";
-import { Calendar, Clock, CreditCard, Tag, AlertCircle, Scissors, UserCheck } from "lucide-react";
+import { showConfirm } from "../../context/ConfirmContext";
+import { Calendar, Clock, CreditCard, Tag, AlertCircle, Scissors, UserCheck, ChevronRight } from "lucide-react";
 
 export default function CustomerBookingDetailsModal({
   open,
@@ -13,6 +15,7 @@ export default function CustomerBookingDetailsModal({
   bookingId,
   refresh,
 }) {
+  const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,7 +39,13 @@ export default function CustomerBookingDetailsModal({
 
   /* ---------------- CANCEL BOOKING ---------------- */
   const handleCancel = async () => {
-    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+    const ok = await showConfirm({
+      title: "Cancel Booking",
+      message: "Are you sure you want to cancel this salon booking? This cannot be undone.",
+      confirmText: "Yes, Cancel Booking",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setLoading(true);
     setError("");
@@ -106,6 +115,21 @@ export default function CustomerBookingDetailsModal({
             )}
           </div>
 
+          {/* Customer Special Notes */}
+          {booking.note && (
+            <div className="p-3.5 bg-amber-50/80 border border-amber-200/70 rounded-2xl flex items-start gap-2.5 text-xs shadow-xs">
+              <Tag className="w-3.5 h-3.5 text-amber-700 mt-0.5 shrink-0" />
+              <div>
+                <span className="text-[11px] font-bold uppercase text-amber-900 tracking-wider">
+                  Customer Special Notes:
+                </span>
+                <p className="text-xs text-amber-800 italic mt-0.5 leading-relaxed">
+                  "{booking.note}"
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* SERVICES LIST */}
           <div>
             <h4 className="text-xs font-bold text-groomish-slate/80 mb-2">
@@ -150,6 +174,18 @@ export default function CustomerBookingDetailsModal({
                 ₹{booking.pricePaid}
               </span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onClose) onClose();
+                navigate(`/customer/bookings/${booking.id}`);
+              }}
+              className="btn-primary w-full text-xs py-2.5 flex items-center justify-center gap-1.5 mt-2"
+            >
+              <span>View Booking Details & Invoice</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           {/* ACTIONS */}

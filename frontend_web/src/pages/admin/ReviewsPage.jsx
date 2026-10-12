@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getAllReviewsApi, deleteReviewByAdminApi } from "../../api/admin";
 import { extractList } from "../../utils/dataHelper";
+import { showConfirm } from "../../context/ConfirmContext";
 import { Star, Trash2, RefreshCw, MessageSquare } from "lucide-react";
 
 export default function ReviewsPage() {
@@ -27,7 +28,13 @@ export default function ReviewsPage() {
   const reviewList = extractList(reviews);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this customer review?")) return;
+    const ok = await showConfirm({
+      title: "Delete Customer Review",
+      message: "Are you sure you want to permanently delete this customer review?",
+      confirmText: "Delete Review",
+      variant: "danger",
+    });
+    if (!ok) return;
     try {
       await deleteReviewByAdminApi(id);
       loadReviews();

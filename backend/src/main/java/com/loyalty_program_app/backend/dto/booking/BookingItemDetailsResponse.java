@@ -5,7 +5,10 @@ import lombok.Data;
 @Data
 public class BookingItemDetailsResponse {
 
+    private java.util.UUID id;
+    private java.util.UUID serviceId;
     private String serviceName;
     private Double price;
     private Integer durationMinutes;
+    private String status;
 }

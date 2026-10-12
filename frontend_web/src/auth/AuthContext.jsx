@@ -53,7 +53,14 @@ export const AuthProvider = ({ children }) => {
       } else if (role && (role.includes("STAFF") || role.includes("ROLE_STAFF"))) {
         navigate("/staff");
       } else {
-        navigate("/customer");
+        const params = new URLSearchParams(window.location.search);
+        const redirectUrl = params.get("redirect") || sessionStorage.getItem("redirectAfterLogin");
+        if (redirectUrl) {
+          sessionStorage.removeItem("redirectAfterLogin");
+          navigate(redirectUrl, { replace: true });
+        } else if (window.location.pathname === "/login") {
+          navigate(-1);
+        }
       }
     } catch (err) {
       throw err;
@@ -64,20 +71,50 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axiosClient.post("/auth/register", payload);
 
+      const userId = res.data.userId || res.data.id;
+      let rawToken = res.data.accessToken || res.data.token || null;
+      const role = res.data.role;
+
+      if (!rawToken && payload.email && payload.password) {
+        try {
+          const autoLogin = await axiosClient.post("/auth/login", {
+            email: payload.email,
+            password: payload.password,
+          });
+          rawToken = autoLogin.data.token || autoLogin.data.accessToken;
+        } catch {
+          // ignore
+        }
+      }
+
       setUser({
-        id: res.data.userId,
+        id: userId,
         email: res.data.email,
         name: res.data.name,
+        role: role,
       });
 
-      setToken(res.data.accessToken);
+      if (rawToken) {
+        setToken(rawToken);
+        localStorage.setItem("token", rawToken);
+      }
 
-      const decoded = JSON.parse(atob(res.data.accessToken.split('.')[1]));
-      const role = decoded.role;
+      if (role === "ROLE_ADMIN") {
+        navigate("/admin");
+      } else if (role === "ROLE_STAFF") {
+        navigate("/staff");
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        const redirectUrl = params.get("redirect") || sessionStorage.getItem("redirectAfterLogin");
+        if (redirectUrl) {
+          sessionStorage.removeItem("redirectAfterLogin");
+          navigate(redirectUrl, { replace: true });
+        } else if (window.location.pathname === "/register") {
+          navigate(-1);
+        }
+      }
 
-      if (role === "ROLE_ADMIN") navigate("/admin");
-      else navigate("/customer");
-
+      return res.data;
     } catch (err) {
       // alert(err.response?.data?.error || "Register failed");
       throw err;

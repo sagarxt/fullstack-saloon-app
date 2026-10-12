@@ -30,11 +30,29 @@ public class CustomerNotificationController {
         return notificationService.getNotifications(getCurrentUserId(request), pageable);
     }
 
+    @GetMapping("/unread-count")
+    public java.util.Map<String, Long> getUnreadCount(HttpServletRequest request) {
+        long count = notificationService.getUnreadCount(getCurrentUserId(request));
+        return java.util.Map.of("unreadCount", count);
+    }
+
     @PostMapping("/{id}/seen")
     public void markSeen(
             HttpServletRequest request,
             @PathVariable UUID id
     ) {
         notificationService.markSeen(getCurrentUserId(request), id);
+    }
+
+    @PostMapping("/mark-all-seen")
+    public java.util.Map<String, String> markAllSeen(HttpServletRequest request) {
+        notificationService.markAllSeen(getCurrentUserId(request));
+        return java.util.Map.of("message", "All notifications marked as seen");
+    }
+
+    @DeleteMapping
+    public java.util.Map<String, String> clearAll(HttpServletRequest request) {
+        notificationService.clearAll(getCurrentUserId(request));
+        return java.util.Map.of("message", "All notifications cleared");
     }
 }

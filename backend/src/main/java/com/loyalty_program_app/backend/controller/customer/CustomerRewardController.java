@@ -46,4 +46,9 @@ public class CustomerRewardController {
     ) {
         return rewardService.redeemReward(getCurrentUserId(request), id);
     }
+
+    @GetMapping("/my-vouchers")
+    public java.util.List<com.loyalty_program_app.backend.dto.reward.RedeemedVoucherResponse> getMyVouchers(HttpServletRequest request) {
+        return rewardService.getMyVouchers(getCurrentUserId(request));
+    }
 }

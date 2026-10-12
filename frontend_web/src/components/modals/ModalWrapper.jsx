@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 
 export default function ModalWrapper({ open, onClose, children, maxWidth = "max-w-lg" }) {
   useEffect(() => {
@@ -36,17 +35,8 @@ export default function ModalWrapper({ open, onClose, children, maxWidth = "max-
         className={`relative bg-white text-groomish-slate rounded-3xl shadow-2xl w-full ${maxWidth} p-5 sm:p-7 z-10 border border-groomish-slate/10 animate-slide-up my-auto max-h-[92vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full text-groomish-slate/50 hover:text-groomish-slate hover:bg-groomish-cream transition-all duration-200 z-20"
-          aria-label="Close modal"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
         {/* Scrollable Modal Content */}
-        <div className="overflow-y-auto flex-1 pr-1">
+        <div className="overflow-y-auto overflow-x-hidden flex-1 pr-1">
           {children}
         </div>
       </div>

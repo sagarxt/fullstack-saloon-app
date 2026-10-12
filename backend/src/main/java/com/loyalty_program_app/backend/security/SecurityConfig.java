@@ -40,10 +40,10 @@ public class SecurityConfig {
                         // ADMIN-only endpoints
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                        // STAFF-only endpoints
-                        .requestMatchers("/api/v1/staff/**").hasRole("STAFF")
+                        // STAFF & ADMIN endpoints
+                        .requestMatchers("/api/v1/staff/**").hasAnyRole("STAFF", "ADMIN")
 
-                        // CUSTOMER endpoints
+                        // CUSTOMER-only endpoints
                         .requestMatchers("/api/v1/customer/**").hasRole("CUSTOMER")
 
                         .anyRequest().authenticated()

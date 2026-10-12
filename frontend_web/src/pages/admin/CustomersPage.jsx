@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import { getUsersApi, deactivateUserApi } from "../../api/admin";
+import Pagination from "../../components/common/Pagination";
+import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import { extractList } from "../../utils/dataHelper";
-import { Users, Search, Crown, Sparkles, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { Users, Search, Crown, Sparkles, RefreshCw, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+
+const PAGE_SIZE = 20;
 
 export default function CustomersPage() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedCustomerData, setSelectedCustomerData] = useState(null);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -24,6 +31,10 @@ export default function CustomersPage() {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const handleToggleActive = async (id) => {
     try {
@@ -103,13 +114,25 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-groomish-slate/10">
-                {filtered.map((u) => (
+                {filtered
+                  .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                  .map((u) => (
                   <tr key={u.id} className="hover:bg-groomish-cream/30 transition">
-                    <td className="py-4 px-6 font-bold text-groomish-slate flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-groomish-orangeLight text-groomish-orange flex items-center justify-center font-extrabold text-xs">
-                        {u.name?.charAt(0) || "U"}
-                      </div>
-                      <span>{u.name}</span>
+                    <td className="py-4 px-6 font-bold text-groomish-slate">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCustomerId(u.id);
+                          setSelectedCustomerData(u);
+                        }}
+                        className="flex items-center gap-2.5 hover:text-groomish-orange transition group text-left"
+                        title="Click to view customer profile, orders and reward points"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-groomish-orangeLight text-groomish-orange flex items-center justify-center font-extrabold text-xs group-hover:scale-105 transition shadow-sm">
+                          {u.name?.charAt(0) || "U"}
+                        </div>
+                        <span className="group-hover:underline underline-offset-2 font-bold">{u.name}</span>
+                      </button>
                     </td>
                     <td className="py-4 px-6 text-groomish-slate/70">
                       <div>{u.email}</div>
@@ -141,7 +164,17 @@ export default function CustomersPage() {
                         {u.active !== false ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-right">
+                    <td className="py-4 px-6 text-right space-x-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCustomerId(u.id);
+                          setSelectedCustomerData(u);
+                        }}
+                        className="text-xs font-bold text-groomish-orange hover:underline inline-flex items-center gap-1"
+                      >
+                        <span>View Profile</span>
+                      </button>
                       <button
                         onClick={() => handleToggleActive(u.id)}
                         className={`text-xs font-bold ${
@@ -159,7 +192,30 @@ export default function CustomersPage() {
             </table>
           </div>
         )}
+
+        {filtered.length > 0 && (
+          <div className="p-4 border-t border-groomish-slate/10 bg-white">
+            <Pagination
+              currentPage={page}
+              totalItems={filtered.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+              itemName="customers"
+            />
+          </div>
+        )}
       </div>
+
+      {/* Customer Profile & Rewards Modal */}
+      <CustomerProfileModal
+        customerId={selectedCustomerId}
+        initialData={selectedCustomerData}
+        open={Boolean(selectedCustomerId)}
+        onClose={() => {
+          setSelectedCustomerId(null);
+          setSelectedCustomerData(null);
+        }}
+      />
     </div>
   );
 }

@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { getPaymentsApi } from "../../api/admin";
+import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import { extractList } from "../../utils/dataHelper";
-import { CreditCard, RefreshCw, CheckCircle2, Clock, Smartphone, Store } from "lucide-react";
+import { CreditCard, RefreshCw, CheckCircle2, Clock, Smartphone, Store, User } from "lucide-react";
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedCustomerData, setSelectedCustomerData] = useState(null);
 
   const loadPayments = async () => {
     setLoading(true);
@@ -93,7 +96,25 @@ export default function PaymentsPage() {
                       {p.invoiceNumber || `INV-${p.id?.slice(0, 8)}`}
                     </td>
                     <td className="py-4 px-6">
-                      <div className="font-bold text-groomish-slate">{p.userName || "Client"}</div>
+                      {p.userId ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCustomerId(p.userId);
+                            setSelectedCustomerData({
+                              id: p.userId,
+                              name: p.userName,
+                              email: p.userEmail,
+                            });
+                          }}
+                          className="font-bold text-groomish-slate hover:text-groomish-orange hover:underline text-left block"
+                          title="Click to view customer profile, orders and reward points"
+                        >
+                          {p.userName || "Client"}
+                        </button>
+                      ) : (
+                        <div className="font-bold text-groomish-slate">{p.userName || "Client"}</div>
+                      )}
                       <div className="text-[11px] text-groomish-slate/40">{p.userEmail}</div>
                     </td>
                     <td className="py-4 px-6 font-extrabold text-sm text-groomish-slate">
@@ -127,6 +148,16 @@ export default function PaymentsPage() {
           </div>
         )}
       </div>
+
+      <CustomerProfileModal
+        customerId={selectedCustomerId}
+        initialData={selectedCustomerData}
+        open={Boolean(selectedCustomerId)}
+        onClose={() => {
+          setSelectedCustomerId(null);
+          setSelectedCustomerData(null);
+        }}
+      />
     </div>
   );
 }

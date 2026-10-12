@@ -31,34 +31,11 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
     List<Booking> findBookingsForDate(@Param("date") LocalDate date);
 
     /* ===============================
-       SLOT OVERLAP CHECK
+       SCHEDULER / ACTIVE BOOKINGS
        =============================== */
-
     @Query("""
-        SELECT COUNT(b) > 0 FROM Booking b
-        WHERE b.status <> 'CANCELLED'
-          AND b.scheduledAt < :endTime
-          AND FUNCTION('DATE_ADD', b.scheduledAt,
-              FUNCTION('INTERVAL', b.totalDurationMinutes, 'MINUTE')
-          ) > :startTime
+        SELECT b FROM Booking b
+        WHERE b.status IN ('PENDING', 'CONFIRMED', 'MODIFIED')
     """)
-    boolean existsOverlappingBooking(
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime
-    );
-
-    @Query("""
-        SELECT COUNT(b) > 0 FROM Booking b
-        WHERE b.id <> :bookingId
-          AND b.status <> 'CANCELLED'
-          AND b.scheduledAt < :endTime
-          AND FUNCTION('DATE_ADD', b.scheduledAt,
-              FUNCTION('INTERVAL', b.totalDurationMinutes, 'MINUTE')
-          ) > :startTime
-    """)
-    boolean existsOverlappingBookingExcludingSelf(
-            @Param("bookingId") UUID bookingId,
-            @Param("startTime") LocalDateTime startTime,
-            @Param("endTime") LocalDateTime endTime
-    );
+    List<Booking> findAllActiveBookings();
 }

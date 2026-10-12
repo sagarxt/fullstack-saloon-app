@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { updateBookingStatus } from "../../api/admin";
-import BookingDetailsModal from "../modals/BookingDetailsModal";
-import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2 } from "lucide-react";
+import CustomerProfileModal from "../modals/CustomerProfileModal";
+import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, MapPin, User } from "lucide-react";
 
 export default function BookingCard({ booking, refresh }) {
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const updateStatus = async (status) => {
@@ -51,12 +52,29 @@ export default function BookingCard({ booking, refresh }) {
             >
               {booking.status}
             </span>
-            <span className="text-xs font-mono font-extrabold text-groomish-orange bg-groomish-orangeLight px-2 py-0.5 rounded-lg border border-groomish-orange/20 tracking-wider">
+            <Link
+              to={`/admin/bookings/${booking.id}`}
+              className="text-xs font-mono font-extrabold text-groomish-orange bg-groomish-orangeLight px-2 py-0.5 rounded-lg border border-groomish-orange/20 tracking-wider hover:bg-groomish-orange/20 transition"
+              title="Click to view full booking details"
+            >
               {booking.bookingCode || (booking.id ? `GN-${booking.id.slice(0, 8).toUpperCase()}` : "GN-NEW")}
-            </span>
-            {booking.bookedBy && (
-              <span className="text-xs text-groomish-slate/70 font-semibold">
-                • {booking.bookedBy}
+            </Link>
+            {(booking.bookedBy || booking.userName) && (
+              <span className="text-xs text-groomish-slate/70 font-semibold flex items-center gap-1">
+                <span>•</span>
+                {booking.userId ? (
+                  <button
+                    type="button"
+                    onClick={() => setProfileModalOpen(true)}
+                    className="hover:text-groomish-orange hover:underline underline-offset-2 transition text-groomish-slate font-bold inline-flex items-center gap-1"
+                    title="Click to view customer profile, orders and reward points"
+                  >
+                    <User className="w-3 h-3 text-groomish-slate/40" />
+                    <span>{booking.userName || booking.bookedBy}</span>
+                  </button>
+                ) : (
+                  <span>{booking.userName || booking.bookedBy}</span>
+                )}
               </span>
             )}
           </div>
@@ -66,6 +84,12 @@ export default function BookingCard({ booking, refresh }) {
               <Calendar className="w-3.5 h-3.5 text-groomish-slate/40" />
               {formattedDate}
             </span>
+            {booking.storeName && (
+              <span className="flex items-center gap-1.5 text-groomish-orange font-bold">
+                <MapPin className="w-3.5 h-3.5" />
+                {booking.storeName}
+              </span>
+            )}
             <span className="flex items-center gap-1.5 font-bold text-groomish-slate">
               <CreditCard className="w-3.5 h-3.5 text-groomish-slate/40" />
               ₹{booking.pricePaid ?? booking.totalAmount}
@@ -108,21 +132,30 @@ export default function BookingCard({ booking, refresh }) {
             </button>
           )}
 
-          <button
-            onClick={() => setDetailsOpen(true)}
-            className="btn-secondary text-xs px-3.5 py-1.5"
+          <Link
+            to={`/admin/bookings/${booking.id}`}
+            className="btn-secondary text-xs px-3.5 py-1.5 inline-flex items-center gap-1"
+            title="View full booking details"
           >
             <span>Details</span>
             <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
       </div>
 
-      <BookingDetailsModal
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-        bookingId={booking.id}
-      />
+      {booking.userId && (
+        <CustomerProfileModal
+          customerId={booking.userId}
+          initialData={{
+            id: booking.userId,
+            name: booking.userName || booking.bookedBy,
+            email: booking.userEmail,
+            phone: booking.userPhone,
+          }}
+          open={profileModalOpen}
+          onClose={() => setProfileModalOpen(false)}
+        />
+      )}
     </>
   );
 }

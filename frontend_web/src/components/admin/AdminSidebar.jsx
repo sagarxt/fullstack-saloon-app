@@ -8,16 +8,19 @@ import {
   Users,
   UserCheck,
   Tag,
+  Gift,
   CreditCard,
   Star,
   ExternalLink,
   LogOut,
   Shield,
   Package,
+  MapPin,
 } from "lucide-react";
 
 const menuItems = [
   { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "Salon Stores", path: "/admin/stores", icon: MapPin },
   { name: "Bookings", path: "/admin/bookings", icon: Calendar },
   { name: "Categories", path: "/admin/categories", icon: Layers },
   { name: "Services", path: "/admin/services", icon: Scissors },
@@ -25,6 +28,7 @@ const menuItems = [
   { name: "Customers", path: "/admin/customers", icon: Users },
   { name: "Staff Members", path: "/admin/staffs", icon: UserCheck },
   { name: "Coupons", path: "/admin/coupons", icon: Tag },
+  { name: "Reward Vouchers", path: "/admin/rewards", icon: Gift },
   { name: "Payments", path: "/admin/payments", icon: CreditCard },
   { name: "Customer Reviews", path: "/admin/reviews", icon: Star },
 ];
@@ -34,8 +38,8 @@ export default function AdminSidebar() {
   const navigate = useNavigate();
 
   return (
-    <aside className="w-64 bg-groomish-slate text-white flex flex-col justify-between shrink-0 min-h-screen border-r border-white/10 select-none">
-      <div>
+    <aside className="w-64 bg-groomish-slate text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-white/10 select-none overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
         {/* Brand Header */}
         <div
           onClick={() => navigate("/")}
@@ -101,7 +105,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* Footer Info & Switch to Web */}
-      <div className="p-4 border-t border-white/10 space-y-2">
+      <div className="p-4 border-t border-white/10 space-y-2 shrink-0 bg-groomish-slate">
         <button
           onClick={() => navigate("/")}
           className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition"

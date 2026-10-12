@@ -18,6 +18,14 @@ public class StaffDashboardResponse {
 
     private long totalCustomersRegisteredByStaff;
 
+    private List<BookingResponse> todaysBookingsList;
     private List<BookingResponse> upcomingBookings;
+    private List<BookingResponse> completedBookings;
+    private List<BookingResponse> allBookings;
     private List<BookingResponse> recentBookings;
+
+    private java.util.UUID storeId;
+    private String storeName;
+    private String storeCode;
+    private String storeAddress;
 }

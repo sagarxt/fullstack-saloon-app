@@ -41,6 +41,22 @@ public class Product {
 
     private String image;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
+    @Column(name = "image_url", length = 1024)
+    @Builder.Default
+    private java.util.List<String> images = new java.util.ArrayList<>();
+
+    public java.util.List<String> getImages() {
+        if (images == null) {
+            images = new java.util.ArrayList<>();
+        }
+        if (images.isEmpty() && image != null && !image.isBlank()) {
+            images.add(image);
+        }
+        return images;
+    }
+
     @Builder.Default
     private Boolean inStorePickupOnly = true;
 

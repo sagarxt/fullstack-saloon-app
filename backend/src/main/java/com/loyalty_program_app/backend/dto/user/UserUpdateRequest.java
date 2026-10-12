@@ -9,4 +9,5 @@ public class UserUpdateRequest {
     private String phone;
     private String password; // optional, hashed only if provided
     private String gender;
+    private java.util.UUID storeId;
 }

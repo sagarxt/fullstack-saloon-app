@@ -16,6 +16,12 @@ export const cancelBooking = (id) =>
 export const rescheduleBooking = (bookingId, scheduledAt) =>
   axiosClient.put(`/customer/bookings/${bookingId}/reschedule`, { scheduledAt });
 
+export const addServiceToBooking = (bookingId, serviceId) =>
+  axiosClient.post(`/customer/bookings/${bookingId}/services/${serviceId}`);
+
+export const removeServiceFromBooking = (bookingId, itemId) =>
+  axiosClient.delete(`/customer/bookings/${bookingId}/items/${itemId}`);
+
 export const getSlotAvailability = (date, serviceId) =>
   axiosClient.get("/customer/bookings/slots", {
     params: { date, serviceId },
@@ -43,6 +49,9 @@ export const getAllRewards = () =>
 export const redeemReward = (id) =>
   axiosClient.post(`/customer/rewards/redeem/${id}`);
 
+export const getMyVouchers = () =>
+  axiosClient.get("/customer/rewards/my-vouchers");
+
 /* PROFILE */
 export const getMyProfile = () =>
   axiosClient.get("/customer/profile");
@@ -64,8 +73,17 @@ export const getMyPayments = (page = 0, size = 20) =>
 export const getNotifications = (page = 0, size = 20) =>
   axiosClient.get(`/customer/notifications?page=${page}&size=${size}`);
 
+export const getUnreadNotificationCount = () =>
+  axiosClient.get("/customer/notifications/unread-count");
+
 export const markNotificationSeen = (id) =>
   axiosClient.post(`/customer/notifications/${id}/seen`);
+
+export const markAllNotificationsSeen = () =>
+  axiosClient.post("/customer/notifications/mark-all-seen");
+
+export const clearAllNotifications = () =>
+  axiosClient.delete("/customer/notifications");
 
 /* REVIEWS */
 export const createReview = (data) =>

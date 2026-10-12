@@ -10,4 +10,7 @@ public class BookingUpdateRequest {
     private String note;
     private Double totalAmount;
     private Double pricePaid;
+    private String paymentStatus; // PENDING, SUCCESS, FAILED, REFUNDED, CANCELLED
+    private String paymentMethod; // CASH, UPI, CARD, NETBANKING
 }
+

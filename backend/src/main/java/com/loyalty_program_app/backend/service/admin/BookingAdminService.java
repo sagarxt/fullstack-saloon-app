@@ -14,6 +14,7 @@ public interface BookingAdminService {
             String customerName,
             String customerEmail,
             String status,
+            UUID storeId,
             String fromDate,
             String toDate,
             Pageable pageable

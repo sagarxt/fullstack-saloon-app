@@ -12,5 +12,6 @@ public class StaffCreateBookingRequest {
     private String scheduledAt;   // ISO string
     private String note;
     private String couponCode;    // optional
+    private UUID storeId;
 }
 

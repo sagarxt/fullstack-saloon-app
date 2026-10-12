@@ -5,6 +5,7 @@ import Footer from "../../components/Footer";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import AuthModal from "../../components/modals/AuthModal";
 import CustomSelect from "../../components/common/CustomSelect";
+import Pagination from "../../components/common/Pagination";
 import { getPublicProducts, getProductCategories } from "../../api/products";
 import { useAuth } from "../../context/useAuth";
 import { extractList } from "../../utils/dataHelper";
@@ -37,9 +38,17 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("DEFAULT"); // DEFAULT | PRICE_LOW | PRICE_HIGH
+  const [page, setPage] = useState(1);
+
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCategory, search, sortBy]);
 
   // Modals
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [modalImageIdx, setModalImageIdx] = useState(0);
   const [pickupModalOpen, setPickupModalOpen] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -190,9 +199,9 @@ export default function ProductsPage() {
               </div>
 
               {/* Search & Sort Controls */}
-              <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
                 <div className="relative flex-1 md:w-64">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-groomish-slate/40" />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-groomish-slate/40 pointer-events-none" />
                   <input
                     type="text"
                     value={search}
@@ -202,7 +211,7 @@ export default function ProductsPage() {
                   />
                 </div>
 
-                <div className="w-48">
+                <div className="w-full sm:w-48">
                   <CustomSelect
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
@@ -259,8 +268,11 @@ export default function ProductsPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {sortedProducts.map((product) => {
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {sortedProducts
+                .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                .map((product) => {
                 const pointsEarned = Math.floor(product.price / 100);
                 const discountPercent =
                   product.mrp && product.mrp > product.price
@@ -275,7 +287,10 @@ export default function ProductsPage() {
                     <div>
                       {/* Image Thumbnail */}
                       <div
-                        onClick={() => setSelectedProduct(product)}
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setModalImageIdx(0);
+                        }}
                         className="relative h-52 overflow-hidden bg-white flex items-center justify-center p-4 cursor-pointer"
                       >
                         <img
@@ -292,6 +307,13 @@ export default function ProductsPage() {
                           {product.brand || "Groomish Pro"}
                         </span>
 
+                        {/* Multi-image photo count badge */}
+                        {product.images && product.images.length > 1 && (
+                          <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-slate/85 backdrop-blur-sm text-white shadow-sm">
+                            {product.images.length} photos
+                          </span>
+                        )}
+
                         {/* In-Store Pickup Badge */}
                         <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-groomish-slateDark/80 text-white backdrop-blur-sm flex items-center gap-1">
                           <Store className="w-2.5 h-2.5 text-groomish-gold" />
@@ -299,7 +321,7 @@ export default function ProductsPage() {
                         </span>
 
                         {/* Discount Chip */}
-                        {discountPercent > 0 && (
+                        {discountPercent > 0 && !(product.images && product.images.length > 1) && (
                           <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-crimson text-white shadow-sm">
                             {discountPercent}% OFF
                           </span>
@@ -367,8 +389,21 @@ export default function ProductsPage() {
                 );
               })}
             </div>
-          )}
-        </section>
+
+            {sortedProducts.length > 0 && (
+              <div className="mt-8 bg-white p-4 rounded-2xl border border-groomish-slate/10 shadow-soft">
+                <Pagination
+                  currentPage={page}
+                  totalItems={sortedProducts.length}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setPage}
+                  itemName="products"
+                />
+              </div>
+            )}
+          </>
+        )}
+      </section>
       </main>
 
       {/* PRODUCT DETAILS MODAL */}
@@ -380,12 +415,37 @@ export default function ProductsPage() {
         >
           <div className="space-y-5">
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
-              <div className="w-40 h-40 bg-white rounded-2xl border border-groomish-slate/10 p-2 shrink-0 flex items-center justify-center">
-                <img
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  className="max-h-full max-w-full object-contain"
-                />
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <div className="w-44 h-44 bg-white rounded-2xl border border-groomish-slate/10 p-2 flex items-center justify-center relative overflow-hidden">
+                  <img
+                    src={
+                      (selectedProduct.images && selectedProduct.images[modalImageIdx]) ||
+                      selectedProduct.image
+                    }
+                    alt={selectedProduct.name}
+                    className="max-h-full max-w-full object-contain transition-all duration-300"
+                  />
+                </div>
+
+                {/* Multi-image thumbnail bar */}
+                {selectedProduct.images && selectedProduct.images.length > 1 && (
+                  <div className="flex items-center gap-1.5 max-w-[176px] overflow-x-auto py-1">
+                    {selectedProduct.images.map((img, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setModalImageIdx(idx)}
+                        className={`w-9 h-9 rounded-lg overflow-hidden border p-0.5 bg-white transition shrink-0 ${
+                          modalImageIdx === idx
+                            ? "border-groomish-orange ring-2 ring-groomish-orange/20"
+                            : "border-groomish-slate/20 hover:border-groomish-slate/40 opacity-70 hover:opacity-100"
+                        }`}
+                      >
+                        <img src={img} alt="Thumb" className="w-full h-full object-cover rounded" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 text-center sm:text-left flex-1">

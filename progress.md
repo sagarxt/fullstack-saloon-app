@@ -1,7 +1,7 @@
 # Salon Booking & Loyalty Program - Project Progress Tracker
 
-> **Last Updated:** October 11, 2026  
-> **Status:** Backend & Frontend Web (Groomish Now) 100% Completed, Verified & Production Ready. Advancing to Multi-Store Geolocation Architecture & Advanced Notification Services.
+> **Last Updated:** October 12, 2026  
+> **Status:** Backend & Frontend Web (Groomish Now) 100% Completed, Verified & Production Ready. Multi-Store Geolocation Architecture, Branch Catalogs, Staff Operations Hub, Visual Analytics & Custom UI Component System Fully Deployed.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | Subsystem | Tech Stack | Completion | Status Summary |
 | :--- | :--- | :---: | :--- |
-| **Backend** | Spring Boot 3.5, Java 21, PostgreSQL, JPA, JWT, JavaMail | **100%** | **Completed, Tested & Live Running.** Real-time Gmail SMTP asynchronous mailing, complete Service Review system (Repo/Service/Controllers), payment checkout & point accruals, in-app notifications, `@Builder.Default` fixes, and request context fixes verified with live test user. |
-| **Frontend Web** | React 19, Vite 7, Tailwind CSS 3, Lucide Icons | **100%** | **Completed & Fully Production-Ready.** Overhauled with official Groomish Now brand palette, smooth keyframe animations, glassmorphism navbar, logo & wordmark assets, multi-step booking checkout flow, VIP loyalty tier & referral system, reviews modal, complete admin portal (Dashboard, Bookings, Categories, Services, Customers, Staffs, Coupons, Payments, Reviews), compact one-pager forms (`AddServiceModal`, `EditServiceModal`), custom rounded dropdowns (`CustomSelect`), central Axios 401 session expiration handling with automatic login redirect, global branded toast popup notifications, and protected routes. Production build passes cleanly with 0 errors (`vite build` ✓). |
+| **Backend** | Spring Boot 3.5, Java 21, PostgreSQL, JPA, JWT, JavaMail | **100%** | **Completed, Tested & Live Running.** Multi-store branch architecture, localized service/product availability overrides, staff profile & password change endpoints, branch analytics API with customizable timeframes, real-time Gmail SMTP asynchronous mailing, complete Service Review system, payment checkout & point accruals, in-app notifications, and request context fixes verified with live test user. |
+| **Frontend Web** | React 19, Vite 7, Tailwind CSS 3, Lucide Icons | **100%** | **Completed & Fully Production-Ready.** Overhauled with official Groomish Now brand palette, smooth keyframe animations, glassmorphism navbar, store geolocation selector with Haversine distance, Staff Station with tabbed appointment queues (Today, Upcoming, Completed, All), Staff Booking Detail page with itemized billing, Staff Branch Analytics dashboard with toggleable Bar/Line charts, Staff Profile & Branch Info hub, Custom Groomish Date & Time Pickers, searchable `CustomSelect` dropdowns, item multiplier displays (`Item X {qty}`), and a global modal confirmation/alert system (`ConfirmContext`) replacing all native browser dialogs. Production build passes cleanly with 0 errors (`vite build` ✓). |
 | **Mobile App** | React Native (Expo SDK 54), TypeScript, NativeWind | **~15%** | Skeleton only: splash, login, register screens. Contains runtime bugs (missing logo asset, `/api/` instead of `/api/v1/`), no token persistence, and lacks customer browsing/booking/rewards screens. Next phase. |
 
 ---
@@ -25,14 +25,23 @@
   - Fixed Lombok `@Builder.Default` on all entities (`User`, `Category`, `ServiceEntity`, `Coupon`, `Banner`, `Referral`, `Reward`, `Notification`) so default fields (like `active = true`, `points = 0`, `seen = false`) are never erased by builders.
 - **Authentication & Security Context**:
   - Fixed `JwtAuthFilter` to set `request.setAttribute("userId", ...)` and `request.setAttribute("userEmail", ...)`. This resolved critical runtime NPEs across all customer and staff endpoints.
-  - Safe referral code generation handling names of any length without `StringIndexOutOfBoundsException`.
-- **Real-Time Gmail Mail Service**:
+  - **Referral Code Generation & Strict Verification Engine**:
+    - Standardized 6-character referral code format across all user creations: 3 letters of name + 3 random alphanumeric characters (e.g., `SAG8K2`), generating collision-free codes.
+    - Public Verification Endpoint `GET /api/v1/auth/verify-referral?code={code}` validating referral codes prior to or during signup. Returns 200 with `{ valid: true, referrerName: ... }` or 400 Bad Request with `{ valid: false, message: "Invalid Referral Code" }`.
+    - Enforced strict referral validation in `AuthService.registerUser`: if an invalid referral code is provided, registration is rejected with `Invalid Referral Code` and user creation is blocked.
+    - Automatic `Referral` entity association when a valid referral code is provided upon registration.
+    - Frontend registration flows (`AuthModal.jsx` and `Register.jsx`) provide live verification, `"Invalid Referral Code"` alert, with actionable **"Retry / Edit Code"** and **"Sign up without referral code"** options.
+  - **Auto-Login on Registration & Browsing Context Preservation**:
+    - Backend `registerCustomer` (`AuthService.registerUser`) now generates and returns an active JWT Bearer token directly on `UserResponse.token`.
+    - Eliminates false-positive "Session expired" 401 popups immediately following registration.
+    - `AuthModal` keeps customers on the exact page they are browsing (e.g. Products, Services) without kicking them to the home page or forcing re-navigation.
+    - Standalone `/login` and `/register` support `?redirect=` query parameters and session fallback to seamlessly return customers to their intended appointment or product booking.
 - **Real-Time Gmail Mail Service & Official Tax Invoicing**:
   - Enabled `@EnableAsync` in `BackendApplication` for non-blocking asynchronous email delivery.
   - Corrected classpath template loading in `EmailTemplateServiceImpl` and `OtpServiceImpl` to use `ClassPathResource.getInputStream()` with fallback containers.
   - Overhauled email HTML templates (`email-template.html`, `send-otp.html`) with **Groomish Now** branding, luxury logo banner, and color palette (`#FC6957`, `#373A43`, `#FAF6ED`, `#FED652`).
   - Implemented real-time transactional emails via configured Gmail SMTP:
-    - **OTP Email**: Formatted verification code delivery with Groomish Now branding.
+    - **OTP Email**: Formatted 6-digit verification code delivery with Groomish Now luxury branding sent to the user's email address, powering email-based account registration and verification.
     - **Welcome Email**: Sent automatically upon customer registration with account details and unique referral code.
     - **Booking Confirmation Email**: Detailed appointment breakdown (Booking ID, service name, scheduled time, price paid).
     - **Booking Status Email**: Triggered immediately on reschedule or cancellation.
@@ -79,10 +88,29 @@
   - Repository: Added `existsByBookingCode()` and `findByBookingCode()` in `BookingRepository.java`.
   - Backfill & Compatibility: `AdminInitializer.java` auto-generates unique codes for any legacy bookings with `null` codes on startup.
   - DTOs & Services: `bookingCode` exposed across `BookingResponse`, `BookingDetailsResponse`, customer booking flows, staff appointments, admin queries, and transactional emails (booking confirmation, reschedule, cancellation, and official tax invoice email).
+  - **Dashboard Booking ID Alignment**: Resolved discrepancy where Admin Dashboard displayed truncated raw UUIDs (`b.id.slice(0, 8)`) due to `DashboardAdminServiceImpl` omitting `dto.setBookingCode(...)` and unsorted page request. Updated `DashboardAdminServiceImpl` to sort by `createdAt DESC` and populate `bookingCode`, and updated `DashboardPage.jsx` and `StaffDashboard.jsx` to consistently display the unified `bookingCode` (with `GN-[UUID8]` fallback) and link directly to the respective appointment details page (`/admin/bookings/:id` and `/staff/bookings/:id`).
+  - **Customer Special Notes Scope Adjustment**: Removed "Customer Special Notes" block from Admin Booking Details ([`AdminBookingDetailPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/AdminBookingDetailPage.jsx)) and Staff Booking Details, keeping it exclusively visible to clients on Customer Booking Details ([`BookingDetailPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/customer/BookingDetailPage.jsx) & [`CustomerBookingDetailsModal.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/modals/CustomerBookingDetailsModal.jsx)).
 - **Universal Booking Search Across All 3 Portals**:
   - **Customer Portal (`/customer/bookings`)**: Real-time search bar matching booking code (with or without hyphens), service name, or stylist name.
   - **Admin Portal (`/admin/bookings`)**: Live search bar matching 10-digit booking code, client name, booked by, service name, or note. Also supports backend lookup by booking code or UUID.
   - **Staff Stylist Station (`/staff/dashboard`)**: Queue search bar matching booking code, client name, phone number, or service items with clear button and empty-state guidance.
+- **Multi-Store Geolocation & Localized Branch Catalog Architecture**:
+  - `Store.java` entity expanded with multi-image gallery support (Cloudinary JSON array up to 6 photos), full opening/closing times, geocoding (`latitude`, `longitude`), and contact information.
+  - Entities for localized catalog customization: `StoreServiceAvailability.java` (branch-specific active flag, price override, custom duration) and `StoreProductInventory.java` (branch stock tracking, low stock alerts, in-store pickup toggle).
+  - Repositories: `StoreRepository.java`, `StoreServiceAvailabilityRepository.java`, and `StoreProductInventoryRepository.java`.
+  - Services: `StoreService` (Haversine formula calculation) & `BranchCatalogService` with robust fallback to global catalog when no branch override exists.
+  - Controllers:
+    - Public: `PublicStoreController.java` (`/api/v1/public/stores`, `/api/v1/public/stores/{id}/services`, `/api/v1/public/stores/{id}/products`).
+    - Staff: `StaffStoreCatalogController.java` (`/api/v1/staff/stores/catalog/services`, `/api/v1/staff/stores/catalog/products`).
+    - Admin: `AdminStoreCatalogController.java` (`/api/v1/admin/stores/{id}/catalog/**`) & `AdminStoreController.java` (CRUD).
+- **Staff Profile & Security Management (`/api/v1/staff/profile`)**:
+  - `StaffProfileController.java` & `StaffProfileService` (`StaffProfileServiceImpl.java`):
+    - `GET /api/v1/staff/profile`: Returns stylist personal information along with assigned salon branch details (Store name, code, phone, email, address, operating hours, coordinates).
+    - `PUT /api/v1/staff/profile`: Allows updating personal information (name, phone number) with validation.
+    - `PUT /api/v1/staff/profile/change-password`: Secure password change verifying old password with `PasswordEncoder` (BCrypt) before saving new hash and dispatching security email notification.
+- **Staff Branch Analytics Engine (`/api/v1/staff/dashboard/analytics`)**:
+  - Endpoint: `GET /api/v1/staff/dashboard/analytics?period={day|week|month|custom}&startDate={...}&endDate={...}`.
+  - Aggregates live metrics strictly scoped to the stylist's assigned salon branch: Total Revenue (₹), Total Appointments, Completed Ratio, Average Ticket Value, and time-series data points for charting.
 - **Payment Processing & Points Accrual**:
   - Created `PaymentCheckoutRequest` DTO.
   - Implemented `checkoutPayment` in `CustomerPaymentService`:
@@ -116,9 +144,10 @@
   - Brand Assets: Integrated `frontend_web/public/` assets (`groomish_logo_2.png`, `groomish_now_name.png`, `groomisg_now_icon.png`).
 - **Navigation & Layout**:
   - Sleek top navigation (`h-16`) utilizing solely `/groomish_logo_2.png` (integrated logo + wordmark).
-  - Profile dropdown simplified strictly to **My Profile** and **Log Out** (with optional admin/staff portal entry if authenticated with those roles), avoiding redundancy with top navbar links.
-  - Distinct navigation links to dedicated **Categories** (`/categories`) and **Services** (`/services`) pages.
-  - Real-time loyalty points badge (`pts`), and unread notification bell drawer.
+  - Cleaned top navigation layout: Removed cluttered Loyalty Rewards link and reward points pill from the main header.
+  - Organized Profile Dropdown: Placed **Loyalty Rewards** link and a luxury **Reward Points & Tier badge card** directly below **My Profile** in the Profile dropdown.
+  - Distinct navigation links to dedicated **Categories** (`/categories`), **Services** (`/services`), **Shop** (`/products`), and **My Bookings** (`/customer/bookings`).
+  - Unread notification bell drawer with real-time badge.
   - Luxury footer with salon services overview, operating hours, newsletter signup, and contact information.
 - **Dedicated Public Pages & Navigation**:
   - `CategoriesPage.jsx` (`/categories`): Full-featured salon categories gallery with service count, search, high-res photography, and direct navigation into dedicated category pages.
@@ -161,12 +190,38 @@
   - `CouponsPage.jsx`: Promo code management, discount amounts, min cart values, and Create Coupon modal.
   - `PaymentsPage.jsx`: Comprehensive audit trail of client payments, invoice numbers, and payment methods.
   - `ReviewsPage.jsx`: Customer review ratings moderation with delete controls.
-- **Staff Portal (`/staff/*`)**:
+- **Staff Portal & Operations Hub (`/staff/*`)**:
   - `StaffDashboard.jsx`: Production-ready Stylist Station aligned with Groomish Now branding.
   - Real-time stats: Today's Bookings, Completed Treatments, Pending Queue, Today's Billing revenue, and Total Lifetime Clients Assisted.
-  - Appointment actions:
-    - **"Bill & Products"**: Dedicated modal for stylists to view treatment snapshots, attach retail store products (with stock validation & quantity picker), remove items, view the live updated total, and click **"Complete & Send Bill Email"**.
-    - **One-Click Complete**: Marking an appointment as completed automatically awards loyalty points, saves the final bill, and dispatches the Groomish Now Tax Invoice & Payment Receipt email to the client!
+  - **Branch Bookings Queue & Multi-Status Filtering**:
+    - Filter tabs: **Today's**, **Upcoming**, **Completed**, and **All** with real-time numeric badges.
+    - Consolidated Schedule Queue directly into **Branch Bookings** with fast appointment inspection links.
+    - Clean UI: Removed redundant top header banner (`"Assigned Salon Branch: ..."`), keeping the viewport spacious as `StaffSidebar.jsx` already clearly displays the assigned branch name and status.
+  - **Dedicated Staff Booking Detail Page (`StaffBookingDetailPage.jsx` at `/staff/bookings/:id`)**:
+    - Visual timeline of appointment status progression (`PENDING` -> `CONFIRMED` -> `IN_PROGRESS` -> `COMPLETED`).
+    - Add Services and Retail Products directly to the appointment bill using searchable Groomish dropdowns.
+    - Multiplier quantity displays: `Item Name X {quantity}` format for multiple additions of the same service or product.
+    - Itemized financial breakdown (Services subtotal, Attached products, GST, Discounts, Final Total).
+    - Status transition controls (Start Service, Complete & Send Bill Email, Cancel).
+  - **Staff Branch Analytics Dashboard (`StaffBranchAnalyticsTab.jsx` at `?tab=analytics`)**:
+    - Filterable analytics by timeframe: **Day**, **Week**, **Month**, and **Custom Range** (powered by `CustomDatePicker`).
+    - Real-time KPI cards: Total Branch Revenue (₹), Appointments Handled, Completed Ratio, and Average Ticket Value.
+    - Dual Visualization Toggle: **Bar Chart** (default) and **Line Chart** with interactive SVG rendering, gradient fills, and data hover tooltips.
+    - Metric toggle between **Revenue (₹)** and **Appointments**.
+    - Cleaned layout with removal of redundant "Interval:" text.
+  - **Staff Stylist Profile & Branch Hub (`StaffProfileTab.jsx` at `?tab=profile`)**:
+    - Profile editor: Update Name and Phone with immediate feedback.
+    - Password Security: Dedicated Change Password modal with BCrypt verification and email alerts.
+    - Comprehensive Assigned Salon Branch Information card showing branch code, name, phone, email, address, operating hours, and active status.
+- **Custom Groomish Design System Components**:
+  - **`CustomDatePicker.jsx`**: Fully custom calendar picker themed in Groomish Coral (`#FC6957`) and Charcoal Slate (`#373A43`), with month/year navigation, today indicator, active day styling, and Quick Select buttons ("Today", "Clear").
+  - **`CustomTimePicker.jsx`**: Bespoke 12-hour AM/PM time selector with interactive hour/minute spinners and quick salon presets (09:00 AM, 10:00 AM, 08:30 PM, 09:30 PM, etc.) for admin branch hours in `StoresPage.jsx`.
+  - **`CustomSelect.jsx` (Searchable Dropdown)**: Upgraded with sticky search bar (`searchable={true}`), filter-as-you-type, keyboard navigation, and Groomish orange focus ring for effortless selection across 100+ services and products.
+  - **Global Form & Dropdown Styling (`index.css`)**: Global `select` styling with custom Groomish orange SVG chevron, rounded borders, focus glow, and custom `-webkit-calendar-picker-indicator` filter.
+  - **Item Multiplier Display (`Item Name X {quantity}`)**: Added ` X {quantity}` right after item name across staff, admin, and customer booking views when multiple items of the same service or product are added.
+  - **Global Modal Confirmation & Alert Dialog Hub (`ConfirmContext.jsx`)**:
+    - Central `ConfirmProvider` exposing `showConfirm()` (returns `Promise<boolean>`) and `showAlert()` (returns `Promise<void>`).
+    - Replaced all ugly/blocking native browser `window.confirm()` and `alert()` calls across the entire application (`StaffBookingDetailPage`, `BookingDetailPage`, `CustomerBookingDetailsModal`, `NotificationDrawer`, `StoresPage`, `ProductsPage`, `ReviewsPage`, `CouponsPage`, `ChangePasswordModal`) with branded Groomish modal dialogs featuring backdrop blur, smooth animations, and customizable buttons.
 - **Routing & Role Portal Direct Access**:
   - Direct entry for Admin & Staff: Admin automatically opens the Admin Panel (`/admin/dashboard`) and Staff automatically opens the Staff Dashboard (`/staff/dashboard`) upon login or visiting `/`.
   - Navbar completely hidden for Admin (as AdminSidebar is always present) and Staff (as Staff Dashboard has its own header).
@@ -209,35 +264,35 @@
 
 ## 3. 🎯 Next Target: Location-Based Store Suggestions & Notification Services
 
-### 📍 Phase A: Multi-Store Architecture & Geolocation Engine
+### 📍 Phase A: Multi-Store Architecture & Geolocation Engine (✅ 100% COMPLETED)
 1. **Store Entity & Backend Management (`/backend`)**:
-   - Create `Store.java` entity:
-     - `id`, `name`, `code` (e.g., `GN-BLR-KORAMANGALA`), `address`, `city`, `state`, `pincode`, `phone`, `email`.
-     - `coverImage` (Cloudinary `groomishnow/stores`), `latitude`, `longitude`, `active`, `openingTime`, `closingTime`.
-   - `StoreRepository.java` with geospatial and city queries.
-   - Admin Store Controller (`/api/v1/admin/stores`) supporting full CRUD: Add Store, Edit Store details, Upload branch photo, and deactivate branch.
-   - Public Store Controller (`/api/v1/public/stores`) for catalog browsing and location lookups.
-   - Seed default flagship stores in `AdminInitializer.java` (e.g. Indiranagar, Koramangala, Whitefield, HSR Layout).
+   - `Store.java` entity with `code`, `name`, `address`, `city`, `state`, `pincode`, `phone`, `email`, `image`, `latitude`, `longitude`, `openingTime`, `closingTime`, `active`.
+   - Linked to `User.java` (staff store association) and `Booking.java` with snapshot fields (`storeNameSnapshot`, `storeAddressSnapshot`).
+   - `StoreRepository.java` with active sorting and code lookups.
+   - `StoreService` & `StoreServiceImpl` with Haversine distance proximity calculation (Earth radius 6371 km).
+   - Admin Controller (`/api/v1/admin/stores`) supporting full CRUD: Add Store, Edit Store, Toggle active, and Delete.
+   - Public Controller (`/api/v1/public/stores`) with optional `?lat=...&lng=...` sorting by nearest branch.
+   - Seeded 4 Bengaluru flagship salons in `AdminInitializer.java` (Indiranagar Flagship, Koramangala Lounge, HSR Layout Studio, Whitefield Prestige) with live coordinates and backfilled staff/bookings.
 
-2. **Automated Geolocation & Nearest Store Suggestion (`/frontend_web`)**:
-   - Utilize browser `navigator.geolocation.getCurrentPosition()` on initial visitor arrival.
-   - Calculate distances using the Haversine formula against active store coordinates.
-   - Automatically pre-select the closest Groomish branch with fallback to the flagship store.
-   - Persist selected store in `localStorage` / application state.
+2. **Automated Geolocation & Nearest Store Engine (`/frontend_web`)**:
+   - `StoreContext.jsx`: Interrogates browser GPS coordinates (`navigator.geolocation.getCurrentPosition`), queries backend proximity engine, and selects the nearest salon branch automatically. Supports local storage manual override and re-detect GPS button.
 
 3. **Navbar Store Selector Component**:
-   - Positioned prominently directly beside the Groomish logo in [`Navbar.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/Navbar.jsx).
-   - Pill badge displaying `MapPin` icon, current **Store Name**, and **Neighborhood / City**.
-   - Interactive dropdown popover with live store search, distance indicators (e.g. `1.8 km away`), address preview, and 1-click store switching.
+   - [`StoreSelectorDropdown.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/StoreSelectorDropdown.jsx) placed beside the Groomish logo in [`Navbar.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/Navbar.jsx).
+   - Renders current branch name, city, distance tag (`📍 1.2 km away`), and an interactive popover with search bar, GPS re-detect, thumbnail previews, hours, and click-to-switch.
 
-4. **Store-Linked Staff Members**:
-   - Link staff user accounts to their designated `storeId`.
-   - Staff login automatically scopes the session and directs the stylist directly to their store's station queue.
+4. **Staff Station Assignment per Store**:
+   - Stylists assigned to stores in [`StaffPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/StaffPage.jsx) via branch dropdown and editable profile modal.
+   - [`StaffDashboard.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/staff/StaffDashboard.jsx) displays assigned salon branch badge in header and an active branch queue banner.
+   - Stylist queue is strictly scoped to their assigned salon branch.
 
 5. **Store-Aware Appointments & Bookings**:
-   - Capture `storeId` / store snapshot in booking entity during customer checkout.
-   - Stylists on [`StaffDashboard.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/staff/StaffDashboard.jsx) view appointments and queues strictly filtered to their store.
-   - Admin Bookings portal ([`BookingsPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/BookingsPage.jsx)) equipped with a multi-store dropdown filter to view bookings globally or per-branch.
+   - [`BookingFlowModal.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/modals/BookingFlowModal.jsx) attaches `storeId` to checkout payload, previews chosen salon branch in Step 1 & 2, and renders the branch name and address in the Step 3 confirmation card.
+   - Customer [`BookingCard.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/customer/BookingCard.jsx) and Admin [`BookingCard.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/admin/BookingCard.jsx) display the salon branch badge.
+   - Admin Bookings portal ([`BookingsPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/BookingsPage.jsx)) equipped with a multi-store dropdown filter (`storeFilter`) to view bookings globally or per-branch.
+
+6. **Admin Multi-Store Catalog Manager**:
+   - Created [`StoresPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/StoresPage.jsx) at `/admin/stores` with active toggles, direct Google Maps navigation links, Cloudinary photo uploads, and a "Detect Device GPS" button. Added to [`AdminSidebar.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/admin/AdminSidebar.jsx).
 
 ---
 
@@ -252,6 +307,78 @@
    - Appointment completion, payment confirmation, and official tax invoice delivery.
    - Loyalty point balance updates and VIP tier promotions.
    - Store broadcast announcements and promotional deals.
+
+---
+
+---
+
+### 🌟 Phase C: Lifetime VIP Tiers, Past Slot Restrictions & Redeemed Vouchers System
+1. **Lifetime VIP Tiers & Auto-Upgrades (No Downgrade On Redemption)**:
+   - Added `lifetimePoints` field to `User` entity and exposed it in `PointsBalanceResponse`.
+   - Updated points accumulation to increment both redeemable balance (`points`) and cumulative (`lifetimePoints`).
+   - Tier calculations (Silver: 0 pts, Gold: 50 pts, Platinum: 150 pts, Diamond: 300 pts) are strictly computed from `lifetimePoints`.
+   - When a customer redeems vouchers and points balance decreases, their tier never downgrades (e.g. 200 lifetime points minus 150 points redeemed stays in Platinum tier).
+   - Removed marketing badges (`POPULAR` on Gold, `VIP MAX` on Diamond) from [`LandingPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/landing/LandingPage.jsx) as tiers are milestone-awarded.
+   - Updated [`RewardsPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/customer/RewardsPage.jsx) hero card to display cumulative `Lifetime Points: X pts` alongside active redeemable balance.
+
+2. **Appointment Slot Timing & Past Booking Restrictions**:
+   - UI Slot Filter: [`BookingFlowModal.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/modals/BookingFlowModal.jsx), [`SlotPicker.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/booking/SlotPicker.jsx), and [`slots.js`](file:///d:/Projects/loyalty_program_app/frontend_web/src/utils/slots.js) now restrict date pickers to `min={todayStr}` and filter out all slots prior to current local time for today.
+   - User Feedback: If all slots for today have passed, UI displays an informative message advising customers to pick tomorrow or an upcoming date.
+   - Backend Slot Engine: [`CustomerBookingServiceImpl.java`](file:///d:/Projects/loyalty_program_app/backend/src/main/java/com/loyalty_program_app/backend/service/customer/impl/CustomerBookingServiceImpl.java) `getUnavailableSlots` marks all elapsed time slots for the current date as unavailable.
+   - Backend Validation: `createBooking` and `rescheduleBooking` in both `CustomerBookingServiceImpl` and `StaffBookingServiceImpl` strictly reject any `scheduledAt.isBefore(LocalDateTime.now())` with a clean 400 Bad Request exception.
+
+3. **Vouchers & Points Tracking Overhaul**:
+   - Fixed voucher point price visibility in [`RewardsPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/customer/RewardsPage.jsx) (`pointsRequired`).
+   - Dedicated customer page [`MyVouchersPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/customer/MyVouchersPage.jsx) at `/customer/vouchers` showing redeemed vouchers in card format with copyable code, discount %, applicable service tag, expiry date countdown, and "Book This Service Now" action.
+   - Points Ledger history ([`RewardLedgerItem.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/customer/RewardLedgerItem.jsx)) now displays Order ID badges (`Order: GN-XX-XXXXXX`), bill amounts, service snapshots, and voucher codes.
+   - Admin catalog management in [`AdminRewardsPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/RewardsPage.jsx) allowing admins to create/update/deactivate vouchers with specific service links, discount %, and validity days.
+
+4. **Admin Booking Details Modal & Complete Appointment Controls Console**:
+   - Fixed crash (`Cannot read properties of null (reading 'map')` at `BookingDetailsModal.jsx:42:24`) by mapping booked services (`items`) and retail products (`products`) in [`BookingAdminServiceImpl.java`](file:///d:/Projects/loyalty_program_app/backend/src/main/java/com/loyalty_program_app/backend/service/admin/impl/BookingAdminServiceImpl.java).
+   - Added `findByBookingId(UUID)` to [`BookingItemRepository.java`](file:///d:/Projects/loyalty_program_app/backend/src/main/java/com/loyalty_program_app/backend/repository/BookingItemRepository.java).
+   - Added endpoint `PUT /api/v1/admin/bookings/{id}/status` in [`BookingAdminController.java`](file:///d:/Projects/loyalty_program_app/backend/src/main/java/com/loyalty_program_app/backend/controller/admin/BookingAdminController.java), fixing the previously non-functional Approve/Reject actions.
+   - Completely overhauled [`BookingDetailsModal.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/modals/BookingDetailsModal.jsx) into a full administration console:
+     - Quick Status actions: **Approve (`CONFIRMED`)**, **Reject (`CANCELLED`)**, **Mark Completed (`COMPLETED`)**, with real-time feedback.
+     - Reschedule controls: Interactive date picker (future-locked) and slot time picker.
+     - Payment management: Edit payment status (`PENDING`, `COMPLETED`, `CANCELLED`, `REFUNDED`), payment method (`CASH`, `UPI`, `CARD`, `NETBANKING`), and amount received (`pricePaid`).
+     - Notes: Editable stylist / internal client instructions.
+     - Client & branch details: Displays client contact info, origin, branch location, booked service list, attached retail products, and VIP reward points status.
+     - Seamless parent synchronization: Updates card list via `onUpdated` without page reload.
+
+
+---
+
+### 🎨 Phase D: Staff Station Operations Overhaul, Visual Analytics & Custom Design System (✅ 100% COMPLETED)
+1. **Branch Bookings Queue & Categorized Filtering**:
+   - Filter tabs: **Today's**, **Upcoming**, **Completed**, and **All** with live reactive count badges.
+   - Streamlined queue navigation directly into dedicated appointment inspection pages (`/staff/bookings/:id`).
+   - Header cleanup: Removed redundant top header banner (`"Assigned Salon Branch: ..."`), keeping viewport clean as `StaffSidebar.jsx` prominently highlights the assigned salon branch with live status indicator.
+
+2. **Dedicated Staff Booking Detail Console (`StaffBookingDetailPage.jsx`)**:
+   - Status progression visual timeline (`PENDING` -> `CONFIRMED` -> `IN_PROGRESS` -> `COMPLETED`).
+   - Add services and products with searchable Groomish dropdowns.
+   - Multiplier quantity displays: `Item Name X {quantity}` format for multiple additions of the same service or product.
+   - Itemized bill calculator with tax breakdown and action buttons.
+
+3. **Staff Branch Analytics Dashboard (`StaffBranchAnalyticsTab.jsx`)**:
+   - Filterable analytics: **Day**, **Week**, **Month**, and **Custom Range** (with `CustomDatePicker`).
+   - Real-time KPI metric cards: Total Branch Revenue (₹), Appointments Handled, Completed Ratio, Average Ticket Value.
+   - Dual Visualization: **Bar Chart** (default) and **Line Chart** toggle with smooth SVG curve rendering, gradient fills, and interactive data point hover tooltips.
+   - Metric toggle between **Revenue (₹)** and **Appointments**.
+   - Clean UI: Removed redundant "Interval:" text.
+
+4. **Staff Stylist Profile & Branch Information Hub (`StaffProfileTab.jsx`)**:
+   - Stylist profile editor for name and phone updates.
+   - Secure Change Password dialog with BCrypt verification.
+   - Full Assigned Salon Branch Overview card displaying branch code, name, phone, email, full address, operating hours, and status.
+
+5. **Custom Groomish UI Components & Global Modal System**:
+   - **`CustomDatePicker.jsx`**: Fully custom calendar picker in brand colors (`#FC6957`, `#373A43`, `#FAF6ED`), with month/year navigation, today indicator, active day styling, and Quick Select buttons ("Today", "Clear").
+   - **`CustomTimePicker.jsx`**: Interactive 12-hour AM/PM time selector with presets for opening and closing times.
+   - **`CustomSelect.jsx` (Searchable Dropdown)**: Upgraded with sticky search bar (`searchable={true}`) for searching 100+ services and products without scrolling.
+   - **Global Select & Form Styling (`index.css`)**: Groomish orange SVG chevron, rounded borders, focus glow, and custom `-webkit-calendar-picker-indicator` filter.
+   - **Item Multiplier Display (`Item Name X {quantity}`)**: Universally applied when multiple quantities of a service or product exist.
+   - **Global Modal Confirmation & Alert System (`ConfirmContext.jsx`)**: Replaced all native browser `window.confirm()` and `alert()` calls across the entire application with branded Groomish modal popups.
 
 ---
 

@@ -110,7 +110,13 @@ export default function Login() {
           <p className="text-center text-white/80 mt-6">
             Don’t have an account?
             <a
-              href="/register"
+              href={
+                new URLSearchParams(window.location.search).get("redirect")
+                  ? `/register?redirect=${encodeURIComponent(
+                      new URLSearchParams(window.location.search).get("redirect")
+                    )}`
+                  : "/register"
+              }
               className="ml-1 text-white underline font-semibold"
             >
               Register

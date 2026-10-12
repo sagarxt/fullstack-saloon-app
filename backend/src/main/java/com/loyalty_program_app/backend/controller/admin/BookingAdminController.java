@@ -25,6 +25,7 @@ public class BookingAdminController {
             @RequestParam(required = false) String customerName,
             @RequestParam(required = false) String customerEmail,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) UUID storeId,
             @RequestParam(required = false) String fromDate, // yyyy-MM-dd
             @RequestParam(required = false) String toDate,   // yyyy-MM-dd
             @RequestParam(defaultValue = "0") int page,
@@ -32,7 +33,7 @@ public class BookingAdminController {
     ) {
         Pageable pageable = PageRequest.of(page, size);
         return bookingAdminService.searchBookings(
-                bookingId, customerName, customerEmail, status, fromDate, toDate, pageable
+                bookingId, customerName, customerEmail, status, storeId, fromDate, toDate, pageable
         );
     }
 
@@ -49,6 +50,23 @@ public class BookingAdminController {
             @RequestBody BookingUpdateRequest request
     ) {
         return bookingAdminService.updateBooking(id, request);
+    }
+
+    // ========== UPDATE BOOKING STATUS DIRECTLY ==========
+    @PutMapping("/{id}/status")
+    public BookingResponse updateBookingStatus(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String status,
+            @RequestBody(required = false) BookingUpdateRequest body
+    ) {
+        String finalStatus = status != null && !status.isBlank()
+                ? status
+                : (body != null ? body.getStatus() : null);
+        BookingUpdateRequest req = body != null ? body : new BookingUpdateRequest();
+        if (finalStatus != null) {
+            req.setStatus(finalStatus);
+        }
+        return bookingAdminService.updateBooking(id, req);
     }
 
     // ========== CANCEL BOOKING ==========

@@ -18,6 +18,7 @@ import java.util.UUID;
 public class RewardAdminServiceImpl implements RewardAdminService {
 
     private final RewardRepository rewardRepository;
+    private final com.loyalty_program_app.backend.repository.ServiceRepository serviceRepository;
 
     // =================== CREATE ===================
     @Override
@@ -30,8 +31,18 @@ public class RewardAdminServiceImpl implements RewardAdminService {
         r.setStock(request.getStock());
         r.setActive(request.getActive() != null ? request.getActive() : true);
 
-        if (request.getExpiryDate() != null) {
-            r.setExpiryDate(LocalDateTime.parse(request.getExpiryDate()));
+        if (request.getServiceId() != null) {
+            r.setServiceId(request.getServiceId());
+            serviceRepository.findById(request.getServiceId()).ifPresent(s -> r.setServiceName(s.getName()));
+        } else if (request.getServiceName() != null) {
+            r.setServiceName(request.getServiceName());
+        }
+
+        r.setDiscountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : 100);
+        r.setValidityDays(request.getValidityDays() != null ? request.getValidityDays() : 30);
+
+        if (request.getExpiryDate() != null && !request.getExpiryDate().isBlank()) {
+            r.setExpiryDate(parseDateSafely(request.getExpiryDate()));
         }
 
         rewardRepository.save(r);
@@ -50,12 +61,36 @@ public class RewardAdminServiceImpl implements RewardAdminService {
         if (request.getPointsRequired() != null) r.setPointsRequired(request.getPointsRequired());
         if (request.getStock() != null) r.setStock(request.getStock());
         if (request.getActive() != null) r.setActive(request.getActive());
+
+        if (request.getServiceId() != null) {
+            r.setServiceId(request.getServiceId());
+            serviceRepository.findById(request.getServiceId()).ifPresent(s -> r.setServiceName(s.getName()));
+        } else if (request.getServiceName() != null) {
+            r.setServiceName(request.getServiceName());
+        }
+
+        if (request.getDiscountPercent() != null) r.setDiscountPercent(request.getDiscountPercent());
+        if (request.getValidityDays() != null) r.setValidityDays(request.getValidityDays());
+
         if (request.getExpiryDate() != null) {
-            r.setExpiryDate(LocalDateTime.parse(request.getExpiryDate()));
+            r.setExpiryDate(parseDateSafely(request.getExpiryDate()));
         }
 
         rewardRepository.save(r);
         return toDto(r);
+    }
+
+    private LocalDateTime parseDateSafely(String str) {
+        if (str == null || str.trim().isEmpty()) return null;
+        try {
+            String trimmed = str.trim();
+            if (trimmed.length() == 10) {
+                return java.time.LocalDate.parse(trimmed).atTime(23, 59, 59);
+            }
+            return LocalDateTime.parse(trimmed);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // =================== SOFT DELETE ===================
@@ -112,6 +147,10 @@ public class RewardAdminServiceImpl implements RewardAdminService {
         dto.setDescription(r.getDescription());
         dto.setPointsRequired(r.getPointsRequired());
         dto.setStock(r.getStock());
+        dto.setServiceId(r.getServiceId());
+        dto.setServiceName(r.getServiceName());
+        dto.setDiscountPercent(r.getDiscountPercent());
+        dto.setValidityDays(r.getValidityDays());
         dto.setExpiryDate(r.getExpiryDate() != null ? r.getExpiryDate().toString() : null);
         dto.setActive(r.isActive());
         return dto;

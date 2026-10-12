@@ -23,6 +23,7 @@ public class ProductResponse {
     private String volumeOrSize;
     private Integer stockQuantity;
     private String image;
+    private java.util.List<String> images;
     private Boolean inStorePickupOnly;
     private Boolean active;
     private LocalDateTime createdAt;

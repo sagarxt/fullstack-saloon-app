@@ -11,13 +11,17 @@ import PublicProductsPage from "./pages/public/ProductsPage";
 
 // Customer Pages
 import MyBookingsPage from "./pages/customer/MyBookingsPage";
+import BookingDetailPage from "./pages/customer/BookingDetailPage";
 import RewardsPage from "./pages/customer/RewardsPage";
+import MyVouchersPage from "./pages/customer/MyVouchersPage";
 import ProfilePage from "./pages/customer/ProfilePage";
 
 // Admin Pages
 import AdminLayout from "./layouts/AdminLayout";
 import DashboardPage from "./pages/admin/DashboardPage";
+import StoresPage from "./pages/admin/StoresPage";
 import BookingsPage from "./pages/admin/BookingsPage";
+import AdminBookingDetailPage from "./pages/admin/AdminBookingDetailPage";
 import CategoriesPage from "./pages/admin/CategoriesPage";
 import ServicesPage from "./pages/admin/ServicesPage";
 import ProductsPage from "./pages/admin/ProductsPage";
@@ -26,9 +30,11 @@ import StaffPage from "./pages/admin/StaffPage";
 import CouponsPage from "./pages/admin/CouponsPage";
 import PaymentsPage from "./pages/admin/PaymentsPage";
 import ReviewsPage from "./pages/admin/ReviewsPage";
+import AdminRewardsPage from "./pages/admin/RewardsPage";
 
 // Staff Pages
 import StaffDashboard from "./pages/staff/StaffDashboard";
+import StaffBookingDetailPage from "./pages/staff/StaffBookingDetailPage";
 
 function App() {
   return (
@@ -42,16 +48,19 @@ function App() {
       <Route path="/services/:serviceId" element={<ServiceDetailPage />} />
       <Route path="/products" element={<PublicProductsPage />} />
 
-      {/* Customer Protected Routes */}
-      <Route element={<PrivateRoute roles={["CUSTOMER", "ADMIN", "STAFF"]} />}>
+      {/* Customer Protected Routes (Only Authorized Customers) */}
+      <Route element={<PrivateRoute roles={["CUSTOMER"]} />}>
         <Route path="/customer/bookings" element={<MyBookingsPage />} />
+        <Route path="/customer/bookings/:id" element={<BookingDetailPage />} />
         <Route path="/customer/rewards" element={<RewardsPage />} />
+        <Route path="/customer/vouchers" element={<MyVouchersPage />} />
         <Route path="/customer/profile" element={<ProfilePage />} />
       </Route>
 
       {/* Staff Protected Routes */}
       <Route element={<PrivateRoute roles={["STAFF", "ADMIN"]} />}>
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
+        <Route path="/staff/bookings/:id" element={<StaffBookingDetailPage />} />
       </Route>
 
       {/* Admin Portal Protected Routes */}
@@ -59,13 +68,16 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="stores" element={<StoresPage />} />
           <Route path="bookings" element={<BookingsPage />} />
+          <Route path="bookings/:id" element={<AdminBookingDetailPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="customers" element={<CustomersPage />} />
           <Route path="staffs" element={<StaffPage />} />
           <Route path="coupons" element={<CouponsPage />} />
+          <Route path="rewards" element={<AdminRewardsPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
         </Route>

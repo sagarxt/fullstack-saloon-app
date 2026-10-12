@@ -3,14 +3,18 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { getMyBookings } from "../../api/customer";
 import BookingCard from "../../components/customer/BookingCard";
+import Pagination from "../../components/common/Pagination";
 import { extractList } from "../../utils/dataHelper";
 import { Calendar, Scissors, Sparkles, Filter, RefreshCw, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+const PAGE_SIZE = 20;
 
 export default function MyBookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [filter, setFilter] = useState("ALL"); // ALL | UPCOMING | COMPLETED | CANCELLED
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -30,6 +34,10 @@ export default function MyBookingsPage() {
   useEffect(() => {
     loadBookings();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
 
   const bookingList = extractList(bookings);
 
@@ -208,13 +216,29 @@ export default function MyBookingsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredBookings.map((booking) => (
-              <BookingCard
-                key={booking.id}
-                booking={booking}
-                refresh={loadBookings}
-              />
-            ))}
+            <div className="space-y-4">
+              {filteredBookings
+                .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                .map((booking) => (
+                  <BookingCard
+                    key={booking.id}
+                    booking={booking}
+                    refresh={loadBookings}
+                  />
+                ))}
+            </div>
+
+            {filteredBookings.length > 0 && (
+              <div className="bg-white p-4 rounded-2xl border border-groomish-slate/10 shadow-soft">
+                <Pagination
+                  currentPage={page}
+                  totalItems={filteredBookings.length}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setPage}
+                  itemName="bookings"
+                />
+              </div>
+            )}
           </div>
         )}
       </main>

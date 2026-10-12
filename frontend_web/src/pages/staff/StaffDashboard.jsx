@@ -1,19 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   getStaffDashboard,
   cancelStaffBooking,
   createCustomerByStaff,
   getStaffProducts,
+  getStaffServices,
+  addServiceToBookingByStaff,
+  removeServiceFromBookingByStaff,
   addProductToBookingByStaff,
   removeProductFromBookingByStaff,
   completeBookingAndSendBillByStaff,
   getStaffBooking,
+  updateStaffBooking,
+  getCustomerBookingsByStaff,
+  getCustomerHistoryByStaff,
 } from "../../api/staff";
 import ModalWrapper from "../../components/modals/ModalWrapper";
+import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import CustomSelect from "../../components/common/CustomSelect";
+import Pagination from "../../components/common/Pagination";
 import { useAuth } from "../../context/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { extractList } from "../../utils/dataHelper";
+import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
+import StaffBranchServicesTab from "../../components/staff/StaffBranchServicesTab";
+import StaffBranchInventoryTab from "../../components/staff/StaffBranchInventoryTab";
+import StaffBranchAnalyticsTab from "../../components/staff/StaffBranchAnalyticsTab";
+import StaffProfileTab from "../../components/staff/StaffProfileTab";
 import {
   CalendarClock,
   CheckCircle2,
@@ -36,17 +49,53 @@ import {
   Receipt,
   Package,
   Search,
+  MapPin,
+  Crown,
+  Sparkles,
+  History,
+  User as UserIcon,
+  ChevronRight,
 } from "lucide-react";
 
 export default function StaffDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const tabParam = searchParams.get("tab");
+  const initialFilter = tabParam === "analytics"
+    ? "BRANCH_ANALYTICS"
+    : tabParam === "services"
+    ? "BRANCH_SERVICES"
+    : tabParam === "inventory"
+    ? "BRANCH_INVENTORY"
+    : tabParam === "profile"
+    ? "BRANCH_PROFILE"
+    : "TODAY";
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("TODAY"); // TODAY | UPCOMING | RECENT
+  const [filter, setFilter] = useState(initialFilter);
+
+  useEffect(() => {
+    if (tabParam === "analytics") setFilter("BRANCH_ANALYTICS");
+    else if (tabParam === "services") setFilter("BRANCH_SERVICES");
+    else if (tabParam === "inventory") setFilter("BRANCH_INVENTORY");
+    else if (tabParam === "profile") setFilter("BRANCH_PROFILE");
+    else if (!tabParam && (filter === "BRANCH_ANALYTICS" || filter === "BRANCH_SERVICES" || filter === "BRANCH_INVENTORY" || filter === "BRANCH_PROFILE")) {
+      setFilter("TODAY");
+    }
+  }, [tabParam]);
+
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
 
   // Walk-In Client Modal
   const [clientModalOpen, setClientModalOpen] = useState(false);
@@ -60,17 +109,32 @@ export default function StaffDashboard() {
   const [clientError, setClientError] = useState("");
   const [clientSuccess, setClientSuccess] = useState("");
 
-  // Details Modal
-  const [selectedBooking, setSelectedBooking] = useState(null);
+
 
   // Store Products & Billing Modal
   const [billingBooking, setBillingBooking] = useState(null);
   const [staffProducts, setStaffProducts] = useState([]);
+  const [staffServices, setStaffServices] = useState([]);
+  const [selectedStaffServiceId, setSelectedStaffServiceId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [productQty, setProductQty] = useState(1);
   const [billingLoading, setBillingLoading] = useState(false);
   const [billSuccess, setBillSuccess] = useState("");
   const [billError, setBillError] = useState("");
+
+  // Reschedule / Modify Booking Modal
+  const [rescheduleBooking, setRescheduleBooking] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [rescheduleNotes, setRescheduleNotes] = useState("");
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState("");
+
+  // Customer History & Rewards Modal
+  const [customerModalBooking, setCustomerModalBooking] = useState(null);
+  const [customerProfile, setCustomerProfile] = useState(null);
+  const [customerBookings, setCustomerBookings] = useState([]);
+  const [customerLoading, setCustomerLoading] = useState(false);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -116,20 +180,69 @@ export default function StaffDashboard() {
     setBillError("");
     setBillSuccess("");
     setSelectedProductId("");
+    setSelectedStaffServiceId("");
     setProductQty(1);
     setBillingBooking(booking);
 
     try {
-      const [prodsRes, bookingRes] = await Promise.all([
+      const [prodsRes, bookingRes, servsRes] = await Promise.all([
         getStaffProducts(),
         getStaffBooking(booking.id).catch(() => ({ data: booking })),
+        getStaffServices().catch(() => ({ data: [] })),
       ]);
       setStaffProducts(extractList(prodsRes.data));
+      setStaffServices(extractList(servsRes.data));
       if (bookingRes.data) {
         setBillingBooking(bookingRes.data);
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  /* Add Service to Booking by Staff */
+  const handleAddServiceByStaff = async (e) => {
+    e.preventDefault();
+    if (!selectedStaffServiceId || !billingBooking) return;
+
+    setBillingLoading(true);
+    setBillError("");
+    setBillSuccess("");
+    try {
+      const res = await addServiceToBookingByStaff(billingBooking.id, selectedStaffServiceId);
+      setBillingBooking(res.data);
+      setBillSuccess("Service added to appointment!");
+      setSelectedStaffServiceId("");
+      loadDashboard();
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to add service";
+      setBillError(msg);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  /* Remove Service from Booking by Staff */
+  const handleRemoveServiceByStaff = async (itemId) => {
+    if (!billingBooking) return;
+    if (billingBooking.items?.length <= 1) {
+      setBillError("Cannot remove the only service in this appointment.");
+      return;
+    }
+
+    setBillingLoading(true);
+    setBillError("");
+    setBillSuccess("");
+    try {
+      const res = await removeServiceFromBookingByStaff(billingBooking.id, itemId);
+      setBillingBooking(res.data);
+      setBillSuccess("Service removed from appointment.");
+      loadDashboard();
+    } catch (err) {
+      const msg = err.response?.data?.message || "Failed to remove service";
+      setBillError(msg);
+    } finally {
+      setBillingLoading(false);
     }
   };
 
@@ -213,6 +326,55 @@ export default function StaffDashboard() {
     }
   };
 
+  /* Reschedule / Modify Appointment */
+  const handleOpenReschedule = (booking) => {
+    setRescheduleError("");
+    setRescheduleBooking(booking);
+    if (booking.scheduledAt) {
+      const dt = new Date(booking.scheduledAt);
+      const yyyy = dt.getFullYear();
+      const mm = String(dt.getMonth() + 1).padStart(2, "0");
+      const dd = String(dt.getDate()).padStart(2, "0");
+      const hh = String(dt.getHours()).padStart(2, "0");
+      const min = String(dt.getMinutes()).padStart(2, "0");
+      setRescheduleDate(`${yyyy}-${mm}-${dd}`);
+      setRescheduleTime(`${hh}:${min}`);
+    } else {
+      setRescheduleDate("");
+      setRescheduleTime("");
+    }
+    setRescheduleNotes(booking.note || "");
+  };
+
+  const handleRescheduleSubmit = async (e) => {
+    e.preventDefault();
+    if (!rescheduleBooking || !rescheduleDate || !rescheduleTime) {
+      setRescheduleError("Please select both a date and time.");
+      return;
+    }
+
+    setRescheduleLoading(true);
+    setRescheduleError("");
+    try {
+      const scheduledIso = `${rescheduleDate}T${rescheduleTime}:00`;
+      await updateStaffBooking(rescheduleBooking.id, {
+        scheduledAt: scheduledIso,
+        note: rescheduleNotes.trim(),
+      });
+      setRescheduleBooking(null);
+      loadDashboard();
+    } catch (err) {
+      setRescheduleError(err.response?.data?.message || "Failed to reschedule booking.");
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
+  /* Customer Profile & Rewards Inspection */
+  const handleOpenCustomerHistory = (booking) => {
+    setCustomerModalBooking(booking);
+  };
+
   /* Register Walk-In Client */
   const handleRegisterClient = async (e) => {
     e.preventDefault();
@@ -257,24 +419,79 @@ export default function StaffDashboard() {
     recentBookings: [],
   };
 
+  // Aggregate all unique bookings
+  const allList = useMemo(() => {
+    const raw = [
+      ...extractList(metrics.allBookings),
+      ...extractList(metrics.todaysBookingsList),
+      ...extractList(metrics.upcomingBookings),
+      ...extractList(metrics.completedBookings),
+      ...extractList(metrics.recentBookings),
+    ];
+    const map = new Map();
+    raw.forEach((b) => {
+      if (b && b.id && !map.has(b.id)) map.set(b.id, b);
+    });
+    return Array.from(map.values());
+  }, [metrics]);
+
+  // Today helper
+  const isTodayDate = (b) => {
+    const raw = b.scheduledAt || b.createdAt;
+    if (!raw) return false;
+    const dateStr = String(raw).slice(0, 10);
+    const now = new Date();
+    const todayISO = now.toISOString().slice(0, 10);
+    const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return dateStr === todayISO || dateStr === localToday;
+  };
+
+  // Today's Appointments
+  const todayList = useMemo(() => {
+    if (Array.isArray(metrics.todaysBookingsList) && metrics.todaysBookingsList.length > 0) {
+      return metrics.todaysBookingsList;
+    }
+    return allList.filter((b) => isTodayDate(b));
+  }, [metrics.todaysBookingsList, allList]);
+
+  // Upcoming Appointments
+  const upcomingList = useMemo(() => {
+    if (Array.isArray(metrics.upcomingBookings) && metrics.upcomingBookings.length > 0) {
+      return metrics.upcomingBookings;
+    }
+    const now = new Date();
+    return allList.filter((b) => {
+      if (b.status === "COMPLETED" || b.status === "CANCELLED") return false;
+      if (!b.scheduledAt) return false;
+      return new Date(b.scheduledAt) > now;
+    });
+  }, [metrics.upcomingBookings, allList]);
+
+  // Completed History
+  const completedList = useMemo(() => {
+    if (Array.isArray(metrics.completedBookings) && metrics.completedBookings.length > 0) {
+      return metrics.completedBookings;
+    }
+    return allList.filter((b) => b.status === "COMPLETED");
+  }, [metrics.completedBookings, allList]);
+
   // Select list based on active tab
-  const upcomingList = extractList(metrics.upcomingBookings);
-  const recentList = extractList(metrics.recentBookings);
-  const baseBookings =
-    filter === "UPCOMING"
-      ? upcomingList
-      : filter === "RECENT"
-      ? recentList
-      : [...upcomingList, ...recentList];
+  const baseBookings = useMemo(() => {
+    if (filter === "TODAY") return todayList;
+    if (filter === "UPCOMING") return upcomingList;
+    if (filter === "RECENT") return completedList;
+    if (filter === "ALL") return allList;
+    return todayList;
+  }, [filter, todayList, upcomingList, completedList, allList]);
 
   const bookingList = baseBookings.filter((b) => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     const cleanQ = q.replace(/[^a-z0-9]/g, "");
 
-    const code = (b.bookingCode || b.id || "").toLowerCase();
+    const code = (b.bookingCode || (b.id ? `GN-${b.id.slice(0, 8).toUpperCase()}` : "") || "").toLowerCase();
     const cleanCode = code.replace(/[^a-z0-9]/g, "");
-    const matchCode = code.includes(q) || (cleanQ && cleanCode.includes(cleanQ));
+    const matchCode = code.includes(q) || (cleanQ && cleanCode.includes(cleanQ)) || (b.id && b.id.toLowerCase().includes(q));
 
     const matchUser =
       (b.bookedBy && b.bookedBy.toLowerCase().includes(q)) ||
@@ -291,53 +508,369 @@ export default function StaffDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
-      {/* TOP HEADER */}
-      <header className="h-16 bg-white border-b border-groomish-slate/10 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-soft">
-        <div className="flex items-center gap-3">
-          <img
-            src="/groomish_logo_2.png"
-            alt="Groomish Now"
-            className="h-9 w-auto object-contain cursor-pointer"
+    <div className="flex min-h-screen bg-groomish-cream font-sans">
+      {/* FIXED STAFF SIDEBAR */}
+      <aside className="w-64 bg-groomish-slate text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-white/10 select-none overflow-hidden hidden lg:flex">
+        <div className="flex-1 overflow-y-auto">
+          {/* Brand Header */}
+          <div
             onClick={() => navigate("/")}
-          />
-          <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full">
-            Staff Stylist Station
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* User profile badge */}
-          <div className="flex items-center gap-2 bg-groomish-cream px-3 py-1.5 rounded-full border border-groomish-slate/10">
-            <div className="w-6 h-6 rounded-full bg-groomish-orange text-white font-bold text-xs flex items-center justify-center">
-              {user?.name?.charAt(0) || "S"}
+            className="p-6 border-b border-white/10 flex items-center gap-3 cursor-pointer group"
+          >
+            <img
+              src="/groomish_logo_2.png"
+              alt="Groomish Now"
+              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
+            />
+            <div>
+              <span className="font-heading font-extrabold text-sm tracking-wide block text-white">
+                Groomish Now
+              </span>
+              <span className="text-[10px] uppercase tracking-wider font-bold text-groomish-orange bg-groomish-orange/20 px-2 py-0.5 rounded-full inline-block">
+                Staff Portal
+              </span>
             </div>
-            <span className="text-xs font-bold text-groomish-slate">
-              {user?.name || "Stylist"}
-            </span>
           </div>
 
+          {/* Stylist Profile Card */}
+          <div
+            onClick={() => {
+              navigate("/staff/dashboard?tab=profile");
+              setFilter("BRANCH_PROFILE");
+              setPage(1);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className={`mx-4 mt-4 mb-2 p-3.5 rounded-2xl border flex items-center gap-3 cursor-pointer transition ${
+              filter === "BRANCH_PROFILE"
+                ? "bg-white/15 border-groomish-orange/50 shadow-sm"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+            }`}
+            title="View & Edit Stylist & Branch Profile"
+          >
+            <div className="w-10 h-10 rounded-xl bg-groomish-orange text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-sm">
+              {user?.name?.charAt(0) || "S"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="font-heading font-bold text-xs text-white truncate block">
+                {user?.name || "Stylist Specialist"}
+              </span>
+              <span className="text-[10px] text-white/50 block font-mono truncate">
+                {user?.email || "stylist@groomish.com"}
+              </span>
+            </div>
+            <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${filter === "BRANCH_PROFILE" ? "text-groomish-orange translate-x-0.5" : "text-white/30"}`} />
+          </div>
+
+          {/* Assigned Salon Branch Badge */}
+          {(data?.storeName || user?.storeName) && (
+            <div className="mx-4 mb-3 p-3 rounded-2xl bg-groomish-orange/10 border border-groomish-orange/20">
+              <div className="flex items-center gap-2 text-groomish-orange text-xs font-bold">
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{data?.storeName || user?.storeName}</span>
+              </div>
+              {data?.storeCode && (
+                <span className="inline-block mt-1 text-[9px] font-mono bg-groomish-orange/20 text-groomish-orange font-bold px-1.5 py-0.2 rounded">
+                  {data.storeCode}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Navigation Menu */}
+          <nav className="p-4 space-y-1.5">
+            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40 px-3 py-1">
+              Staff Navigation
+            </div>
+            <button
+              onClick={() => {
+                navigate("/staff/dashboard");
+                setFilter("TODAY");
+                setPage(1);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                filter === "TODAY" || filter === "UPCOMING" || filter === "RECENT" || filter === "ALL"
+                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <CalendarClock className="w-4 h-4" />
+                <span>Branch Bookings</span>
+              </span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                {allList.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                navigate("/staff/dashboard?tab=analytics");
+                setFilter("BRANCH_ANALYTICS");
+                setPage(1);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                filter === "BRANCH_ANALYTICS"
+                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <TrendingUp className="w-4 h-4" />
+                <span>Analysis Dashboard</span>
+              </span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                Live
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                navigate("/staff/dashboard?tab=profile");
+                setFilter("BRANCH_PROFILE");
+                setPage(1);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                filter === "BRANCH_PROFILE"
+                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <UserCheck className="w-4 h-4" />
+                <span>Stylist Profile</span>
+              </span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                Account
+              </span>
+            </button>
+
+            <div className="pt-3 text-[10px] uppercase font-bold tracking-wider text-white/40 px-3 py-1">
+              Branch Management
+            </div>
+            <button
+              onClick={() => {
+                navigate("/staff/dashboard?tab=services");
+                setFilter("BRANCH_SERVICES");
+                setPage(1);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                filter === "BRANCH_SERVICES"
+                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <Scissors className="w-4 h-4" />
+                <span>Branch Services</span>
+              </span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                Manage
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                navigate("/staff/dashboard?tab=inventory");
+                setFilter("BRANCH_INVENTORY");
+                setPage(1);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                filter === "BRANCH_INVENTORY"
+                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
+                  : "text-white/70 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <Package className="w-4 h-4" />
+                <span>Branch Inventory</span>
+              </span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                Stock
+              </span>
+            </button>
+
+            <div className="pt-3 text-[10px] uppercase font-bold tracking-wider text-white/40 px-3 py-1">
+              Quick Actions
+            </div>
+            <button
+              onClick={() => {
+                setClientError("");
+                setClientSuccess("");
+                setClientModalOpen(true);
+              }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 transition"
+            >
+              <Plus className="w-4 h-4 text-groomish-orange" />
+              <span>Register Walk-In</span>
+            </button>
+
+            <button
+              onClick={loadDashboard}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 transition"
+            >
+              <RefreshCw className={`w-4 h-4 text-groomish-orange ${loading ? "animate-spin" : ""}`} />
+              <span>Refresh Schedule</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Footer info & sign out */}
+        <div className="p-4 border-t border-white/10 space-y-2 shrink-0 bg-groomish-slate">
           <button
             onClick={() => navigate("/")}
-            className="hidden md:flex items-center gap-1.5 text-xs font-semibold text-groomish-slate/70 hover:text-groomish-slate px-2 py-1 rounded-lg transition"
-            title="Switch to customer website"
+            className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span>Website</span>
+            <span className="flex items-center gap-2">
+              <ExternalLink className="w-4 h-4" />
+              <span>Customer Website</span>
+            </span>
+            <span className="text-[10px] text-white/40">↗</span>
           </button>
 
           <button
             onClick={logout}
-            className="p-2 text-groomish-crimson hover:bg-groomish-crimsonLight rounded-full transition"
-            title="Sign Out"
+            className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-groomish-crimson hover:bg-groomish-crimson/10 transition"
           >
             <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
           </button>
         </div>
-      </header>
+      </aside>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-6">
+      {/* MAIN VIEW AREA */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* TOP HEADER (Mobile / Tablet) */}
+        <header className="h-16 bg-white border-b border-groomish-slate/10 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-soft lg:hidden">
+          <div className="flex items-center gap-3">
+            <img
+              src="/groomish_logo_2.png"
+              alt="Groomish Now"
+              className="h-9 w-auto object-contain cursor-pointer"
+              onClick={() => navigate("/")}
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full">
+                Staff Station
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={logout}
+              className="p-2 text-groomish-crimson hover:bg-groomish-crimsonLight rounded-full transition"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+
+        {/* Mobile Navigation Strip */}
+        <div className="lg:hidden bg-groomish-slate text-white px-4 py-2 flex items-center gap-2 overflow-x-auto border-b border-white/10 select-none">
+          <button
+            onClick={() => {
+              navigate("/staff/dashboard");
+              setFilter("TODAY");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              filter === "TODAY" || filter === "UPCOMING" || filter === "RECENT" || filter === "ALL"
+                ? "bg-groomish-orange text-white"
+                : "text-white/70 hover:bg-white/10"
+            }`}
+          >
+            Branch Bookings
+          </button>
+          <button
+            onClick={() => {
+              navigate("/staff/dashboard?tab=analytics");
+              setFilter("BRANCH_ANALYTICS");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              filter === "BRANCH_ANALYTICS"
+                ? "bg-groomish-orange text-white"
+                : "text-white/70 hover:bg-white/10"
+            }`}
+          >
+            Analysis Dashboard
+          </button>
+          <button
+            onClick={() => {
+              navigate("/staff/dashboard?tab=profile");
+              setFilter("BRANCH_PROFILE");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              filter === "BRANCH_PROFILE"
+                ? "bg-groomish-orange text-white"
+                : "text-white/70 hover:bg-white/10"
+            }`}
+          >
+            Stylist Profile
+          </button>
+          <button
+            onClick={() => {
+              navigate("/staff/dashboard?tab=services");
+              setFilter("BRANCH_SERVICES");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              filter === "BRANCH_SERVICES"
+                ? "bg-groomish-orange text-white"
+                : "text-white/70 hover:bg-white/10"
+            }`}
+          >
+            Branch Services
+          </button>
+          <button
+            onClick={() => {
+              navigate("/staff/dashboard?tab=inventory");
+              setFilter("BRANCH_INVENTORY");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              filter === "BRANCH_INVENTORY"
+                ? "bg-groomish-orange text-white"
+                : "text-white/70 hover:bg-white/10"
+            }`}
+          >
+            Branch Inventory
+          </button>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-6">
+        {filter === "BRANCH_PROFILE" ? (
+          <StaffProfileTab
+            onNavigateTab={(tab) => {
+              if (tab === "services") {
+                navigate("/staff/dashboard?tab=services");
+                setFilter("BRANCH_SERVICES");
+              } else if (tab === "inventory") {
+                navigate("/staff/dashboard?tab=inventory");
+                setFilter("BRANCH_INVENTORY");
+              } else {
+                navigate("/staff/dashboard");
+                setFilter("TODAY");
+              }
+            }}
+          />
+        ) : filter === "BRANCH_ANALYTICS" ? (
+          <StaffBranchAnalyticsTab
+            storeName={data?.storeName || user?.storeName}
+          />
+        ) : filter === "BRANCH_SERVICES" ? (
+          <StaffBranchServicesTab
+            storeName={data?.storeName || user?.storeName}
+          />
+        ) : filter === "BRANCH_INVENTORY" ? (
+          <StaffBranchInventoryTab
+            storeName={data?.storeName || user?.storeName}
+          />
+        ) : (
+          <>
         {/* Title & Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -454,33 +987,79 @@ export default function StaffDashboard() {
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setFilter("TODAY")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
                   filter === "TODAY"
                     ? "bg-groomish-slate text-white shadow-soft"
                     : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
                 }`}
               >
-                Today's Appointments
+                <span>Today's Appointments</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    filter === "TODAY"
+                      ? "bg-white/20 text-white"
+                      : "bg-groomish-slate/10 text-groomish-slate font-bold"
+                  }`}
+                >
+                  {todayList.length}
+                </span>
               </button>
               <button
                 onClick={() => setFilter("UPCOMING")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
                   filter === "UPCOMING"
                     ? "bg-groomish-orange text-white shadow-soft"
                     : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
                 }`}
               >
-                Upcoming
+                <span>Upcoming</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    filter === "UPCOMING"
+                      ? "bg-white/20 text-white"
+                      : "bg-groomish-slate/10 text-groomish-slate font-bold"
+                  }`}
+                >
+                  {upcomingList.length}
+                </span>
               </button>
               <button
                 onClick={() => setFilter("RECENT")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
                   filter === "RECENT"
+                    ? "bg-groomish-green text-white shadow-soft"
+                    : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
+                }`}
+              >
+                <span>Completed History</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    filter === "RECENT"
+                      ? "bg-white/20 text-white"
+                      : "bg-groomish-slate/10 text-groomish-slate font-bold"
+                  }`}
+                >
+                  {completedList.length}
+                </span>
+              </button>
+              <button
+                onClick={() => setFilter("ALL")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                  filter === "ALL"
                     ? "bg-groomish-blue text-white shadow-soft"
                     : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
                 }`}
               >
-                Completed History
+                <span>All</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    filter === "ALL"
+                      ? "bg-white/20 text-white"
+                      : "bg-groomish-slate/10 text-groomish-slate font-bold"
+                  }`}
+                >
+                  {allList.length}
+                </span>
               </button>
             </div>
 
@@ -538,7 +1117,9 @@ export default function StaffDashboard() {
             </div>
           ) : (
             <div className="divide-y divide-groomish-slate/10">
-              {bookingList.map((b) => {
+              {bookingList
+                .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                .map((b) => {
                 const firstItem = b.items?.[0];
                 const serviceName = firstItem?.serviceNameSnapshot || "Salon Care";
                 const timeStr = b.scheduledAt
@@ -584,12 +1165,39 @@ export default function StaffDashboard() {
                         </div>
 
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-extrabold bg-groomish-slate/5 text-groomish-slate border border-groomish-slate/15 tracking-wider">
-                            {b.bookingCode || b.id?.slice(0, 8)}
+                          <Link
+                            to={`/staff/bookings/${b.id}`}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-extrabold bg-groomish-slate/5 text-groomish-slate border border-groomish-slate/15 tracking-wider hover:text-groomish-orange hover:border-groomish-orange/30 transition"
+                            title="Click to view appointment details"
+                          >
+                            {b.bookingCode || (b.id ? `GN-${b.id.slice(0, 8).toUpperCase()}` : "GN-NEW")}
+                          </Link>
+                          <span className="text-xs text-groomish-slate/60 flex items-center gap-1">
+                            <span>Client:</span>
+                            {b.userId ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCustomerHistory(b)}
+                                className="font-bold text-groomish-slate hover:text-groomish-orange hover:underline underline-offset-2 transition text-left"
+                                title="Click to view client profile, orders & rewards"
+                              >
+                                {b.bookedBy || b.userName || "Walk-In Client"}
+                              </button>
+                            ) : (
+                              <b>{b.bookedBy || b.userName || "Walk-In Client"}</b>
+                            )}
                           </span>
-                          <span className="text-xs text-groomish-slate/60">
-                            Client: <b>{b.bookedBy || b.userName || "Walk-In Client"}</b>
-                          </span>
+                          {b.userId && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCustomerHistory(b)}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-groomish-orange hover:text-groomish-orangeDark bg-groomish-orange/10 hover:bg-groomish-orange/20 px-2 py-0.5 rounded-full transition"
+                              title="View client profile, orders & loyalty rewards"
+                            >
+                              <Crown className="w-3 h-3 text-groomish-gold fill-groomish-gold" />
+                              <span>Profile & Rewards</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -607,7 +1215,19 @@ export default function StaffDashboard() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {b.status !== "CANCELLED" && b.status !== "COMPLETED" && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReschedule(b)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white text-groomish-slate border border-groomish-slate/15 hover:border-groomish-orange hover:text-groomish-orange font-bold text-xs transition shadow-soft"
+                            title="Reschedule appointment date & time"
+                          >
+                            <CalendarClock className="w-3.5 h-3.5 text-groomish-orange" />
+                            <span>Reschedule</span>
+                          </button>
+                        )}
+
                         {b.status !== "CANCELLED" && (
                           <button
                             onClick={() => handleOpenBilling(b)}
@@ -643,10 +1263,13 @@ export default function StaffDashboard() {
                         )}
 
                         <button
-                          onClick={() => setSelectedBooking(b)}
-                          className="btn-secondary text-xs px-3 py-1.5"
+                          type="button"
+                          onClick={() => navigate(`/staff/bookings/${b.id}`)}
+                          className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1"
+                          title="Click to view appointment details"
                         >
-                          Details
+                          <span>Details</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -655,8 +1278,23 @@ export default function StaffDashboard() {
               })}
             </div>
           )}
+
+          {bookingList.length > 0 && (
+            <div className="p-4 border-t border-groomish-slate/10 bg-white">
+              <Pagination
+                currentPage={page}
+                totalItems={bookingList.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPage}
+                itemName="appointments"
+              />
+            </div>
+          )}
         </div>
+          </>
+        )}
       </main>
+      </div>
 
       {/* WALK-IN CLIENT MODAL */}
       <ModalWrapper
@@ -760,82 +1398,17 @@ export default function StaffDashboard() {
         </div>
       </ModalWrapper>
 
-      {/* APPOINTMENT DETAILS MODAL */}
-      <ModalWrapper
-        open={Boolean(selectedBooking)}
-        onClose={() => setSelectedBooking(null)}
-        maxWidth="max-w-md"
-      >
-        {selectedBooking && (
-          <div className="space-y-4 text-xs">
-            <div className="border-b border-groomish-slate/10 pb-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-groomish-blue bg-groomish-blueLight px-2.5 py-0.5 rounded-full inline-block mb-1">
-                Booking ID: {selectedBooking.bookingCode || selectedBooking.id?.slice(0, 8)}
-              </span>
-              <h2 className="text-xl font-heading font-bold text-groomish-slate">
-                Appointment Information
-              </h2>
-            </div>
-
-            <div className="bg-groomish-cream/70 rounded-2xl p-4 border border-groomish-slate/10 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-groomish-slate/60">Client:</span>
-                <span className="font-bold text-groomish-slate">{selectedBooking.bookedBy || "Walk-In Client"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-groomish-slate/60">Scheduled Time:</span>
-                <span className="font-medium text-groomish-slate">
-                  {new Date(selectedBooking.scheduledAt).toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-groomish-slate/60">Status:</span>
-                <span className="font-bold text-groomish-orange">{selectedBooking.status}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-groomish-slate/60">Total Paid:</span>
-                <span className="font-extrabold text-groomish-slate text-sm">
-                  ₹{selectedBooking.pricePaid ?? selectedBooking.totalAmount}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-bold text-groomish-slate mb-2">Service Line Items</h4>
-              <div className="space-y-1.5">
-                {selectedBooking.items?.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex justify-between items-center p-2.5 rounded-xl bg-white border border-groomish-slate/10"
-                  >
-                    <span>{item.serviceNameSnapshot} ({item.serviceDurationSnapshot} mins)</span>
-                    <span className="font-bold">₹{item.servicePriceSnapshot}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => setSelectedBooking(null)}
-              className="btn-secondary w-full py-2.5"
-            >
-              Close
-            </button>
-          </div>
-        )}
-      </ModalWrapper>
-
       {/* STORE PRODUCTS & ITEMIZED BILLING MODAL */}
       <ModalWrapper
         open={Boolean(billingBooking)}
         onClose={() => setBillingBooking(null)}
-        maxWidth="max-w-lg"
+        maxWidth="max-w-2xl"
       >
         {billingBooking && (
           <div className="space-y-4 text-xs">
             <div className="border-b border-groomish-slate/10 pb-3">
               <span className="text-[11px] font-bold uppercase tracking-wider text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full inline-block mb-1">
-                Ref: {billingBooking.bookingCode || billingBooking.id?.slice(0, 8)}
+                Ref: {billingBooking.bookingCode || (billingBooking.id ? `GN-${billingBooking.id.slice(0, 8).toUpperCase()}` : "")}
               </span>
               <h2 className="text-xl font-heading font-bold text-groomish-slate">
                 Add Products & Final Bill
@@ -859,16 +1432,98 @@ export default function StaffDashboard() {
               </div>
             )}
 
-            {/* Base Service Info */}
-            <div className="p-3.5 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/10 space-y-1">
-              <div className="flex justify-between font-bold text-groomish-slate">
-                <span>Salon Treatment:</span>
-                <span className="text-groomish-orange">{billingBooking.serviceName || "Signature Care"}</span>
+            {/* Salon Services in Appointment */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-bold text-groomish-slate flex items-center gap-1.5">
+                  <Scissors className="w-4 h-4 text-groomish-orange" />
+                  <span>Salon Services ({billingBooking.items?.length || 1})</span>
+                </h4>
+                <span className="text-[11px] text-groomish-slate/60">
+                  Client: <strong className="text-groomish-slate">{billingBooking.userName || billingBooking.bookedBy || "Walk-In Guest"}</strong>
+                </span>
               </div>
-              <div className="flex justify-between text-groomish-slate/70">
-                <span>Client:</span>
-                <span className="font-semibold">{billingBooking.userName || billingBooking.bookedBy || "Walk-In Guest"}</span>
+
+              {/* Service Items List */}
+              <div className="space-y-2">
+                {billingBooking.items && billingBooking.items.length > 0 ? (
+                  groupBookingServices(billingBooking.items).map((grp, idx) => (
+                    <div
+                      key={grp.serviceId || grp.serviceName || idx}
+                      className="p-3 rounded-xl bg-white border border-groomish-slate/10 flex items-center justify-between gap-3 shadow-soft"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-6 h-6 rounded-md bg-groomish-orangeLight text-groomish-orange font-bold flex items-center justify-center text-[10px] shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold text-groomish-slate truncate">
+                              {grp.serviceName}{grp.quantity > 1 ? ` X ${grp.quantity}` : ""}
+                            </p>
+                            {grp.quantity > 1 && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-orange text-white shrink-0">
+                                × {grp.quantity}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-groomish-slate/50">
+                            {grp.durationMinutes} mins
+                            {grp.quantity > 1 && ` (₹${grp.unitPrice} each)`}
+                            {" • Status: "}{grp.status || "CONFIRMED"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-extrabold text-groomish-slate">₹{grp.totalPrice}</span>
+                        {billingBooking.status !== "COMPLETED" && billingBooking.items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveServiceByStaff(grp.itemIds[grp.itemIds.length - 1])}
+                            className="p-1.5 text-groomish-crimson hover:bg-groomish-crimson/10 rounded-lg transition"
+                            title={grp.quantity > 1 ? "Remove 1 quantity" : "Remove service"}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 rounded-xl bg-white border border-groomish-slate/10 flex items-center justify-between">
+                    <span className="font-bold text-groomish-slate">{billingBooking.serviceName || "Salon Service"}</span>
+                    <span className="font-extrabold text-groomish-slate">₹{billingBooking.totalAmount}</span>
+                  </div>
+                )}
               </div>
+
+              {/* Add Service by Stylist Form */}
+              {billingBooking.status !== "COMPLETED" && (
+                <form onSubmit={handleAddServiceByStaff} className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-groomish-cream/40 p-2.5 rounded-xl border border-groomish-slate/10">
+                  <div className="flex-1 min-w-0">
+                    <CustomSelect
+                      value={selectedStaffServiceId}
+                      onChange={(e) => setSelectedStaffServiceId(e.value || e.target.value)}
+                      placeholder="-- Add Service to Appointment --"
+                      searchPlaceholder="Search services..."
+                      searchable={true}
+                      options={staffServices.map((s) => ({
+                        value: s.id,
+                        label: `${s.name} (₹${s.price} • ${s.durationMinutes}m)`,
+                      }))}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!selectedStaffServiceId || billingLoading}
+                    className="btn-primary py-2.5 px-4 text-xs shrink-0 flex items-center justify-center gap-1.5 font-bold shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Service</span>
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* Attached Products List */}
@@ -887,27 +1542,29 @@ export default function StaffDashboard() {
                   {billingBooking.products.map((bp) => (
                     <div
                       key={bp.id}
-                      className="p-2.5 rounded-xl bg-white border border-groomish-slate/10 flex items-center justify-between gap-3 shadow-soft"
+                      className="p-3 rounded-xl bg-white border border-groomish-slate/10 flex items-center justify-between gap-3 shadow-soft"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-8 h-8 rounded-lg bg-groomish-cream flex items-center justify-center shrink-0">
                           <Package className="w-4 h-4 text-groomish-orange" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-groomish-slate truncate">{bp.productName}</p>
+                          <p className="font-bold text-groomish-slate truncate">
+                            {bp.productName}{bp.quantity > 1 ? ` X ${bp.quantity}` : ""}
+                          </p>
                           <p className="text-[10px] text-groomish-slate/50">
                             Qty: {bp.quantity} × ₹{bp.unitPrice}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className="font-extrabold text-groomish-slate">₹{bp.totalPrice}</span>
                         {billingBooking.status !== "COMPLETED" && (
                           <button
                             type="button"
                             onClick={() => handleRemoveProduct(bp.id)}
-                            className="p-1 text-groomish-crimson hover:bg-groomish-crimson/10 rounded-lg transition"
+                            className="p-1.5 text-groomish-crimson hover:bg-groomish-crimson/10 rounded-lg transition"
                             title="Remove product"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -922,42 +1579,49 @@ export default function StaffDashboard() {
 
             {/* Add Product Form (if not completed) */}
             {billingBooking.status !== "COMPLETED" && (
-              <form onSubmit={handleAddProduct} className="p-3.5 rounded-2xl bg-white border border-groomish-slate/15 space-y-3">
+              <form onSubmit={handleAddProduct} className="p-3.5 rounded-2xl bg-groomish-cream/40 border border-groomish-slate/15 space-y-2.5">
                 <label className="block font-bold text-groomish-slate text-[11px] uppercase tracking-wider">
                   Add Product from Store Inventory
                 </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="flex-1 min-w-0">
                     <CustomSelect
                       value={selectedProductId}
                       onChange={(e) => setSelectedProductId(e.value || e.target.value)}
                       placeholder="-- Choose Store Product --"
+                      searchPlaceholder="Search 100+ store products..."
+                      searchable={true}
                       options={staffProducts.map((p) => ({
                         value: p.id,
                         label: `${p.name} (${p.volumeOrSize || p.category}) - ₹${p.price} [Stock: ${p.stockQuantity}]`
                       }))}
-                      className="py-2 text-xs"
+                      className="text-xs"
                     />
                   </div>
 
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={productQty}
-                    onChange={(e) => setProductQty(e.target.value)}
-                    className="input-groomish w-16 text-center text-xs py-2 font-bold"
-                    title="Quantity"
-                  />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 bg-white border border-groomish-slate/15 rounded-xl px-2.5 py-1.5">
+                      <span className="text-[10px] text-groomish-slate/50 font-bold uppercase">Qty</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={productQty}
+                        onChange={(e) => setProductQty(e.target.value)}
+                        className="w-10 text-center text-xs font-bold outline-none bg-transparent"
+                        title="Quantity"
+                      />
+                    </div>
 
-                  <button
-                    type="submit"
-                    disabled={billingLoading || !selectedProductId}
-                    className="btn-secondary text-xs px-3 py-2 shrink-0 flex items-center gap-1 font-bold"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
-                  </button>
+                    <button
+                      type="submit"
+                      disabled={billingLoading || !selectedProductId}
+                      className="btn-primary text-xs px-4 py-2.5 shrink-0 flex items-center justify-center gap-1 font-bold shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add</span>
+                    </button>
+                  </div>
                 </div>
               </form>
             )}
@@ -1011,6 +1675,107 @@ export default function StaffDashboard() {
           </div>
         )}
       </ModalWrapper>
+
+      {/* ============================================================ */}
+      {/* RESCHEDULE APPOINTMENT MODAL                                 */}
+      {/* ============================================================ */}
+      <ModalWrapper
+        open={Boolean(rescheduleBooking)}
+        onClose={() => setRescheduleBooking(null)}
+        title="Reschedule Appointment"
+      >
+        {rescheduleBooking && (
+          <form onSubmit={handleRescheduleSubmit} className="space-y-4">
+            <div className="p-3.5 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/10 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-groomish-slate/60 font-medium">Client</p>
+                <p className="text-sm font-bold text-groomish-slate">
+                  {rescheduleBooking.bookedBy || rescheduleBooking.userName || "Walk-In Client"}
+                </p>
+              </div>
+              <span className="font-mono text-xs px-2.5 py-1 rounded-lg bg-white border border-groomish-slate/10 font-extrabold text-groomish-slate">
+                {rescheduleBooking.bookingCode || (rescheduleBooking.id ? `GN-${rescheduleBooking.id.slice(0, 8).toUpperCase()}` : "")}
+              </span>
+            </div>
+
+            {rescheduleError && (
+              <div className="p-3 rounded-xl bg-groomish-crimsonLight text-groomish-crimson text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{rescheduleError}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-groomish-slate mb-1">New Date</label>
+                <input
+                  type="date"
+                  required
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-groomish-slate/20 focus:border-groomish-orange focus:ring-1 focus:ring-groomish-orange text-xs text-groomish-slate font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-groomish-slate mb-1">New Time</label>
+                <input
+                  type="time"
+                  required
+                  value={rescheduleTime}
+                  onChange={(e) => setRescheduleTime(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-groomish-slate/20 focus:border-groomish-orange focus:ring-1 focus:ring-groomish-orange text-xs text-groomish-slate font-medium"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-groomish-slate mb-1">
+                Stylist Notes / Special Instructions
+              </label>
+              <textarea
+                rows={3}
+                value={rescheduleNotes}
+                onChange={(e) => setRescheduleNotes(e.target.value)}
+                placeholder="Client requested to postpone by 1 hour, hair wash required first..."
+                className="w-full p-3 rounded-xl border border-groomish-slate/20 focus:border-groomish-orange focus:ring-1 focus:ring-groomish-orange text-xs text-groomish-slate"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setRescheduleBooking(null)}
+                className="btn-secondary flex-1 py-2.5 text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={rescheduleLoading}
+                className="btn-primary flex-1 py-2.5 text-xs flex items-center justify-center gap-1.5"
+              >
+                <CalendarClock className="w-4 h-4" />
+                <span>{rescheduleLoading ? "Saving..." : "Update Schedule"}</span>
+              </button>
+            </div>
+          </form>
+        )}
+      </ModalWrapper>
+
+      {/* ============================================================ */}
+      {/* CUSTOMER PROFILE, ORDERS & REWARDS MODAL                     */}
+      {/* ============================================================ */}
+      <CustomerProfileModal
+        customerId={customerModalBooking?.userId}
+        initialData={{
+          id: customerModalBooking?.userId,
+          name: customerModalBooking?.bookedBy || customerModalBooking?.userName,
+          email: customerModalBooking?.userEmail,
+          phone: customerModalBooking?.userPhone,
+        }}
+        open={Boolean(customerModalBooking)}
+        onClose={() => setCustomerModalBooking(null)}
+      />
     </div>
   );
 }

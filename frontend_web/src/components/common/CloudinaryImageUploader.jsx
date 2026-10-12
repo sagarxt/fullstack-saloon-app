@@ -18,9 +18,9 @@ export default function CloudinaryImageUploader({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError("Image size exceeds 10MB limit.");
+    // Validate size (max 25MB)
+    if (file.size > 25 * 1024 * 1024) {
+      setError("Image size exceeds 25MB limit.");
       return;
     }
 
@@ -38,6 +38,7 @@ export default function CloudinaryImageUploader({
       console.error("Cloudinary upload failed:", err);
       setError(
         err.response?.data?.message ||
+        err.response?.data?.error ||
         err.message ||
         "Upload to Cloudinary failed. Check file format or network."
       );

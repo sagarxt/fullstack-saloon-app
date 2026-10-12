@@ -5,6 +5,7 @@ import Footer from "../../components/Footer";
 import BookingFlowModal from "../../components/modals/BookingFlowModal";
 import AuthModal from "../../components/modals/AuthModal";
 import CustomSelect from "../../components/common/CustomSelect";
+import Pagination from "../../components/common/Pagination";
 import { getServices, getCategories } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { extractList } from "../../utils/dataHelper";
@@ -30,7 +31,14 @@ export default function PublicServicesPage() {
   const [genderFilter, setGenderFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("DEFAULT");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCategory, genderFilter, search, sortBy]);
 
   // Modals
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -154,7 +162,7 @@ export default function PublicServicesPage() {
 
             {/* Live Search Bar */}
             <div className="mt-6 max-w-md mx-auto relative">
-              <Search className="w-4 h-4 text-groomish-slate/40 absolute left-4 top-3.5" />
+              <Search className="w-4 h-4 text-groomish-slate/40 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -196,9 +204,9 @@ export default function PublicServicesPage() {
             </div>
 
             {/* Gender Filter & Sorting */}
-            <div className="flex items-center gap-2.5 shrink-0 justify-between sm:justify-end">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 justify-between sm:justify-end w-full md:w-auto">
               {/* Gender selector */}
-              <div className="flex bg-groomish-cream p-1 rounded-xl text-xs font-semibold">
+              <div className="flex bg-groomish-cream p-1 rounded-xl text-xs font-semibold shrink-0">
                 {["ALL", "FEMALE", "MALE", "UNISEX"].map((g) => (
                   <button
                     key={g}
@@ -224,7 +232,7 @@ export default function PublicServicesPage() {
                   { value: "PRICE_HIGH", label: "Price: High to Low" },
                   { value: "DURATION", label: "Duration: Shortest" },
                 ]}
-                containerClassName="w-48 shrink-0"
+                containerClassName="flex-1 sm:w-44 sm:flex-none min-w-[130px]"
               />
             </div>
           </div>
@@ -258,8 +266,11 @@ export default function PublicServicesPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredServices.map((service) => {
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredServices
+                .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                .map((service) => {
                 const categoryObj = categories.find((c) => c.id === service.categoryId);
                 const categoryName = categoryObj ? categoryObj.name : "Salon Service";
                 const imgSrc =
@@ -355,8 +366,21 @@ export default function PublicServicesPage() {
                 );
               })}
             </div>
-          )}
-        </section>
+
+            {filteredServices.length > 0 && (
+              <div className="mt-8 bg-white p-4 rounded-2xl border border-groomish-slate/10 shadow-soft">
+                <Pagination
+                  currentPage={page}
+                  totalItems={filteredServices.length}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={setPage}
+                  itemName="services"
+                />
+              </div>
+            )}
+          </>
+        )}
+      </section>
       </main>
 
       <Footer />

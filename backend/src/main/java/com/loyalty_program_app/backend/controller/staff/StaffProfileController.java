@@ -1,12 +1,15 @@
 package com.loyalty_program_app.backend.controller.staff;
 
-import com.loyalty_program_app.backend.dto.user.CustomerProfileUpdateRequest;
-import com.loyalty_program_app.backend.dto.user.UserResponse;
+import com.loyalty_program_app.backend.dto.staff.StaffProfileResponse;
+import com.loyalty_program_app.backend.dto.staff.UpdateStaffProfileRequest;
+import com.loyalty_program_app.backend.dto.user.ChangePasswordRequest;
 import com.loyalty_program_app.backend.service.staff.StaffProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -16,20 +19,23 @@ public class StaffProfileController {
 
     private final StaffProfileService staffProfileService;
 
-    private UUID getCurrentStaffId(HttpServletRequest request) {
-        return UUID.fromString((String) request.getAttribute("userId"));
+    private UUID getStaffId(HttpServletRequest req) {
+        return UUID.fromString((String) req.getAttribute("userId"));
     }
 
-    @GetMapping("/me")
-    public UserResponse getProfile(HttpServletRequest request) {
-        return staffProfileService.getProfile(getCurrentStaffId(request));
+    @GetMapping
+    public StaffProfileResponse getProfile(HttpServletRequest req) {
+        return staffProfileService.getProfile(getStaffId(req));
     }
 
-    @PutMapping("/me")
-    public UserResponse updateProfile(
-            HttpServletRequest request,
-            @RequestBody CustomerProfileUpdateRequest requestBody
-    ) {
-        return staffProfileService.updateProfile(getCurrentStaffId(request), requestBody);
+    @PutMapping
+    public StaffProfileResponse updateProfile(HttpServletRequest req, @RequestBody UpdateStaffProfileRequest request) {
+        return staffProfileService.updateProfile(getStaffId(req), request);
+    }
+
+    @PutMapping("/change-password")
+    public ResponseEntity<?> changePassword(HttpServletRequest req, @RequestBody ChangePasswordRequest request) {
+        staffProfileService.changePassword(getStaffId(req), request);
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully."));
     }
 }

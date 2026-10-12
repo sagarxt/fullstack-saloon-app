@@ -8,7 +8,7 @@
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Cloudinary](https://img.shields.io/badge/Cloudinary-Media-3448C5?style=for-the-badge&logo=cloudinary&logoColor=white)](https://cloudinary.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
@@ -16,7 +16,7 @@
   A state-of-the-art fullstack salon operating system uniting customer self-service booking, retail product e-commerce, stylist station queues, real-time GST tax invoicing, multi-tiered VIP loyalty points, and deep administrative control.
 </p>
 
-[Explore Features](#-feature-highlights) • [Architecture](#-system-architecture) • [Database Schema](#-database-schema--data-model) • [API Reference](#-api-endpoints-reference) • [Upcoming Roadmap](#-upcoming-roadmap-multi-store--notifications) • [Quickstart](#-quickstart--local-setup)
+[Explore Features](#-feature-highlights) • [Image Guidelines](#️-recommended-image-dimensions--guidelines) • [Architecture](#-system-architecture) • [Database Schema](#-database-schema--data-model) • [API Reference](#-api-endpoints-reference) • [Quickstart](#-quickstart--local-setup)
 
 </div>
 
@@ -34,6 +34,22 @@ Groomish Now is designed with a bespoke luxury aesthetic featuring tailored colo
 | **Cream Canvas** | `#FAF6ED` | `■` | App background, subtle card surfaces, pills |
 | **Emerald Green** | `#34A955` | `■` | Completed states, success toasts, verified chips |
 | **Crimson Rose** | `#EA4158` | `■` | Error badges, cancellations, urgent warnings |
+
+---
+
+## 🖼️ Recommended Image Dimensions & Guidelines
+
+For optimal responsiveness, fast CDN delivery, and crisp retina display rendering across **Groomish Now** web and mobile platforms:
+
+| Entity | Recommended Dimension | Aspect Ratio | Resolution Range | Max File Size | Best File Formats | Purpose & Best Practices |
+| :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| **Category** | **600 × 600 px** | **1:1 (Square)** | 400×400 to 800×800 px | < 150 KB | WebP / PNG / JPG | Rendered in circular or rounded square category tiles. Use clean, centered service icons or isolated salon cuts with minimal background noise. |
+| **Services** | **800 × 600 px** (or **1200 × 800 px**) | **4:3** or **3:2** | 600×450 to 1200×900 px | < 250 KB | WebP / JPG | Used in service cards and booking modals. 4:3 provides optimal vertical space to showcase haircuts, beard trims, facials, and styling without cropping heads. |
+| **Products** | **1000 × 1000 px** | **1:1 (Square)** | 800×800 to 1200×1200 px | < 200 KB | WebP / PNG / JPG | Standard e-commerce square ratio. Shows the product bottle/pack centered on a clean white or light-neutral background (`#F9F9FB`), allowing seamless zoom & multi-angle gallery viewing. |
+| **Store / Salons** | **1200 × 675 px** (or **1200 × 800 px**) | **16:9** or **3:2** | 960×540 to 1600×900 px | < 350 KB | WebP / JPG | Wide landscape format is essential for storefronts, reception lounges, interior styling stations, and hair spa washing units. Supports multi-image salon photo galleries. |
+
+> [!TIP]
+> **Cloudinary Optimization Rule:** Always deliver images through Cloudinary with automated format and compression (`f_auto,q_auto`) to achieve ultra-fast load times (40–90 KB) without sacrificing retina display crispness.
 
 ---
 
@@ -58,26 +74,51 @@ Groomish Now is designed with a bespoke luxury aesthetic featuring tailored colo
   - Paginated customer reviews, star breakdown ratings, and public rating summaries.
   - Interactive 5-star review modal submitter for authenticated clients.
 
-### ✂️ 2. Stylist Station (`/staff/dashboard`)
-- **Queue Monitor**: Live queue of upcoming, in-progress, and completed appointments for the day.
+### ✂️ 2. Stylist Station & Branch Operations (`/staff/*`)
+- **Queue Monitor & Branch Bookings**:
+  - Filter tabs (**Today's**, **Upcoming**, **Completed**, **All**) with dynamic badge counters.
+  - Quick access links to dedicated appointment consoles (`/staff/bookings/:id`).
+  - Cleaned layout with removal of redundant top header banners, keeping focus on operations.
+- **Dedicated Staff Booking Detail Console (`/staff/bookings/:id`)**:
+  - Interactive booking timeline tracking appointment progression (`PENDING` -> `CONFIRMED` -> `IN_PROGRESS` -> `COMPLETED`).
+  - Searchable Groomish-themed dropdowns for attaching services and retail products to the bill.
+  - Multiplier quantity displays: `Item Name X {quantity}` format for multiple units.
+  - Itemized financial breakdown (Services, Products, Subtotal, GST, Discounts, Final Bill).
+  - Status transitions (Start Service, Complete & Send Bill Email, Cancel).
+- **Branch Visual Analytics Dashboard (`/staff/dashboard?tab=analytics`)**:
+  - Timeframe selector: **Day**, **Week**, **Month**, and **Custom Range** (with `CustomDatePicker`).
+  - Real-time KPI metric cards: Total Revenue (₹), Appointments Handled, Completed Ratio, Average Ticket Value.
+  - Dual Visualization: **Bar Chart** (default) and **Line Chart** toggle with smooth SVG curve rendering, gradient fills, and interactive data point hover tooltips.
+  - Metric toggle between **Revenue (₹)** and **Appointments**.
+- **Staff Stylist Profile & Branch Information Hub (`/staff/dashboard?tab=profile`)**:
+  - Personal info editor for quick Name and Phone updates.
+  - Secure Change Password dialog with BCrypt verification and email alerts.
+  - Full Assigned Salon Branch card showing branch code, name, phone, email, full address, operating hours, and active status.
 - **Walk-in Client Registration**: Fast-track customer enrollment with automatic loyalty account creation.
-- **In-Store Retail Product Attachment**: Stylists can attach store inventory items directly to client appointments with real-time stock deductions.
-- **One-Click Bill & Complete**: Marking an appointment complete awards loyalty points, saves itemized snapshots, and triggers an official payment receipt email.
 
-### 👑 3. Super Admin Command Center (`/admin/*`)
+### 📍 3. Multi-Store Geolocation & Branch Catalog Architecture
+- **Nearest Store Proximity Engine**: Automatic GPS geolocation detection using Haversine formula calculation (Earth radius 6371 km) with distance tags (e.g. `📍 1.2 km away`).
+- **Interactive Navbar Store Selector**: Real-time store dropdown with live search, GPS re-detect, thumbnail previews, operating hours, and click-to-switch.
+- **Localized Branch Catalog Overrides**:
+  - `StoreServiceAvailability`: Enables branch-specific pricing, custom durations, and active toggles per salon.
+  - `StoreProductInventory`: Branch-level retail product stock tracking, low-stock indicators, and in-store pickup flags.
+- **Multi-Image Salon Gallery**: Cloudinary image galleries (up to 6 photos) showcasing storefronts, reception lounges, and hair spa stations.
+
+### 👑 4. Super Admin Command Center (`/admin/*`)
 - **Real-Time Analytics**: Live metrics on daily revenue, appointments, active clients, and treatment distribution.
+- **Multi-Branch Management (`/admin/stores`)**: CRUD operations for salon branches with coordinates detection, Cloudinary photo uploads, custom opening/closing time pickers (`CustomTimePicker`), and Google Maps deep-links.
 - **Catalog Management**: CRUD operations for Categories, Services, and Store Products with Cloudinary image uploaders.
 - **Compact One-Pager Modals**: Redesigned dialogs (`AddServiceModal`, `EditServiceModal`) fitting comfortably on single screens without vertical scrollbars.
 - **Universal Multi-Criteria Booking Search**: Universal search matching 10-digit booking codes, client names, phone numbers, and service titles.
 - **Client & Stylist Directory**: Complete control over loyalty tiers, manual point adjustments, and staff assignments.
 - **Reviews Moderation & Coupons**: Promotional discounts (flat amount or percentage) with expiry controls and review deletion moderation.
 
-### 💎 4. VIP Loyalty & Gamification Engine
-- **Tier Progression**: Automatic advancement through **Silver**, **Gold**, **Platinum**, and **Diamond** based on cumulative salon spending.
+### 💎 5. VIP Loyalty & Gamification Engine
+- **Lifetime Tier Progression**: Automatic advancement through **Silver**, **Gold**, **Platinum**, and **Diamond** based on cumulative lifetime salon spending (no tier downgrade when redeeming points for vouchers).
 - **Points Ledger**: Transparent audit trail tracking points earned (+1 pt per ₹100 spent) and points redeemed for vouchers.
 - **Viral Referral System**: Unique alphanumeric referral codes generated on signup with 1-click clipboard copy and WhatsApp sharing links.
 
-### 📧 5. Asynchronous Gmail SMTP & Tax Invoicing
+### 📧 6. Asynchronous Gmail SMTP & Tax Invoicing
 - **Non-Blocking Delivery**: Powered by Spring Boot `@Async` thread pools for instant UI responsiveness.
 - **Branded Transactional Templates**:
   - `sendOtp`: Secure email OTP verification with Groomish branding.
@@ -85,8 +126,13 @@ Groomish Now is designed with a bespoke luxury aesthetic featuring tailored colo
   - `sendBookingConfirmation`: Appointment time, stylist, and service details.
   - `sendPaymentBillEmail`: Comprehensive tax invoice generated upon service completion with itemized breakdown of services, retail products, GST, discount, and Groomish points earned.
 
-### 🚀 6. State-of-the-Art UX & System Hardening
-- **Custom Smooth Rounded Selects (`CustomSelect.jsx`)**: Floating `rounded-2xl` custom dropdowns with animated chevrons, checkmark badges, and hover transitions replacing blocky native OS `<select>` elements.
+### 🎨 7. Bespoke Groomish Design System & UI Components
+- **`CustomDatePicker.jsx`**: Fully custom calendar picker themed in Groomish Coral (`#FC6957`) and Charcoal Slate (`#373A43`), with month/year navigation, today indicator, active day styling, and Quick Select buttons ("Today", "Clear").
+- **`CustomTimePicker.jsx`**: Interactive 12-hour AM/PM time selector with presets for branch opening and closing times.
+- **`CustomSelect.jsx` (Searchable Dropdown)**: Upgraded with sticky search bar (`searchable={true}`) for searching 100+ services and products without scrolling.
+- **Global Select & Form Styling (`index.css`)**: Groomish orange SVG chevron, rounded borders, focus glow, and custom `-webkit-calendar-picker-indicator` filter.
+- **Item Multiplier Display (`Item Name X {quantity}`)**: Automatically formatted across staff, admin, and customer booking views when multiple quantities exist.
+- **Global Modal Confirmation & Alert Hub (`ConfirmContext.jsx`)**: Replaced all native browser `window.confirm()` and `alert()` calls across the entire application with branded Groomish modal popups.
 - **Centralized 401 Session Interceptor**: Automatically purges expired credentials from `localStorage`, displays a branded authentication toast, and smoothly redirects unauthenticated visitors to `/login`.
 - **Global Stacking Toast Hub**: Floating notifications container (`fixed top-5 right-5 z-[99999]`) supporting `useToast()` hooks and non-React `toastEmitter.*` calls.
 - **Resilient Data Extraction (`extractList`)**: Universal normalizer preventing frontend crashes across Spring Boot `Page<T>` and raw JSON array payloads.
@@ -201,7 +247,7 @@ graph TD
 | `POST` | `/api/v1/auth/send-otp` | Request OTP verification code via Gmail | Public |
 | `POST` | `/api/v1/auth/verify-otp` | Verify OTP code | Public |
 
-### 🌐 2. Public Catalog & Store (`/api/v1/public`)
+### 🌐 2. Public Catalog, Stores & Reviews (`/api/v1/public`)
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/public/categories` | Browse all active salon categories | Public |
@@ -209,6 +255,9 @@ graph TD
 | `GET` | `/api/v1/public/services/{id}` | Detailed service metadata and pricing | Public |
 | `GET` | `/api/v1/public/products` | Browse active retail store products | Public |
 | `GET` | `/api/v1/public/products/category/{cat}` | Filter store products by category | Public |
+| `GET` | `/api/v1/public/stores` | List branches sorted by distance (`?lat=..&lng=..`) | Public |
+| `GET` | `/api/v1/public/stores/{id}/services` | Localized services available at branch | Public |
+| `GET` | `/api/v1/public/stores/{id}/products` | Localized retail products in stock at branch | Public |
 | `GET` | `/api/v1/public/reviews/service/{id}` | Verified customer reviews for a service | Public |
 | `GET` | `/api/v1/public/reviews/service/{id}/summary` | Aggregate star ratings and review counts | Public |
 
@@ -225,25 +274,36 @@ graph TD
 | `GET` | `/api/v1/customer/rewards` | Browse redeemable loyalty vouchers | Customer |
 | `POST` | `/api/v1/customer/rewards/{id}/redeem` | Spend points to claim voucher | Customer |
 
-### ✂️ 4. Staff Stylist Station (`/api/v1/staff`)
+### ✂️ 4. Staff Stylist Station & Branch Operations (`/api/v1/staff`)
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/staff/dashboard` | Stylist queue, completed count, and daily billing stats | Staff |
+| `GET` | `/api/v1/staff/dashboard/analytics` | Branch revenue & appointment trends (`?period=...`) | Staff |
+| `GET` | `/api/v1/staff/profile` | Stylist profile and assigned salon branch specifications | Staff |
+| `PUT` | `/api/v1/staff/profile` | Update stylist personal details (Name, Phone) | Staff |
+| `PUT` | `/api/v1/staff/profile/change-password` | Change account password with BCrypt verification | Staff |
 | `POST` | `/api/v1/staff/customers` | Register walk-in client with auto loyalty account | Staff |
 | `GET` | `/api/v1/staff/products` | Store inventory available for appointment attachment | Staff |
 | `POST` | `/api/v1/staff/booking/{id}/add-product` | Attach retail product to client's booking bill | Staff |
 | `DELETE` | `/api/v1/staff/booking/{id}/product/{pId}` | Remove retail product from booking bill | Staff |
 | `POST` | `/api/v1/staff/booking/{id}/complete-and-bill` | Complete service, deduct inventory & email tax receipt | Staff |
+| `GET` | `/api/v1/staff/stores/catalog/services` | View localized services configured for branch | Staff |
+| `GET` | `/api/v1/staff/stores/catalog/products` | View localized inventory for branch | Staff |
 
 ### 👑 5. Super Admin Command Center (`/api/v1/admin`)
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/admin/dashboard` | High-level analytics and revenue aggregations | Admin |
+| `GET/POST` | `/api/v1/admin/stores` | List branches or create new salon branch | Admin |
+| `PUT/DELETE`| `/api/v1/admin/stores/{id}` | Update branch details or toggle active status | Admin |
+| `GET/PUT` | `/api/v1/admin/stores/{id}/catalog/services` | Manage branch-specific service price overrides | Admin |
+| `GET/PUT` | `/api/v1/admin/stores/{id}/catalog/products` | Manage branch-specific product stock counts | Admin |
 | `GET/POST` | `/api/v1/admin/categories` | List or create salon treatment categories | Admin |
 | `GET/POST` | `/api/v1/admin/services` | List or create treatments with pricing & duration | Admin |
 | `PUT/DELETE`| `/api/v1/admin/services/{id}` | Update or toggle service status | Admin |
 | `GET/POST` | `/api/v1/admin/products` | Manage retail product inventory catalog | Admin |
 | `GET` | `/api/v1/admin/bookings` | Search and filter all bookings with code lookup | Admin |
+| `PUT` | `/api/v1/admin/bookings/{id}/status` | Update booking status (`CONFIRMED`, `COMPLETED`, etc.) | Admin |
 | `GET/POST` | `/api/v1/admin/coupons` | Manage promotional coupons and discount thresholds | Admin |
 | `POST` | `/api/v1/admin/upload` | Upload images directly into Cloudinary folders | Admin |
 | `DELETE` | `/api/v1/admin/reviews/{id}` | Moderate or remove abusive reviews | Admin |
@@ -252,30 +312,62 @@ graph TD
 
 ## 🎯 Upcoming Roadmap: Multi-Store & Notifications
 
-### 📍 Milestone 1: Multi-Store Architecture & Geolocation Engine
-- [ ] **Backend `Store.java` Entity & Management**:
-  - Model fields: `id`, `name`, `code` (e.g., `GN-BLR-INDIRANAGAR`), `address`, `city`, `phone`, `coverImage` (via Cloudinary `groomishnow/stores`), `latitude`, `longitude`, `active`, `openingHours`.
-  - Admin Store CRUD APIs (`/api/v1/admin/stores`) to create, update, deactivate, and manage branches.
-  - Public Store APIs (`/api/v1/public/stores`) with geospatial sorting.
-- [ ] **Automated Geolocation & Nearest Store Suggestion**:
-  - Utilize browser Geolocation API (`navigator.geolocation.getCurrentPosition()`) on initial visitor arrival.
-  - Compute distances using the Haversine formula against active store coordinates to auto-select the nearest branch.
-- [ ] **Navbar Store Selector**:
-  - Interactive pill placed beside the Groomish logo in `Navbar.jsx` displaying **Store Name** and **Neighborhood / City**.
-  - Dropdown popover with live search, distance metrics (e.g. `1.8 km away`), address preview, and 1-click store switching.
-- [ ] **Store-Linked Staff & Branch Queues**:
-  - Staff accounts linked to a specific `storeId`.
-  - Staff login automatically scopes the session and redirects to their branch's station dashboard.
-- [ ] **Store-Aware Appointments & Admin Filtering**:
-  - Bookings capture `storeId` / store snapshot during customer checkout.
+### 📍 Milestone 1: Multi-Store Architecture & Geolocation Engine (✅ 100% Completed)
+- [x] **Backend `Store.java` Entity & Management**:
+  - Model fields: `id`, `name`, `code` (`IND-01`, `KOR-02`, etc.), `address`, `city`, `phone`, `email`, `image` (via Cloudinary `groomishnow/stores`), `latitude`, `longitude`, `active`, `openingTime`, `closingTime`.
+  - Admin Store CRUD APIs (`/api/v1/admin/stores`) to create, update, toggle active, and delete branches.
+  - Public Store APIs (`/api/v1/public/stores?lat=...&lng=...`) with Haversine distance proximity sorting.
+  - Seeded 4 Bengaluru flagship salons in `AdminInitializer.java` with coordinates.
+- [x] **Automated Geolocation & Nearest Store Suggestion**:
+  - Utilizes browser Geolocation API (`navigator.geolocation.getCurrentPosition()`) on visitor arrival.
+  - Computes distances using the Haversine formula against active store coordinates to auto-select the nearest branch.
+- [x] **Navbar Store Selector**:
+  - Interactive pill placed beside the Groomish logo in `Navbar.jsx` displaying **Store Name**, **Neighborhood / City**, and distance tag (`📍 1.2 km away`).
+  - Dropdown popover (`StoreSelectorDropdown.jsx`) with live search, GPS re-detect, distance metrics, address preview, and 1-click store switching.
+- [x] **Store-Linked Staff & Branch Queues**:
+  - Staff accounts linked to a specific `storeId` with branch assignment in `/admin/staffs`.
+  - Staff login automatically scopes the session and station queue strictly to their assigned salon branch (`StaffDashboard.jsx`).
+- [x] **Store-Aware Appointments & Admin Filtering**:
+  - Bookings capture `storeId` and store snapshots during customer checkout (`BookingFlowModal.jsx`).
   - Stylists on `StaffDashboard` view queues and appointments strictly filtered to their branch.
-  - Admin Bookings portal equipped with a multi-store dropdown filter.
+  - Admin Bookings portal (`/admin/bookings`) equipped with a multi-store dropdown filter (`storeFilter`).
+- [x] **Localized Branch Catalog Overrides & Multi-Image Gallery**:
+  - `StoreServiceAvailability` and `StoreProductInventory` for branch-specific price overrides, custom treatment durations, and stock counts.
+  - Multi-image salon photo galleries (up to 6 photos via Cloudinary) showcasing storefronts and treatment areas.
 
-### 🔔 Milestone 2: Comprehensive Notification Engine
-- [ ] Multi-channel notification pipeline (in-app drawer, real-time popups via Toast Hub, and automated transactional emails).
-- [ ] Automated lifecycle notifications: booking confirmation, stylist assignment, reminder alerts, completion invoices, tier upgrades, and promotional store announcements.
+### 🔔 Milestone 2: Comprehensive Notification Engine (✅ 100% Completed)
+- [x] **Multi-Channel In-App Notification Drawer (`NotificationDrawer.jsx`)**:
+  - Unread count pill, animated bell badge, **"Mark all as read"** and **"Clear all"** bulk actions.
+  - Category filter tabs (**All**, **Bookings**, **Payments**, **Rewards & VIP**).
+  - Relative timestamps (`Just now`, `5m ago`, `2h ago`) and direct deep-links into My Bookings and Rewards.
+- [x] **Automated Lifecycle Notification Engine**:
+  - Real-time in-app triggers on booking creation, customer/stylist rescheduling, and appointment cancellations.
+  - Payment confirmation alerts with itemized points earned.
+  - Automatic celebratory notifications when ascending VIP tiers (**Silver**, **Gold**, **Platinum**).
+  - Reward voucher redemption alerts with points deduction receipts.
 
-### 📱 Milestone 3: Cross-Platform Mobile Application (`/mobile_app`)
+### ✂️ Milestone 3: Staff Station Operations, Visual Analytics & Custom Design System (✅ 100% Completed)
+- [x] **Branch Bookings Queue & Categorized Filtering**:
+  - Filter tabs (**Today's**, **Upcoming**, **Completed**, **All**) with live count badges and direct links to appointment details (`/staff/bookings/:id`).
+  - Cleaned layout removing redundant top header banner as branch information is clearly anchored in `StaffSidebar.jsx`.
+- [x] **Dedicated Staff Booking Detail Console (`StaffBookingDetailPage.jsx`)**:
+  - Visual status progression timeline, itemized billing calculator, and searchable dropdowns for adding services/products.
+  - Item multiplier display (`Item Name X {quantity}`).
+- [x] **Staff Branch Analytics Dashboard (`StaffBranchAnalyticsTab.jsx`)**:
+  - Day, Week, Month, and Custom range filtering with `CustomDatePicker`.
+  - Dual visualization with toggle between **Bar Chart** (default) and **Line Chart** with interactive SVG rendering.
+  - Toggle between Revenue (₹) and Appointments.
+- [x] **Staff Stylist Profile & Branch Hub (`StaffProfileTab.jsx`)**:
+  - Stylist personal info editor (Name, Phone).
+  - BCrypt verified Change Password dialog with email security notification.
+  - Complete assigned salon branch specifications card.
+- [x] **Bespoke Groomish UI Components**:
+  - `CustomDatePicker.jsx` (brand themed calendar with quick select shortcuts).
+  - `CustomTimePicker.jsx` (12-hour AM/PM time selector with salon hour presets).
+  - Searchable `CustomSelect.jsx` (sticky filter bar for 100+ items).
+  - `ConfirmContext.jsx` (brand modal confirmations and alerts replacing native browser dialogs).
+
+### 📱 Milestone 4: Cross-Platform Mobile Application (`/mobile_app`)
 - [ ] Migrate skeleton to React Native Expo SDK 54 with NativeWind styling.
 - [ ] Implement persistent authentication storage (AsyncStorage / SecureStore).
 - [ ] Align mobile design with official Groomish Now brand colors and assets.
