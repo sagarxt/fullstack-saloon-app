@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CustomerBookingDetailsModal from "../modals/CustomerBookingDetailsModal";
 import LeaveReviewModal from "../modals/LeaveReviewModal";
-import { Calendar, Clock, CreditCard, ChevronRight, Star, Scissors, MapPin } from "lucide-react";
+import { getBranchNavigationUrl } from "../../utils/mapHelper";
+import { Calendar, Clock, CreditCard, ChevronRight, Star, Scissors, MapPin, Navigation } from "lucide-react";
 
 export default function BookingCard({ booking, refresh }) {
   const navigate = useNavigate();
@@ -15,10 +16,12 @@ export default function BookingCard({ booking, refresh }) {
         return "bg-groomish-greenLight text-groomish-green border-groomish-green/30";
       case "COMPLETED":
         return "bg-groomish-blueLight text-groomish-blue border-groomish-blue/30";
+      case "MODIFIED":
+        return "bg-purple-100 text-purple-700 border-purple-200";
       case "CANCELLED":
         return "bg-groomish-crimsonLight text-groomish-crimson border-groomish-crimson/30";
       default:
-        return "bg-groomish-goldLight text-groomish-slate border-groomish-gold/40";
+        return "bg-amber-100 text-amber-800 border-amber-300";
     }
   };
 
@@ -65,10 +68,18 @@ export default function BookingCard({ booking, refresh }) {
               {formattedDate}
             </span>
             {booking.storeName && (
-              <span className="flex items-center gap-1.5 text-groomish-orange font-semibold">
+              <a
+                href={getBranchNavigationUrl(booking)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-groomish-orange hover:text-groomish-coral font-semibold hover:underline"
+                title="Navigate to Branch (Google Maps)"
+              >
                 <MapPin className="w-3.5 h-3.5" />
-                {booking.storeName}
-              </span>
+                <span>{booking.storeName}</span>
+                <Navigation className="w-2.5 h-2.5 ml-0.5" />
+              </a>
             )}
             <span className="flex items-center gap-1.5 font-bold text-groomish-slate">
               <CreditCard className="w-3.5 h-3.5 text-groomish-slate/40" />

@@ -46,34 +46,36 @@
   animation: pulseSubtle 3s infinite ease-in-out;
 }
 
-/* Reusable Button Utilities */
-.btn-primary {
-  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:from-groomish-orangeDark hover:to-groomish-coral shadow-glowOrange transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
-}
+@layer components {
+  /* Reusable Button Utilities */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:from-groomish-orangeDark hover:to-groomish-coral shadow-glowOrange transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
 
-.btn-secondary {
-  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-groomish-slate bg-white border border-groomish-slate/15 hover:bg-groomish-cream hover:border-groomish-slate/30 transition-all duration-200 active:scale-95 disabled:opacity-50;
-}
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-groomish-slate bg-white border border-groomish-slate/15 hover:bg-groomish-cream hover:border-groomish-slate/30 transition-all duration-200 active:scale-95 disabled:opacity-50;
+  }
 
-.btn-gold {
-  @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-bold text-groomish-slate bg-groomish-gold hover:bg-groomish-goldDark shadow-glowGold transition-all duration-200 active:scale-95;
-}
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-bold text-groomish-slate bg-groomish-gold hover:bg-groomish-goldDark shadow-glowGold transition-all duration-200 active:scale-95;
+  }
 
-.btn-danger {
-  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-groomish-crimson hover:bg-red-600 transition-all duration-200 active:scale-95;
-}
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-groomish-crimson hover:bg-red-600 transition-all duration-200 active:scale-95;
+  }
 
-.btn-auth {
-  @apply w-full inline-flex items-center justify-center py-3 rounded-full font-bold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:shadow-glowOrange transition-all duration-200 active:scale-95;
-}
+  .btn-auth {
+    @apply w-full inline-flex items-center justify-center py-3 rounded-full font-bold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:shadow-glowOrange transition-all duration-200 active:scale-95;
+  }
 
-/* Card & Surface Utilities */
-.card-groomish {
-  @apply bg-white rounded-2xl border border-groomish-slate/10 shadow-soft hover:shadow-card transition-all duration-300;
-}
+  /* Card & Surface Utilities */
+  .card-groomish {
+    @apply bg-white rounded-2xl border border-groomish-slate/10 shadow-soft hover:shadow-card transition-all duration-300;
+  }
 
-.input-groomish {
-  @apply w-full px-4 py-2.5 rounded-xl bg-white text-groomish-slate border border-groomish-slate/15 focus:border-groomish-orange focus:ring-2 focus:ring-groomish-orange/20 outline-none transition placeholder:text-groomish-slate/40 text-sm;
+  .input-groomish {
+    @apply w-full px-4 py-2.5 rounded-xl bg-white text-groomish-slate border border-groomish-slate/15 focus:border-groomish-orange focus:ring-2 focus:ring-groomish-orange/20 outline-none transition placeholder:text-groomish-slate/40 text-sm;
+  }
 }
 
 /* Custom Scrollbar */

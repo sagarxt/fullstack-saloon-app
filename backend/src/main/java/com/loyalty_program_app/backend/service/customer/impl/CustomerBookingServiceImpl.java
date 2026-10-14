@@ -30,6 +30,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
     private final NotificationRepository notificationRepository;
     private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
     private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
+    private final ServiceReviewRepository reviewRepository;
 
     /* =====================================================
        CREATE BOOKING
@@ -108,6 +109,16 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     .orElseThrow(() -> new RuntimeException("Invalid coupon code"));
 
             if (coupon.isActive() && !coupon.getExpiryDate().isBefore(LocalDateTime.now()) && servicesTotal >= (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
+                final List<String> eligibleCats = coupon.getEligibleCategories();
+                if (eligibleCats != null && !eligibleCats.isEmpty()) {
+                    boolean hasEligibleService = services.stream().anyMatch(s ->
+                        s.getCategory() != null && eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(s.getCategory().getName()))
+                    );
+                    if (!hasEligibleService) {
+                        throw new RuntimeException("Coupon '" + coupon.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
+                    }
+                }
+
                 discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
                 if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
                     discount = coupon.getMaxDiscount();
@@ -130,7 +141,6 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         booking.setCoupon(coupon);
         booking.setTotalAmount(servicesTotal);
         booking.setPricePaid(finalPrice);
-        booking.setStatus(BookingStatus.PENDING);
         booking.setBookedBy("BOOKED_BY_SELF");
         booking.setTotalDurationMinutes(totalDuration);
 
@@ -141,12 +151,18 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             String pm = request.getPaymentMethod().toUpperCase();
             if (pm.contains("UPI")) {
                 method = com.loyalty_program_app.backend.enums.PaymentMethod.UPI;
-                paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.COMPLETED;
+                paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.PENDING;
             } else if (pm.contains("CARD")) {
                 method = com.loyalty_program_app.backend.enums.PaymentMethod.CARD;
-                paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.COMPLETED;
+                paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.PENDING;
             }
         }
+
+        // Pay at Salon (CASH) or completed payment -> CONFIRMED. Online payment pending -> PENDING.
+        BookingStatus initialStatus = (method == com.loyalty_program_app.backend.enums.PaymentMethod.CASH || paymentStatus == com.loyalty_program_app.backend.enums.PaymentStatus.COMPLETED)
+                ? BookingStatus.CONFIRMED
+                : BookingStatus.PENDING;
+        booking.setStatus(initialStatus);
 
         Payment payment = Payment.builder()
                 .user(user)
@@ -165,8 +181,10 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         bookingTimelineService.recordTimeline(
                 saved,
                 "CREATED",
-                "Appointment Created",
-                "Appointment booked by " + user.getName() + " with " + services.size() + " service(s).",
+                initialStatus == BookingStatus.CONFIRMED ? "Appointment Confirmed" : "Appointment Reserved",
+                initialStatus == BookingStatus.CONFIRMED
+                        ? "Appointment booked and confirmed (" + (method == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ? "Pay at Salon" : "Payment Verified") + ") by " + user.getName() + " with " + services.size() + " service(s)."
+                        : "Appointment booked by " + user.getName() + " with " + services.size() + " service(s). Awaiting online payment confirmation.",
                 user.getName(),
                 "CUSTOMER",
                 user.getEmail()
@@ -180,7 +198,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             item.setServiceNameSnapshot(service.getName());
             item.setServicePriceSnapshot(service.getPrice());
             item.setServiceDurationSnapshot(service.getDurationMinutes());
-            item.setStatus(BookingStatus.PENDING);
+            item.setStatus(initialStatus);
             items.add(bookingItemRepository.save(item));
         }
         booking.setBookingItems(items);
@@ -188,10 +206,13 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         String serviceNames = services.stream().map(ServiceEntity::getName).collect(Collectors.joining(", "));
 
         // In-app Notification
+        String notifMsg = initialStatus == BookingStatus.CONFIRMED
+                ? "Your appointment for " + serviceNames + " on " + booking.getScheduledAt() + " is confirmed. Booking ID: " + booking.getBookingCode()
+                : "Your appointment for " + serviceNames + " on " + booking.getScheduledAt() + " is reserved. Complete online payment to confirm your booking. Booking ID: " + booking.getBookingCode();
         Notification notification = Notification.builder()
                 .user(user)
-                .title("Appointment Booked")
-                .message("Your appointment for " + serviceNames + " on " + booking.getScheduledAt() + " is confirmed. Booking ID: " + booking.getBookingCode())
+                .title(initialStatus == BookingStatus.CONFIRMED ? "Appointment Confirmed" : "Appointment Reserved")
+                .message(notifMsg)
                 .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
                 .build();
         notificationRepository.save(notification);
@@ -242,10 +263,26 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     !coupon.getExpiryDate().isBefore(LocalDateTime.now()) &&
                     totalAmount >= coupon.getMinAmount()) {
 
-                discount = coupon.getDiscount();
-                if (coupon.getMaxDiscount() != null &&
-                        discount > coupon.getMaxDiscount()) {
-                    discount = coupon.getMaxDiscount();
+                final List<String> eligibleCats = coupon.getEligibleCategories();
+                if (eligibleCats != null && !eligibleCats.isEmpty()) {
+                    boolean hasEligibleService = services.stream().anyMatch(s ->
+                        s.getCategory() != null && eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(s.getCategory().getName()))
+                    );
+                    if (!hasEligibleService) {
+                        discount = 0.0;
+                    } else {
+                        discount = coupon.getDiscount();
+                        if (coupon.getMaxDiscount() != null &&
+                                discount > coupon.getMaxDiscount()) {
+                            discount = coupon.getMaxDiscount();
+                        }
+                    }
+                } else {
+                    discount = coupon.getDiscount();
+                    if (coupon.getMaxDiscount() != null &&
+                            discount > coupon.getMaxDiscount()) {
+                        discount = coupon.getMaxDiscount();
+                    }
                 }
             }
         }
@@ -529,7 +566,9 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
 
         if (b.getPayment() != null) {
             dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
-            if (b.getStatus() == BookingStatus.CANCELLED) {
+            if (b.getStatus() == BookingStatus.COMPLETED) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (b.getStatus() == BookingStatus.CANCELLED) {
                 if (b.getPayment().getPaymentMethod() == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ||
                     b.getPayment().getStatus() == com.loyalty_program_app.backend.enums.PaymentStatus.PENDING) {
                     dto.setPaymentStatus("CANCELLED");
@@ -541,7 +580,13 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             }
         } else {
             dto.setPaymentMethod("CASH");
-            dto.setPaymentStatus(b.getStatus() == BookingStatus.CANCELLED ? "CANCELLED" : "PENDING");
+            if (b.getStatus() == BookingStatus.COMPLETED) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (b.getStatus() == BookingStatus.CANCELLED) {
+                dto.setPaymentStatus("CANCELLED");
+            } else {
+                dto.setPaymentStatus("PENDING");
+            }
         }
 
         double pAmount = b.getPricePaid() != null ? b.getPricePaid() : (b.getTotalAmount() != null ? b.getTotalAmount() : 0.0);
@@ -569,6 +614,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             dto.setStoreId(b.getStore().getId());
             dto.setStoreName(b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : b.getStore().getName());
             dto.setStoreAddress(b.getStoreAddressSnapshot() != null ? b.getStoreAddressSnapshot() : b.getStore().getAddress());
+            dto.setStoreLatitude(b.getStore().getLatitude());
+            dto.setStoreLongitude(b.getStore().getLongitude());
         } else if (b.getStoreNameSnapshot() != null) {
             dto.setStoreName(b.getStoreNameSnapshot());
             dto.setStoreAddress(b.getStoreAddressSnapshot());
@@ -822,6 +869,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             dto.setStoreId(booking.getStore().getId());
             dto.setStoreName(booking.getStoreNameSnapshot() != null ? booking.getStoreNameSnapshot() : booking.getStore().getName());
             dto.setStoreAddress(booking.getStoreAddressSnapshot() != null ? booking.getStoreAddressSnapshot() : booking.getStore().getAddress());
+            dto.setStoreLatitude(booking.getStore().getLatitude());
+            dto.setStoreLongitude(booking.getStore().getLongitude());
         } else if (booking.getStoreNameSnapshot() != null) {
             dto.setStoreName(booking.getStoreNameSnapshot());
             dto.setStoreAddress(booking.getStoreAddressSnapshot());
@@ -839,7 +888,9 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         if (booking.getPayment() != null) {
             dto.setPaymentId(booking.getPayment().getId());
             dto.setPaymentMethod(booking.getPayment().getPaymentMethod() != null ? booking.getPayment().getPaymentMethod().name() : "CASH");
-            if (booking.getStatus() == BookingStatus.CANCELLED) {
+            if (booking.getStatus() == BookingStatus.COMPLETED) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (booking.getStatus() == BookingStatus.CANCELLED) {
                 if (booking.getPayment().getPaymentMethod() == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ||
                     booking.getPayment().getStatus() == com.loyalty_program_app.backend.enums.PaymentStatus.PENDING) {
                     dto.setPaymentStatus("CANCELLED");
@@ -852,7 +903,13 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             dto.setInvoiceNumber(booking.getPayment().getInvoiceNumber());
         } else {
             dto.setPaymentMethod("CASH");
-            dto.setPaymentStatus(booking.getStatus() == BookingStatus.CANCELLED ? "CANCELLED" : "PENDING");
+            if (booking.getStatus() == BookingStatus.COMPLETED) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (booking.getStatus() == BookingStatus.CANCELLED) {
+                dto.setPaymentStatus("CANCELLED");
+            } else {
+                dto.setPaymentStatus("PENDING");
+            }
         }
 
         double detailsAmount = booking.getPricePaid() != null ? booking.getPricePaid() : (booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0);
@@ -905,6 +962,30 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     .build()).collect(Collectors.toList()));
         } else {
             dto.setProducts(new ArrayList<>());
+        }
+
+        if (booking.getUser() != null) {
+            List<ServiceReview> reviews = reviewRepository.findByUserIdAndBookingId(booking.getUser().getId(), booking.getId());
+            if (reviews != null && !reviews.isEmpty()) {
+                dto.setCustomerReviews(reviews.stream().map(r -> com.loyalty_program_app.backend.dto.review.ServiceReviewResponse.builder()
+                        .id(r.getId())
+                        .serviceId(r.getService() != null ? r.getService().getId() : null)
+                        .serviceName(r.getService() != null ? r.getService().getName() : null)
+                        .productId(r.getProduct() != null ? r.getProduct().getId() : null)
+                        .productName(r.getProduct() != null ? r.getProduct().getName() : null)
+                        .bookingId(r.getBooking() != null ? r.getBooking().getId() : null)
+                        .userId(r.getUser() != null ? r.getUser().getId() : null)
+                        .userName(r.getUser() != null ? r.getUser().getName() : "Customer")
+                        .userImage(r.getUser() != null ? r.getUser().getImage() : null)
+                        .rating(r.getRating())
+                        .review(r.getReview())
+                        .createdAt(r.getCreatedAt())
+                        .build()).collect(Collectors.toList()));
+            } else {
+                dto.setCustomerReviews(new ArrayList<>());
+            }
+        } else {
+            dto.setCustomerReviews(new ArrayList<>());
         }
 
         dto.setTimeline(bookingTimelineService.getTimelineForBooking(booking));

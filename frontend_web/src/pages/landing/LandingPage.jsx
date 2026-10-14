@@ -7,6 +7,8 @@ import ServicesSection from "../../components/landing/ServicesSection";
 import BookingFlowModal from "../../components/modals/BookingFlowModal";
 import { getServices, getCategories, getPublicHome } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
+import { useCart } from "../../context/CartContext";
+import { useStore } from "../../context/StoreContext";
 import { extractList } from "../../utils/dataHelper";
 import {
   Sparkles,
@@ -20,11 +22,19 @@ import {
   CheckCircle2,
   Crown,
   Gem,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  MapPin,
+  Clock,
+  Check,
+  Image as ImageIcon,
 } from "lucide-react";
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { stores, selectedStore, setSelectedStore } = useStore();
 
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
@@ -32,6 +42,46 @@ export default function LandingPage() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Branch hero slider states
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [branchSelectorOpen, setBranchSelectorOpen] = useState(false);
+
+  const fallbackImages = [
+    "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?auto=format&fit=crop&w=1200&q=80",
+  ];
+
+  const branchImages = (
+    Array.isArray(selectedStore?.images) && selectedStore.images.length > 0
+      ? selectedStore.images
+      : selectedStore?.image
+        ? [selectedStore.image]
+        : fallbackImages
+  );
+
+  useEffect(() => {
+    setCurrentSlide(0);
+  }, [selectedStore?.id]);
+
+  useEffect(() => {
+    if (branchImages.length <= 1 || isPaused) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % branchImages.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [branchImages.length, isPaused]);
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + branchImages.length) % branchImages.length);
+  };
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % branchImages.length);
+  };
 
   // Directly open Admin in Admin Panel and Staff in Staff Dashboard
   useEffect(() => {
@@ -66,9 +116,23 @@ export default function LandingPage() {
     }
   };
 
-  const handleBook = (service) => {
-    setSelectedService(service);
-    setBookingOpen(true);
+  const { addItem } = useCart();
+
+  const handleBook = async (service) => {
+    if (!user) {
+      setSelectedService(service);
+      setBookingOpen(true);
+      return;
+    }
+    const added = await addItem({
+      itemType: "SERVICE",
+      serviceId: service.id,
+      name: service.name,
+      quantity: 1,
+    });
+    if (added) {
+      navigate("/cart");
+    }
   };
 
   return (
@@ -79,9 +143,9 @@ export default function LandingPage() {
         {/* HERO SECTION */}
         <section className="relative overflow-hidden bg-gradient-to-b from-white to-groomish-cream pt-12 pb-24 border-b border-groomish-slate/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-12 gap-12 items-center">
+            <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
               {/* Left Column: Copy & Actions */}
-              <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+              <div className="lg:col-span-6 space-y-6 text-center lg:text-left">
                 {/* Pill */}
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-groomish-orangeLight border border-groomish-orange/30 text-groomish-orange text-xs font-bold uppercase tracking-wider shadow-sm">
                   <Sparkles className="w-3.5 h-3.5 text-groomish-orange fill-groomish-orange" />
@@ -154,66 +218,225 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Right Column: Visual Card Showcase */}
-              <div className="lg:col-span-5 relative">
-                <div className="relative mx-auto max-w-sm sm:max-w-md">
-                  {/* Decorative Glow */}
+              {/* Right Column: Interactive Branch Experience & Photos Slider */}
+              <div className="lg:col-span-6 relative">
+                <div className="relative mx-auto w-full max-w-xl">
+                  {/* Decorative Ambient Glow */}
                   <div className="absolute -inset-4 bg-gradient-to-tr from-groomish-orange/20 via-groomish-gold/20 to-groomish-coral/20 rounded-3xl blur-2xl -z-10" />
 
-                  {/* Main Promo Card */}
-                  <div className="bg-white rounded-3xl p-6 shadow-card border border-groomish-slate/10 space-y-5">
-                    {/* Brand Banner */}
-                    <div className="flex items-center justify-between pb-4 border-b border-groomish-slate/10">
-                      <div className="flex items-center gap-2.5">
-                        <img
-                          src="/groomisg_now_icon.png"
-                          alt="Groomish Icon"
-                          className="w-10 h-10 object-contain rounded-xl bg-groomish-cream p-1"
-                        />
-                        <div>
-                          <p className="font-heading font-extrabold text-sm text-groomish-slate">Groomish VIP Club</p>
-                          <p className="text-[11px] text-groomish-slateLight">Exclusive Membership Pass</p>
-                        </div>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-groomish-gold text-groomish-slate">
-                        PLATINUM
-                      </span>
-                    </div>
-
-                    {/* Offer Highlight Box */}
-                    <div className="bg-gradient-to-r from-groomish-slate to-groomish-slateDark text-white p-5 rounded-2xl relative overflow-hidden">
-                      <div className="absolute right-0 bottom-0 opacity-10 translate-x-4 translate-y-4">
-                        <Gift className="w-36 h-36" />
-                      </div>
-                      <span className="text-[11px] uppercase font-bold text-groomish-gold tracking-wider">
-                        Welcome Privilege
-                      </span>
-                      <h4 className="text-2xl font-bold mt-1 text-white">
-                        Earn 25 Bonus Points
-                      </h4>
-                      <p className="text-xs text-gray-300 mt-1 max-w-[200px]">
-                        Redeem points for complimentary hair treatments, nail art, or spa passes.
-                      </p>
-                    </div>
-
-                    {/* Quick Appointment Preview */}
-                    <div className="p-4 rounded-xl bg-groomish-cream border border-groomish-slate/10 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-groomish-orange shadow-sm">
-                          <CalendarCheck className="w-5 h-5" />
+                  {/* Main Showcase Container */}
+                  <div
+                    className="bg-white rounded-3xl p-3.5 sm:p-4 shadow-card border border-groomish-slate/10 space-y-3 relative group"
+                    onMouseEnter={() => setIsPaused(true)}
+                    onMouseLeave={() => setIsPaused(false)}
+                  >
+                    {/* Branch Header Bar */}
+                    <div className="flex items-center justify-between px-1.5 pt-0.5">
+                      <div className="flex items-center gap-2.5 sm:gap-3">
+                        {/* Branch Logo */}
+                        <div className="w-11 h-11 rounded-2xl bg-groomish-cream border border-groomish-slate/15 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-sm">
+                          {selectedStore?.logo ? (
+                            <img
+                              src={selectedStore.logo}
+                              alt={`${selectedStore.name} Logo`}
+                              className="w-full h-full object-contain rounded-xl"
+                            />
+                          ) : (
+                            <img
+                              src="/groomisg_now_icon.png"
+                              alt="Groomish Icon"
+                              className="w-full h-full object-contain rounded-xl"
+                            />
+                          )}
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-groomish-slate">Fast 3-Step Booking</p>
-                          <p className="text-[11px] text-groomish-slateLight">Instant confirmation on email & SMS</p>
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <h3 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate leading-tight line-clamp-1">
+                              {selectedStore?.name || "Ambika Groomish Salon"}
+                            </h3>
+                            {selectedStore?.code && (
+                              <span className="font-mono text-[10px] font-extrabold bg-groomish-slate text-white px-1.5 py-0.5 rounded-md shrink-0">
+                                {selectedStore.code}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-groomish-slateLight flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3 text-groomish-orange shrink-0" />
+                            <span className="truncate max-w-[190px] sm:max-w-[260px]">
+                              {selectedStore?.city || "Bangalore"}, {selectedStore?.address || "Flagship Salon Lounge"}
+                            </span>
+                          </p>
                         </div>
                       </div>
-                      <a
-                        href="#services"
-                        className="text-xs font-bold text-groomish-orange hover:underline flex items-center gap-1"
-                      >
-                        Book Now →
-                      </a>
+
+                      {/* Proximity / Branch Selector Quick Pill */}
+                      <div className="relative shrink-0">
+                        {stores.length > 1 ? (
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => setBranchSelectorOpen((v) => !v)}
+                              className="text-[11px] font-bold text-groomish-orange bg-groomish-orangeLight border border-groomish-orange/30 px-2.5 py-1 rounded-xl hover:bg-groomish-orange hover:text-white transition flex items-center gap-1"
+                            >
+                              <span>Change Branch</span>
+                              <ChevronDown className="w-3 h-3" />
+                            </button>
+                            {branchSelectorOpen && (
+                              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-groomish-slate/10 p-2 z-30 animate-in fade-in zoom-in-95">
+                                <p className="text-[10px] font-bold text-groomish-slateLight uppercase px-2 py-1">
+                                  Select Salon Branch
+                                </p>
+                                <div className="space-y-1 max-h-48 overflow-y-auto">
+                                  {stores.map((s) => (
+                                    <button
+                                      key={s.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedStore(s);
+                                        localStorage.setItem("groomish_selected_store_id", s.id);
+                                        setBranchSelectorOpen(false);
+                                      }}
+                                      className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between transition ${
+                                        selectedStore?.id === s.id
+                                          ? "bg-groomish-orange text-white font-bold"
+                                          : "hover:bg-groomish-cream text-groomish-slate"
+                                      }`}
+                                    >
+                                      <span className="truncate">{s.name}</span>
+                                      {selectedStore?.id === s.id && <Check className="w-3.5 h-3.5" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-groomish-green bg-groomish-greenLight px-2.5 py-1 rounded-xl">
+                            <span className="w-2 h-2 rounded-full bg-groomish-green animate-pulse" />
+                            <span>Active Branch</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Main Image Slider Viewport */}
+                    <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-groomish-slate/10 shadow-inner group/slider">
+                      {branchImages.map((imgUrl, idx) => (
+                        <div
+                          key={idx}
+                          className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                            idx === currentSlide ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
+                          }`}
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`${selectedStore?.name || "Salon"} Photo ${idx + 1}`}
+                            className="w-full h-full object-cover select-none"
+                            loading={idx === 0 ? "eager" : "lazy"}
+                          />
+                        </div>
+                      ))}
+
+                      {/* Ambient Top & Bottom Gradients for Contrast */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/45 z-10 pointer-events-none" />
+
+                      {/* Top Badges */}
+                      <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/20">
+                            <ImageIcon className="w-3 h-3 text-groomish-gold" />
+                            <span>
+                              {branchImages.length > 0 ? `Photo ${currentSlide + 1} of ${branchImages.length}` : "Branch Showcase"}
+                            </span>
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-white/90 backdrop-blur-md text-groomish-slate text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-groomish-orange" />
+                            <span>{selectedStore?.openingTime || "09:00 AM"} - {selectedStore?.closingTime || "09:00 PM"}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Navigation Chevrons */}
+                      {branchImages.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={prevSlide}
+                            aria-label="Previous Branch Photo"
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-groomish-orange text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 shadow-md opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={nextSlide}
+                            aria-label="Next Branch Photo"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-groomish-orange text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 shadow-md opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        </>
+                      )}
+
+                      {/* Bottom Slide Info & Indicators */}
+                      <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between text-white">
+                        <div className="space-y-0.5 max-w-[70%]">
+                          <p className="text-xs font-bold drop-shadow-sm flex items-center gap-1.5">
+                            <span>{selectedStore?.name || "Ambika Groomish Salon"}</span>
+                            <span className="text-[10px] text-groomish-gold font-normal">★ 4.9</span>
+                          </p>
+                          <p className="text-[10px] text-white/85 line-clamp-1 drop-shadow-sm">
+                            {selectedStore?.address || "Modern styling stations, private wash zones & luxury lounge"}
+                          </p>
+                        </div>
+
+                        {/* Dots Indicator */}
+                        {branchImages.length > 1 && (
+                          <div className="flex items-center gap-1 shrink-0 bg-black/40 backdrop-blur-md px-2 py-1 rounded-full border border-white/20">
+                            {branchImages.map((_, dotIdx) => (
+                              <button
+                                key={dotIdx}
+                                type="button"
+                                onClick={() => setCurrentSlide(dotIdx)}
+                                aria-label={`Go to slide ${dotIdx + 1}`}
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                  dotIdx === currentSlide
+                                    ? "w-4 bg-groomish-orange"
+                                    : "w-1.5 bg-white/50 hover:bg-white"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Mini Thumbnails / Photo Strip */}
+                    {branchImages.length > 1 && (
+                      <div className="flex items-center gap-2 overflow-x-auto pb-0.5 pt-0.5 scrollbar-thin">
+                        {branchImages.map((imgUrl, thumbIdx) => (
+                          <button
+                            key={thumbIdx}
+                            type="button"
+                            onClick={() => setCurrentSlide(thumbIdx)}
+                            className={`relative h-11 w-16 sm:h-12 sm:w-20 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                              thumbIdx === currentSlide
+                                ? "border-groomish-orange shadow-md scale-105"
+                                : "border-transparent opacity-60 hover:opacity-100"
+                            }`}
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={`Thumbnail ${thumbIdx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

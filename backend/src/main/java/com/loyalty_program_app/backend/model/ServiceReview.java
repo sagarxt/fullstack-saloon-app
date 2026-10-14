@@ -26,6 +26,14 @@ public class ServiceReview {
     @JoinColumn(name = "service_id")
     private ServiceEntity service;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id")
+    private Product product;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "booking_id")
+    private Booking booking;
+
     private Integer rating;
     private String review;
 

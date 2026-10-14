@@ -18,6 +18,7 @@ public class StoreResponse {
     private String pincode;
     private String phone;
     private String email;
+    private String logo;
     private String image;
     private java.util.List<String> images;
     private Double latitude;

@@ -15,6 +15,7 @@ export default function CustomTimePicker({
   onChange,
   label,
   placeholder = "Select Time",
+  align = "left",
   className = "",
   disabled = false,
 }) {
@@ -119,7 +120,11 @@ export default function CustomTimePicker({
 
       {/* Popover */}
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 z-50 w-72 bg-white rounded-2xl border border-groomish-slate/15 shadow-2xl p-4 animate-fade-in divide-y divide-groomish-slate/10">
+        <div
+          className={`absolute top-full mt-1.5 z-50 w-72 bg-white rounded-2xl border border-groomish-slate/15 shadow-2xl p-4 animate-fade-in divide-y divide-groomish-slate/10 ${
+            align === "right" ? "right-0" : "left-0"
+          }`}
+        >
           {/* Header Active Display */}
           <div className="flex items-center justify-between pb-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-groomish-slate/60">

@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   MapPin,
   Edit2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -31,6 +33,9 @@ export default function StaffPage() {
   const [editingStaff, setEditingStaff] = useState(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -42,6 +47,7 @@ export default function StaffPage() {
     name: "",
     email: "",
     phone: "",
+    password: "",
     storeId: "",
   });
 
@@ -72,6 +78,11 @@ export default function StaffPage() {
       return;
     }
 
+    if (form.phone && form.phone.trim().length !== 10) {
+      setError("Phone number must be exactly 10 digits after +91.");
+      return;
+    }
+
     setCreateLoading(true);
     setError("");
     try {
@@ -80,10 +91,12 @@ export default function StaffPage() {
           ? (form.storeId.target?.value ?? form.storeId.value)
           : form.storeId;
 
+      const formattedPhone = form.phone?.trim() ? `+91${form.phone.trim()}` : null;
+
       const payload = {
         name: form.name.trim(),
         email: form.email.trim(),
-        phone: form.phone?.trim() || null,
+        phone: formattedPhone,
         password: form.password,
         storeId: cleanStoreId && String(cleanStoreId).trim() !== "" ? String(cleanStoreId).trim() : null,
       };
@@ -91,6 +104,7 @@ export default function StaffPage() {
       await createStaffApi(payload);
       setOpen(false);
       setForm({ name: "", email: "", phone: "", password: "", storeId: "" });
+      setShowCreatePassword(false);
       loadData();
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to create staff member.";
@@ -102,12 +116,17 @@ export default function StaffPage() {
 
   const handleOpenEdit = (s) => {
     setEditingStaff(s);
+    const rawPhone = s.phone || "";
+    const cleanDigits = rawPhone.replace(/^\+91/, "").replace(/\D/g, "").slice(-10);
+
     setEditForm({
       name: s.name || "",
       email: s.email || "",
-      phone: s.phone || "",
+      phone: cleanDigits,
+      password: "",
       storeId: s.storeId || "",
     });
+    setShowEditPassword(false);
     setError("");
     setEditOpen(true);
   };
@@ -115,6 +134,11 @@ export default function StaffPage() {
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!editingStaff) return;
+
+    if (editForm.phone && editForm.phone.trim().length !== 10) {
+      setError("Phone number must be exactly 10 digits after +91.");
+      return;
+    }
 
     setCreateLoading(true);
     setError("");
@@ -124,12 +148,19 @@ export default function StaffPage() {
           ? (editForm.storeId.target?.value ?? editForm.storeId.value)
           : editForm.storeId;
 
+      const formattedPhone = editForm.phone?.trim() ? `+91${editForm.phone.trim()}` : null;
+
       const payload = {
         name: editForm.name?.trim(),
         email: editForm.email?.trim(),
-        phone: editForm.phone?.trim() || null,
+        phone: formattedPhone,
         storeId: cleanStoreId && String(cleanStoreId).trim() !== "" ? String(cleanStoreId).trim() : null,
       };
+
+      // Admin updates staff password directly without old password
+      if (editForm.password && editForm.password.trim() !== "") {
+        payload.password = editForm.password.trim();
+      }
 
       await updateUserApi(editingStaff.id, payload);
       setEditOpen(false);
@@ -372,26 +403,54 @@ export default function StaffPage() {
               <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
                 Phone Number
               </label>
-              <input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="input-groomish"
-                placeholder="+91 98765 43210"
-              />
+              <div className="flex rounded-xl overflow-hidden border border-groomish-slate/15 bg-white focus-within:border-groomish-orange focus-within:ring-2 focus-within:ring-groomish-orange/20 transition-all">
+                <span className="inline-flex items-center px-3 bg-groomish-cream text-groomish-slate font-semibold text-xs border-r border-groomish-slate/15 select-none">
+                  🇮🇳 +91
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={form.phone}
+                  onChange={(e) => {
+                    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setForm({ ...form, phone: digitsOnly });
+                  }}
+                  className="w-full px-3 py-2 text-xs text-groomish-slate outline-none bg-transparent"
+                  placeholder="9876543210"
+                />
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-[11px] text-groomish-slate/50">10-digit mobile number</span>
+                {form.phone && (
+                  <span className={`text-[10px] font-mono ${form.phone.length === 10 ? "text-emerald-600 font-semibold" : "text-groomish-slate/40"}`}>
+                    {form.phone.length}/10
+                  </span>
+                )}
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
                 Staff Password *
               </label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                required
-                className="input-groomish"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showCreatePassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  required
+                  className="input-groomish pr-10"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePassword(!showCreatePassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-groomish-slate/40 hover:text-groomish-slate"
+                >
+                  {showCreatePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -470,11 +529,56 @@ export default function StaffPage() {
               <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
                 Phone Number
               </label>
-              <input
-                value={editForm.phone}
-                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                className="input-groomish"
-              />
+              <div className="flex rounded-xl overflow-hidden border border-groomish-slate/15 bg-white focus-within:border-groomish-orange focus-within:ring-2 focus-within:ring-groomish-orange/20 transition-all">
+                <span className="inline-flex items-center px-3 bg-groomish-cream text-groomish-slate font-semibold text-xs border-r border-groomish-slate/15 select-none">
+                  🇮🇳 +91
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={editForm.phone}
+                  onChange={(e) => {
+                    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setEditForm({ ...editForm, phone: digitsOnly });
+                  }}
+                  className="w-full px-3 py-2 text-xs text-groomish-slate outline-none bg-transparent"
+                  placeholder="9876543210"
+                />
+              </div>
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-[11px] text-groomish-slate/50">10-digit mobile number</span>
+                {editForm.phone && (
+                  <span className={`text-[10px] font-mono ${editForm.phone.length === 10 ? "text-emerald-600 font-semibold" : "text-groomish-slate/40"}`}>
+                    {editForm.phone.length}/10
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-groomish-slate/10">
+              <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
+                Update Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showEditPassword ? "text" : "password"}
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  className="input-groomish pr-10"
+                  placeholder="Enter new password to override"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEditPassword(!showEditPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-groomish-slate/40 hover:text-groomish-slate"
+                >
+                  {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[11px] text-groomish-slate/50 mt-1">
+                Leave blank to keep existing password. Admin can directly override without old password.
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

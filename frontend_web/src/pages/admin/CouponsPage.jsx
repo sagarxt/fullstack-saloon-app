@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { getCouponsApi, createCouponApi, deleteCouponApi } from "../../api/admin";
+import { getCategoriesApi } from "../../api/category";
 import ModalWrapper from "../../components/modals/ModalWrapper";
+import CustomMultiSelect from "../../components/common/CustomMultiSelect";
 import { extractList } from "../../utils/dataHelper";
 import { showConfirm } from "../../context/ConfirmContext";
-import { Tag, Plus, Trash2, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
+import { Tag, Plus, Trash2, RefreshCw, AlertCircle, Sparkles, Layers } from "lucide-react";
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
@@ -18,16 +21,22 @@ export default function CouponsPage() {
     minAmount: 0,
     maxDiscount: 500,
     active: true,
+    eligibleCategories: [],
   });
 
   const loadCoupons = async () => {
     setLoading(true);
     try {
-      const res = await getCouponsApi();
-      setCoupons(extractList(res.data));
+      const [couponsRes, catRes] = await Promise.all([
+        getCouponsApi(),
+        getCategoriesApi(),
+      ]);
+      setCoupons(extractList(couponsRes.data));
+      setCategories(extractList(catRes.data));
     } catch (err) {
       console.error(err);
       setCoupons([]);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -56,12 +65,13 @@ export default function CouponsPage() {
         discount: Number(form.discount),
         minAmount: Number(form.minAmount),
         maxDiscount: Number(form.maxDiscount),
-        expiryDate: tomorrow.toISOString(),
+        expiryDate: tomorrow.toISOString().slice(0, 19),
         active: true,
+        eligibleCategories: form.eligibleCategories || [],
       });
 
       setOpen(false);
-      setForm({ code: "", description: "", discount: "", minAmount: 0, maxDiscount: 500, active: true });
+      setForm({ code: "", description: "", discount: "", minAmount: 0, maxDiscount: 500, active: true, eligibleCategories: [] });
       loadCoupons();
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to create coupon.";
@@ -161,6 +171,23 @@ export default function CouponsPage() {
                 <p className="text-xs text-groomish-slate/70 mt-2 font-medium">
                   {c.description || "Applicable across salon services"}
                 </p>
+
+                <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                  {c.eligibleCategories && c.eligibleCategories.length > 0 ? (
+                    c.eligibleCategories.map((cat) => (
+                      <span
+                        key={cat}
+                        className="px-2 py-0.5 rounded-md bg-groomish-orangeLight text-groomish-orange font-bold text-[10px] border border-groomish-orange/20"
+                      >
+                        {cat}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-md bg-groomish-greenLight text-groomish-green font-bold text-[10px] border border-groomish-green/30">
+                      🌐 All Categories
+                    </span>
+                  )}
+                </div>
 
                 <div className="mt-4 pt-3 border-t border-groomish-slate/10 space-y-1 text-xs">
                   <div className="flex justify-between">
@@ -266,6 +293,25 @@ export default function CouponsPage() {
                   placeholder="500"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
+                Eligible Categories (Scope)
+              </label>
+              <CustomMultiSelect
+                value={form.eligibleCategories}
+                onChange={(selected) => setForm({ ...form, eligibleCategories: selected })}
+                options={categories.map((c) => ({
+                  value: c.name,
+                  label: c.name,
+                }))}
+                placeholder="🌐 All Categories (Applicable to all)"
+                searchPlaceholder="Filter salon categories..."
+              />
+              <p className="text-[11px] text-groomish-slate/50 mt-1">
+                Select eligible categories, or leave empty to apply across all salon treatments.
+              </p>
             </div>
 
             <div>

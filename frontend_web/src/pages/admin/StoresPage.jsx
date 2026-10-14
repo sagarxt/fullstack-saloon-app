@@ -36,6 +36,7 @@ const INITIAL_FORM = {
   pincode: "",
   phone: "",
   email: "",
+  logo: "",
   latitude: "",
   longitude: "",
   openingTime: "09:00",
@@ -54,6 +55,7 @@ export default function StoresPage() {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [detectingGps, setDetectingGps] = useState(false);
   const [formError, setFormError] = useState("");
   const [toastMsg, setToastMsg] = useState("");
@@ -102,6 +104,7 @@ export default function StoresPage() {
       pincode: store.pincode || "",
       phone: store.phone || "",
       email: store.email || "",
+      logo: store.logo || "",
       latitude: store.latitude !== null ? String(store.latitude) : "",
       longitude: store.longitude !== null ? String(store.longitude) : "",
       openingTime: store.openingTime || "09:00",
@@ -135,6 +138,28 @@ export default function StoresPage() {
       },
       { timeout: 8000, enableHighAccuracy: true }
     );
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    setFormError("");
+    try {
+      const res = await uploadImageApi(file, "groomishnow/stores/logos");
+      if (res?.url) {
+        setFormData((prev) => ({
+          ...prev,
+          logo: res.url,
+        }));
+      }
+    } catch (err) {
+      setFormError("Failed to upload branch logo: " + (err.response?.data?.message || err.message));
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = "";
+    }
   };
 
   const handleImageUpload = async (e) => {
@@ -177,6 +202,7 @@ export default function StoresPage() {
 
     const payload = {
       ...formData,
+      logo: formData.logo || "",
       image: imgList[0] || formData.image || "",
       images: imgList,
       latitude: formData.latitude ? parseFloat(formData.latitude) : null,
@@ -373,10 +399,20 @@ export default function StoresPage() {
                     </span>
                   </div>
 
-                  {store.images && store.images.length > 1 && (
+                  {store.logo && (
+                    <div className="absolute top-3 right-3 w-10 h-10 rounded-2xl bg-white/95 backdrop-blur-md p-1 shadow-md border border-white/60 overflow-hidden flex items-center justify-center">
+                      <img
+                        src={store.logo}
+                        alt={`${store.name} Logo`}
+                        className="w-full h-full object-contain rounded-xl"
+                      />
+                    </div>
+                  )}
+
+                  {store.images && store.images.length > 0 && (
                     <div className="absolute bottom-3 left-3 bg-groomish-slate/85 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
                       <ImageIcon className="w-3 h-3 text-groomish-gold" />
-                      <span>{store.images.length} Photos</span>
+                      <span>{store.images.length} {store.images.length === 1 ? "Photo" : "Photos"}</span>
                     </div>
                   )}
 
@@ -694,7 +730,67 @@ export default function StoresPage() {
               />
             </div>
 
-            {/* Store Photos & Gallery */}
+            {/* Branch Logo Section */}
+            <div className="p-4 bg-groomish-cream/40 rounded-2xl border border-groomish-slate/15 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-xs font-bold text-groomish-slate">
+                    Branch Logo
+                  </label>
+                  <p className="text-[11px] text-groomish-slate/60">
+                    Upload a high-resolution logo or emblem for this salon branch.
+                  </p>
+                </div>
+                {formData.logo && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, logo: "" }))}
+                    className="text-[11px] text-red-500 hover:text-red-700 font-bold flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Remove Logo</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-white border-2 border-dashed border-groomish-slate/20 flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
+                  {formData.logo ? (
+                    <img
+                      src={formData.logo}
+                      alt="Branch Logo"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Store className="w-7 h-7 text-groomish-slate/30" />
+                  )}
+                  {uploadingLogo && (
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                      <RefreshCw className="w-5 h-5 animate-spin text-groomish-orange" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <label className="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-groomish-slate/20 rounded-xl text-xs font-bold text-groomish-slate hover:bg-groomish-orangeLight hover:border-groomish-orange hover:text-groomish-orange transition cursor-pointer shadow-sm">
+                    <Upload className="w-3.5 h-3.5 text-groomish-orange" />
+                    <span>{uploadingLogo ? "Uploading Logo..." : formData.logo ? "Change Branch Logo" : "Upload Branch Logo"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      disabled={uploadingLogo}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-[10px] text-groomish-slate/50 mt-1">
+                    PNG, JPG, SVG or WEBP (Square 1:1 recommended)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Branch Photos & Gallery (1 to 10 photos) */}
             <CloudinaryMultiImageUploader
               value={formData.images || (formData.image ? [formData.image] : [])}
               onChange={(urls) =>
@@ -704,9 +800,9 @@ export default function StoresPage() {
                   image: urls[0] || "",
                 }))
               }
-              maxImages={6}
+              maxImages={10}
               folder="groomishnow/stores"
-              label="Salon Photos & Gallery (Up to 6)"
+              label="Branch Photos & Gallery (1 to 10 Photos)"
             />
 
             {/* Active Toggle */}

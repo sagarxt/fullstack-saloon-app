@@ -1,9 +1,12 @@
 package com.loyalty_program_app.backend.config;
 
 import com.loyalty_program_app.backend.enums.Gender;
+import com.loyalty_program_app.backend.enums.PointReason;
 import com.loyalty_program_app.backend.enums.Role;
 import com.loyalty_program_app.backend.enums.Tier;
+import com.loyalty_program_app.backend.model.PointsLedger;
 import com.loyalty_program_app.backend.model.Product;
+import com.loyalty_program_app.backend.model.Referral;
 import com.loyalty_program_app.backend.model.User;
 import com.loyalty_program_app.backend.repository.ProductRepository;
 import com.loyalty_program_app.backend.repository.UserRepository;
@@ -23,112 +26,133 @@ public class AdminInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final com.loyalty_program_app.backend.repository.BookingRepository bookingRepository;
     private final com.loyalty_program_app.backend.repository.StoreRepository storeRepository;
+    private final com.loyalty_program_app.backend.repository.ReferralRepository referralRepository;
+    private final com.loyalty_program_app.backend.repository.PointsLedgerRepository pointsLedgerRepository;
+    private final com.loyalty_program_app.backend.repository.CouponRepository couponRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+
+    private final com.loyalty_program_app.backend.repository.StoreServiceAvailabilityRepository storeServiceAvailabilityRepository;
+    private final com.loyalty_program_app.backend.repository.StoreProductInventoryRepository storeProductInventoryRepository;
+    private final com.loyalty_program_app.backend.repository.CartRepository cartRepository;
+    private final com.loyalty_program_app.backend.repository.PaymentRepository paymentRepository;
+    private final com.loyalty_program_app.backend.repository.NotificationRepository notificationRepository;
 
     @Override
     public void run(String... args) throws Exception {
 
-        // Seed 4 Flagship Bangalore Salons if none exist
-        if (storeRepository.count() == 0) {
-            com.loyalty_program_app.backend.model.Store indiranagar = com.loyalty_program_app.backend.model.Store.builder()
-                    .name("Groomish Indiranagar Flagship")
-                    .code("IND-01")
-                    .address("100 Feet Rd, 12th Main, HAL 2nd Stage, Indiranagar")
-                    .city("Bengaluru")
-                    .state("Karnataka")
-                    .pincode("560038")
-                    .phone("+91 80 4123 4567")
-                    .email("indiranagar@groomish.com")
-                    .latitude(12.971891)
-                    .longitude(77.641151)
-                    .openingTime("09:00")
-                    .closingTime("21:30")
-                    .image("https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=1200&q=80")
+        // Seed initial coupons if none exist
+        if (couponRepository.count() == 0) {
+            com.loyalty_program_app.backend.model.Coupon c1 = com.loyalty_program_app.backend.model.Coupon.builder()
+                    .code("GROOM100")
+                    .description("Flat ₹100 off on signature salon care & styling services")
+                    .discount(100.0)
+                    .maxDiscount(100.0)
+                    .minAmount(499.0)
+                    .expiryDate(LocalDateTime.now().plusMonths(3))
                     .active(true)
                     .build();
-
-            com.loyalty_program_app.backend.model.Store koramangala = com.loyalty_program_app.backend.model.Store.builder()
-                    .name("Groomish Koramangala Lounge")
-                    .code("KOR-02")
-                    .address("80 Feet Rd, 4th Block, Koramangala")
-                    .city("Bengaluru")
-                    .state("Karnataka")
-                    .pincode("560034")
-                    .phone("+91 80 4234 5678")
-                    .email("koramangala@groomish.com")
-                    .latitude(12.935192)
-                    .longitude(77.624480)
-                    .openingTime("09:00")
-                    .closingTime("21:30")
-                    .image("https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80")
+            com.loyalty_program_app.backend.model.Coupon c2 = com.loyalty_program_app.backend.model.Coupon.builder()
+                    .code("GLOW50")
+                    .description("Flat ₹50 instant discount on hair serums & facial cleansers")
+                    .discount(50.0)
+                    .maxDiscount(50.0)
+                    .minAmount(299.0)
+                    .expiryDate(LocalDateTime.now().plusMonths(3))
                     .active(true)
                     .build();
-
-            com.loyalty_program_app.backend.model.Store hsr = com.loyalty_program_app.backend.model.Store.builder()
-                    .name("Groomish HSR Layout Studio")
-                    .code("HSR-03")
-                    .address("Sector 3, 27th Main Road, HSR Layout")
-                    .city("Bengaluru")
-                    .state("Karnataka")
-                    .pincode("560102")
-                    .phone("+91 80 4345 6789")
-                    .email("hsr@groomish.com")
-                    .latitude(12.911622)
-                    .longitude(77.638863)
-                    .openingTime("09:30")
-                    .closingTime("21:00")
-                    .image("https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1200&q=80")
+            com.loyalty_program_app.backend.model.Coupon c3 = com.loyalty_program_app.backend.model.Coupon.builder()
+                    .code("ROYAL250")
+                    .description("Luxury makeover offer: ₹250 off on total cart value above ₹1299")
+                    .discount(250.0)
+                    .maxDiscount(250.0)
+                    .minAmount(1299.0)
+                    .expiryDate(LocalDateTime.now().plusMonths(3))
                     .active(true)
                     .build();
-
-            com.loyalty_program_app.backend.model.Store whitefield = com.loyalty_program_app.backend.model.Store.builder()
-                    .name("Groomish Whitefield Prestige")
-                    .code("WTF-04")
-                    .address("ITPL Main Road, Prestige Shantiniketan, Whitefield")
-                    .city("Bengaluru")
-                    .state("Karnataka")
-                    .pincode("560066")
-                    .phone("+91 80 4456 7890")
-                    .email("whitefield@groomish.com")
-                    .latitude(12.983027)
-                    .longitude(77.752319)
-                    .openingTime("10:00")
-                    .closingTime("22:00")
-                    .image("https://images.unsplash.com/photo-1622288432450-277d0fef5ed6?auto=format&fit=crop&w=1200&q=80")
-                    .active(true)
-                    .build();
-
-            storeRepository.saveAll(List.of(indiranagar, koramangala, hsr, whitefield));
-            System.out.println("✔ Seeded 4 Groomish flagship stores in Bengaluru.");
+            couponRepository.saveAll(List.of(c1, c2, c3));
+            System.out.println("✔ Seeded 3 active promo coupons (GROOM100, GLOW50, ROYAL250).");
         }
 
-        // Link existing staff members without store to Indiranagar flagship
-        var primaryStore = storeRepository.findAllByActiveTrueOrderByCreatedAtAsc().stream().findFirst().orElse(null);
-        if (primaryStore != null) {
-            List<User> staffWithoutStore = userRepository.findByRole(Role.ROLE_STAFF).stream()
-                    .filter(u -> u.getStore() == null)
+        // Purge any default legacy branches (IND-01, KOR-02, HSR-03, WTF-04) and their related bookings & staff
+        List<String> defaultStoreCodes = List.of("IND-01", "KOR-02", "HSR-03", "WTF-04");
+        List<String> defaultStoreNames = List.of(
+                "Groomish Indiranagar Flagship",
+                "Groomish Koramangala Lounge",
+                "Groomish HSR Layout Studio",
+                "Groomish Whitefield Prestige"
+        );
+
+        List<com.loyalty_program_app.backend.model.Store> defaultStores = storeRepository.findAll().stream()
+                .filter(s -> (s.getCode() != null && defaultStoreCodes.contains(s.getCode()))
+                        || (s.getName() != null && defaultStoreNames.contains(s.getName())))
+                .toList();
+
+        if (!defaultStores.isEmpty()) {
+            java.util.Set<java.util.UUID> defaultStoreIds = defaultStores.stream()
+                    .map(com.loyalty_program_app.backend.model.Store::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+
+            // 1. Purge all bookings related to default branches
+            List<com.loyalty_program_app.backend.model.Booking> defaultBookings = bookingRepository.findAll().stream()
+                    .filter(b -> (b.getStore() != null && defaultStoreIds.contains(b.getStore().getId()))
+                            || (b.getStoreNameSnapshot() != null && defaultStoreNames.contains(b.getStoreNameSnapshot())))
                     .toList();
-            if (!staffWithoutStore.isEmpty()) {
-                for (User s : staffWithoutStore) {
-                    s.setStore(primaryStore);
-                    userRepository.save(s);
+
+            if (!defaultBookings.isEmpty()) {
+                List<com.loyalty_program_app.backend.model.Payment> paymentsToDelete = defaultBookings.stream()
+                        .map(com.loyalty_program_app.backend.model.Booking::getPayment)
+                        .filter(java.util.Objects::nonNull)
+                        .toList();
+
+                bookingRepository.deleteAll(defaultBookings);
+                if (!paymentsToDelete.isEmpty()) {
+                    try {
+                        paymentRepository.deleteAll(paymentsToDelete);
+                    } catch (Exception ignored) {}
                 }
-                System.out.println("✔ Assigned primary store (" + primaryStore.getName() + ") to " + staffWithoutStore.size() + " existing staff members.");
+                System.out.println("✔ Purged " + defaultBookings.size() + " bookings associated with default branches.");
             }
 
-            // Also backfill any legacy bookings without store
-            List<com.loyalty_program_app.backend.model.Booking> legacyBookings = bookingRepository.findAll().stream()
-                    .filter(b -> b.getStore() == null && b.getStoreNameSnapshot() == null)
+            // 2. Purge all staff members assigned to default branches
+            List<User> staffToDelete = userRepository.findByRole(Role.ROLE_STAFF).stream()
+                    .filter(u -> u.getStore() != null && defaultStoreIds.contains(u.getStore().getId()))
                     .toList();
-            if (!legacyBookings.isEmpty()) {
-                for (var b : legacyBookings) {
-                    b.setStore(primaryStore);
-                    b.setStoreNameSnapshot(primaryStore.getName());
-                    b.setStoreAddressSnapshot(primaryStore.getAddress() + ", " + primaryStore.getCity());
-                    bookingRepository.save(b);
+
+            if (!staffToDelete.isEmpty()) {
+                for (User staff : staffToDelete) {
+                    notificationRepository.deleteAllByUserId(staff.getId());
+                    cartRepository.findAll().stream()
+                            .filter(c -> c.getUser() != null && c.getUser().getId().equals(staff.getId()))
+                            .forEach(cartRepository::delete);
                 }
-                System.out.println("✔ Backfilled store branch for " + legacyBookings.size() + " legacy bookings.");
+                userRepository.deleteAll(staffToDelete);
+                System.out.println("✔ Purged " + staffToDelete.size() + " staff members assigned to default branches.");
             }
+
+            // 3. Clear store reference in any carts assigned to default branches
+            List<com.loyalty_program_app.backend.model.Cart> cartsWithDefaultStore = cartRepository.findAll().stream()
+                    .filter(c -> c.getStore() != null && defaultStoreIds.contains(c.getStore().getId()))
+                    .toList();
+            for (var c : cartsWithDefaultStore) {
+                c.setStore(null);
+                cartRepository.save(c);
+            }
+
+            // 4. Delete branch catalog inventory & service availability
+            for (java.util.UUID sId : defaultStoreIds) {
+                var availabilities = storeServiceAvailabilityRepository.findByStoreId(sId);
+                if (!availabilities.isEmpty()) {
+                    storeServiceAvailabilityRepository.deleteAll(availabilities);
+                }
+                var inventories = storeProductInventoryRepository.findByStoreId(sId);
+                if (!inventories.isEmpty()) {
+                    storeProductInventoryRepository.deleteAll(inventories);
+                }
+            }
+
+            // 5. Delete default stores
+            storeRepository.deleteAll(defaultStores);
+            System.out.println("✔ Purged " + defaultStores.size() + " default salon branches from database.");
         }
 
         // Check if ANY admin exists
@@ -190,6 +214,49 @@ public class AdminInitializer implements CommandLineRunner {
                 bookingRepository.save(b);
             }
             System.out.println("✔ Backfilled unique 10-char Booking IDs for " + bookingsWithoutCode.size() + " existing bookings.");
+        }
+
+        // Backfill unique 6-char referral codes for any existing customers missing one
+        List<User> customersWithoutReferral = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.ROLE_CUSTOMER && (u.getReferralCode() == null || u.getReferralCode().isBlank()))
+                .toList();
+
+        if (!customersWithoutReferral.isEmpty()) {
+            for (User u : customersWithoutReferral) {
+                u.setReferralCode(com.loyalty_program_app.backend.util.ReferralCodeGenerator.generateUniqueReferralCode(u.getName(), userRepository));
+                userRepository.save(u);
+            }
+            System.out.println("✔ Backfilled unique referral codes for " + customersWithoutReferral.size() + " customers.");
+        }
+
+        // Backfill 10 referral points and PointsLedger for any existing unrewarded referrals
+        List<Referral> unrewardedReferrals = referralRepository.findAll().stream()
+                .filter(r -> !r.isRewardGiven() && r.getReferrer() != null)
+                .toList();
+
+        if (!unrewardedReferrals.isEmpty()) {
+            for (Referral r : unrewardedReferrals) {
+                User referrer = r.getReferrer();
+                User referred = r.getReferred();
+                int referralBonus = 10;
+                referrer.setPoints((referrer.getPoints() != null ? referrer.getPoints() : 0) + referralBonus);
+                referrer.setLifetimePoints((referrer.getLifetimePoints() != null ? referrer.getLifetimePoints() : (referrer.getPoints() != null ? referrer.getPoints() : 0)) + referralBonus);
+                userRepository.save(referrer);
+
+                PointsLedger ledger = new PointsLedger();
+                ledger.setUser(referrer);
+                ledger.setChangeAmount(referralBonus);
+                ledger.setReason(PointReason.REFERRAL_BONUS);
+                ledger.setRelatedId(referred != null ? referred.getId() : null);
+                ledger.setNote("Referred to " + (referred != null ? referred.getName() : "Friend"));
+                ledger.setCreatedAt(LocalDateTime.now());
+                pointsLedgerRepository.save(ledger);
+
+                r.setRewardGiven(true);
+                r.setPointsLedger(ledger);
+                referralRepository.save(r);
+            }
+            System.out.println("✔ Backfilled 10 referral points for " + unrewardedReferrals.size() + " existing referrals.");
         }
     }
 }

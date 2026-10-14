@@ -89,6 +89,28 @@ public class UserAdminServiceImpl implements UserAdminService {
             storeRepository.findById(request.getStoreId()).ifPresent(user::setStore);
         }
 
+        if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
+
+        userRepository.save(user);
+        return toDto(user);
+    }
+
+    // ------------------------------------------
+    // UPDATE USER STATUS (ACTIVE/DEACTIVE TOGGLE)
+    // ------------------------------------------
+    @Override
+    public UserResponse updateUserStatus(UUID id, Boolean active) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (active != null) {
+            user.setActive(active);
+        } else {
+            user.setActive(!user.isActive());
+        }
+
         userRepository.save(user);
         return toDto(user);
     }

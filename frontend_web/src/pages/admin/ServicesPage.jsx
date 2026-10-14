@@ -109,19 +109,25 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <select
+        <div className="w-full sm:w-80">
+          <CustomSelect
             value={selectedStoreId}
-            onChange={(e) => setSelectedStoreId(e.target.value)}
-            className="py-2 px-3.5 rounded-xl bg-groomish-cream/80 border border-groomish-slate/15 text-xs font-bold text-groomish-slate focus:outline-none focus:ring-2 focus:ring-groomish-orange/40"
-          >
-            <option value="GLOBAL">🌐 Global Master Catalog (All Branches)</option>
-            {stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                📍 Branch: {s.name} ({s.code || s.city})
-              </option>
-            ))}
-          </select>
+            onChange={(e) => {
+              const val = typeof e === "object" && e !== null ? (e.target?.value ?? e.value) : e;
+              setSelectedStoreId(val);
+            }}
+            options={[
+              { value: "GLOBAL", label: "🌐 Global Master Catalog (All Branches)" },
+              ...stores.map((s) => ({
+                value: s.id,
+                label: `📍 Branch: ${s.name} (${s.code || s.city})`,
+              })),
+            ]}
+            placeholder="Select Branch Scope"
+            searchable={stores.length > 3}
+            searchPlaceholder="Search branch..."
+            className="!py-2 !px-3.5 !rounded-xl font-bold text-xs !bg-groomish-cream/60 hover:!bg-white"
+          />
         </div>
       </div>
 

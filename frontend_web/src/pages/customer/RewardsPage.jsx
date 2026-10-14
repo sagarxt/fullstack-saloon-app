@@ -7,6 +7,7 @@ import {
   getRewardLedger,
   getAvailableRewards,
   redeemReward,
+  getReferralCode,
 } from "../../api/customer";
 import RewardLedgerItem from "../../components/customer/RewardLedgerItem";
 import { extractList } from "../../utils/dataHelper";
@@ -24,6 +25,9 @@ import {
   Clock,
   Ticket,
   Scissors,
+  Copy,
+  Check,
+  Share2,
 } from "lucide-react";
 
 export default function RewardsPage() {
@@ -31,6 +35,8 @@ export default function RewardsPage() {
   const [lifetimePoints, setLifetimePoints] = useState(0);
   const [pendingPoints, setPendingPoints] = useState(0);
   const [tier, setTier] = useState("SILVER");
+  const [referralCode, setReferralCode] = useState("");
+  const [copiedRef, setCopiedRef] = useState(false);
   const [ledger, setLedger] = useState([]);
   const [rewards, setRewards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +56,18 @@ export default function RewardsPage() {
       setLifetimePoints(balRes.data?.lifetimePoints ?? balRes.data?.points ?? 0);
       setPendingPoints(balRes.data?.pendingPoints || 0);
       setTier(balRes.data?.tier || "SILVER");
+      
+      if (balRes.data?.referralCode) {
+        setReferralCode(balRes.data.referralCode);
+      } else {
+        try {
+          const refRes = await getReferralCode();
+          if (refRes.data?.referralCode) {
+            setReferralCode(refRes.data.referralCode);
+          }
+        } catch (_) {}
+      }
+
       setLedger(extractList(ledgerRes.data));
       setRewards(extractList(rewRes.data));
     } catch (err) {
@@ -105,6 +123,13 @@ export default function RewardsPage() {
 
   const ledgerList = extractList(ledger);
   const rewardList = extractList(rewards);
+
+  const handleCopyReferral = () => {
+    if (!referralCode) return;
+    navigator.clipboard.writeText(referralCode);
+    setCopiedRef(true);
+    setTimeout(() => setCopiedRef(false), 2000);
+  };
 
   return (
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
@@ -243,6 +268,68 @@ export default function RewardsPage() {
             </span>
             <p className="text-xs font-bold text-groomish-slate">2.0x Points</p>
             <p className="text-[11px] text-groomish-slate/50 mt-1">Complimentary head massage & concierge.</p>
+          </div>
+        </div>
+
+        {/* REFERRAL PROGRAM BANNER */}
+        <div className="bg-gradient-to-br from-groomish-orange to-groomish-coral text-white rounded-3xl p-6 sm:p-7 shadow-glowOrange mb-8 relative overflow-hidden">
+          <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-lg">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white border border-white/20">
+                <Gift className="w-3.5 h-3.5" />
+                <span>Refer & Earn</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white leading-snug">
+                Invite Friends, Earn 10 Reward Points!
+              </h2>
+              <p className="text-xs sm:text-sm text-white/90 leading-relaxed">
+                Share your unique referral code with friends. Whenever a friend signs up using your code, you will automatically receive <b className="text-groomish-gold">10 VIP Reward Points</b> credited directly to your account.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-center gap-3 shrink-0">
+              <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-5 py-3 text-center w-full sm:w-auto">
+                <span className="text-[10px] uppercase font-bold text-white/70 block">Your Referral Code</span>
+                <span className="font-mono text-2xl font-extrabold tracking-widest text-groomish-gold">
+                  {referralCode || "..."}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleCopyReferral}
+                  className="flex-1 sm:flex-initial py-3 px-4 rounded-xl bg-white text-groomish-slate hover:bg-groomish-cream font-bold text-xs transition flex items-center justify-center gap-2 shadow-soft active:scale-95"
+                >
+                  {copiedRef ? (
+                    <>
+                      <Check className="w-4 h-4 text-groomish-green" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copy Code</span>
+                    </>
+                  )}
+                </button>
+
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                    `Use my Groomish Now invite code ${referralCode} to sign up and get bonus reward points on your first luxury salon visit! https://groomishnow.com`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-3 px-4 rounded-xl bg-white/20 hover:bg-white/30 text-white font-bold text-xs transition flex items-center justify-center gap-2"
+                  title="Share via WhatsApp"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Share</span>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 

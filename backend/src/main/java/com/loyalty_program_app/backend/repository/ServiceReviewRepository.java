@@ -13,11 +13,31 @@ public interface ServiceReviewRepository extends JpaRepository<ServiceReview, UU
 
     Page<ServiceReview> findByServiceIdOrderByCreatedAtDesc(UUID serviceId, Pageable pageable);
 
+    Page<ServiceReview> findByProductIdOrderByCreatedAtDesc(UUID productId, Pageable pageable);
+
     Page<ServiceReview> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+
+    java.util.List<ServiceReview> findByBookingId(UUID bookingId);
+
+    java.util.List<ServiceReview> findByUserIdAndBookingId(UUID userId, UUID bookingId);
+
+    java.util.Optional<ServiceReview> findFirstByUserIdAndBookingIdAndServiceId(UUID userId, UUID bookingId, UUID serviceId);
+
+    java.util.Optional<ServiceReview> findFirstByUserIdAndBookingIdAndProductId(UUID userId, UUID bookingId, UUID productId);
+
+    java.util.Optional<ServiceReview> findFirstByUserIdAndServiceId(UUID userId, UUID serviceId);
+
+    java.util.Optional<ServiceReview> findFirstByUserIdAndProductId(UUID userId, UUID productId);
 
     @Query("SELECT AVG(r.rating) FROM ServiceReview r WHERE r.service.id = :serviceId")
     Double getAverageRatingByServiceId(@Param("serviceId") UUID serviceId);
 
     @Query("SELECT COUNT(r) FROM ServiceReview r WHERE r.service.id = :serviceId")
     Long countByServiceId(@Param("serviceId") UUID serviceId);
+
+    @Query("SELECT AVG(r.rating) FROM ServiceReview r WHERE r.product.id = :productId")
+    Double getAverageRatingByProductId(@Param("productId") UUID productId);
+
+    @Query("SELECT COUNT(r) FROM ServiceReview r WHERE r.product.id = :productId")
+    Long countByProductId(@Param("productId") UUID productId);
 }

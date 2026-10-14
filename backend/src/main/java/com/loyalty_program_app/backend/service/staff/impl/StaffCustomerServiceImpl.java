@@ -70,6 +70,9 @@ public class StaffCustomerServiceImpl implements StaffCustomerService {
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             customer.setPassword(passwordEncoder.encode(request.getPassword()));
         }
+        if (request.getActive() != null) {
+            customer.setActive(request.getActive());
+        }
 
         customer.setUpdatedBy(staffId);
 

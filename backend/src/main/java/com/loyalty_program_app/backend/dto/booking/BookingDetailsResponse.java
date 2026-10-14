@@ -24,6 +24,8 @@ public class BookingDetailsResponse {
     private UUID storeId;
     private String storeName;
     private String storeAddress;
+    private Double storeLatitude;
+    private Double storeLongitude;
 
     private UUID paymentId;
     private String paymentMethod;
@@ -37,4 +39,5 @@ public class BookingDetailsResponse {
     private List<BookingItemDetailsResponse> items;
     private List<com.loyalty_program_app.backend.dto.product.BookingProductResponse> products;
     private List<BookingTimelineResponse> timeline;
+    private List<com.loyalty_program_app.backend.dto.review.ServiceReviewResponse> customerReviews;
 }

@@ -211,21 +211,12 @@ export default function ServicesSection({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => navigate(`/services/${service.id}`)}
-                        className="btn-secondary text-xs px-2.5 py-2"
-                        title="View reviews and full treatment description"
-                      >
-                        Details
-                      </button>
-                      <button
-                        onClick={() => onBook(service)}
-                        className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange"
-                      >
-                        Book
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onBook(service)}
+                      className="btn-primary text-xs px-4 py-2 shadow-sm group-hover:shadow-glowOrange"
+                    >
+                      Book
+                    </button>
                   </div>
                 </div>
               );

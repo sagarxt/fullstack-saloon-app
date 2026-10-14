@@ -7,6 +7,9 @@ import {
 } from "../../api/admin";
 import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import BookingTimelineSection from "../../components/booking/BookingTimelineSection";
+import CustomSelect from "../../components/common/CustomSelect";
+import CustomDatePicker from "../../components/common/CustomDatePicker";
+import CustomTimePicker from "../../components/common/CustomTimePicker";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import {
   Calendar,
@@ -31,6 +34,26 @@ import {
   ShieldCheck,
   Tag,
 } from "lucide-react";
+
+const APPOINTMENT_STATUS_OPTIONS = [
+  { value: "CONFIRMED", label: "CONFIRMED (Active Confirmed)" },
+  { value: "COMPLETED", label: "COMPLETED (Finished)" },
+  { value: "MODIFIED", label: "MODIFIED (Rescheduled)" },
+  { value: "CANCELLED", label: "CANCELLED" },
+  { value: "PENDING", label: "PENDING (Online Payment Pending)" },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "CASH", label: "CASH (Salon Counter)" },
+  { value: "CARD", label: "CARD (POS Terminal)" },
+  { value: "UPI", label: "UPI (Direct QR/App)" },
+];
+
+const PAYMENT_STATUS_OPTIONS = [
+  { value: "PENDING", label: "PENDING" },
+  { value: "COMPLETED", label: "COMPLETED" },
+  { value: "FAILED", label: "FAILED" },
+];
 
 export default function AdminBookingDetailPage() {
   const { id } = useParams();
@@ -151,10 +174,12 @@ export default function AdminBookingDetailPage() {
         return "bg-groomish-greenLight text-groomish-green border-groomish-green/30";
       case "COMPLETED":
         return "bg-groomish-blueLight text-groomish-blue border-groomish-blue/30";
+      case "MODIFIED":
+        return "bg-purple-100 text-purple-700 border-purple-200";
       case "CANCELLED":
         return "bg-groomish-crimsonLight text-groomish-crimson border-groomish-crimson/30";
       default:
-        return "bg-groomish-goldLight text-groomish-slate border-groomish-gold/40";
+        return "bg-amber-100 text-amber-800 border-amber-300";
     }
   };
 
@@ -235,7 +260,7 @@ export default function AdminBookingDetailPage() {
             </button>
           )}
 
-          {booking.status === "CONFIRMED" && (
+          {(booking.status === "CONFIRMED" || booking.status === "MODIFIED") && (
             <button
               disabled={actionLoading}
               onClick={() => handleQuickStatus("COMPLETED")}
@@ -289,6 +314,25 @@ export default function AdminBookingDetailPage() {
           </div>
           <button onClick={() => setError("")} className="hover:opacity-75">
             <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Online Payment Pending Banner */}
+      {booking.status === "PENDING" && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Online Payment Pending:</strong> Customer booked with an online payment method that is pending confirmation. You can verify the transaction or confirm the appointment directly.
+            </span>
+          </div>
+          <button
+            onClick={() => handleQuickStatus("CONFIRMED")}
+            disabled={actionLoading}
+            className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition"
+          >
+            Confirm Appointment
           </button>
         </div>
       )}
@@ -552,12 +596,14 @@ export default function AdminBookingDetailPage() {
               </div>
               <span
                 className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${
-                  booking.paymentStatus === "COMPLETED"
+                  booking.paymentStatus === "COMPLETED" || booking.status === "COMPLETED"
                     ? "bg-groomish-greenLight text-groomish-green border border-groomish-green/30"
                     : "bg-groomish-goldLight text-groomish-slate border border-groomish-gold/40"
                 }`}
               >
-                {booking.paymentStatus || "PENDING"}
+                {booking.status === "COMPLETED" || booking.paymentStatus === "COMPLETED"
+                  ? (booking.paymentMethod === "CASH" ? "Paid at Salon" : `Paid Online (${booking.paymentMethod || "UPI"})`)
+                  : (booking.paymentStatus || "PENDING")}
               </span>
             </div>
 
@@ -614,16 +660,18 @@ export default function AdminBookingDetailPage() {
                 <label className="block text-[11px] font-bold text-groomish-slate/70 mb-1">
                   Appointment Status
                 </label>
-                <select
+                <CustomSelect
+                  name="editStatus"
+                  options={APPOINTMENT_STATUS_OPTIONS}
                   value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 text-xs text-groomish-slate font-semibold focus:outline-none focus:border-groomish-orange"
-                >
-                  <option value="PENDING">PENDING</option>
-                  <option value="CONFIRMED">CONFIRMED</option>
-                  <option value="COMPLETED">COMPLETED</option>
-                  <option value="CANCELLED">CANCELLED</option>
-                </select>
+                  onChange={(e) => {
+                    const val = typeof e === "object" && e !== null ? (e.target?.value ?? e.value) : e;
+                    setEditStatus(val);
+                  }}
+                  searchable={false}
+                  placeholder="Select Status"
+                  className="!py-2 !px-3 !bg-white font-semibold"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -631,22 +679,25 @@ export default function AdminBookingDetailPage() {
                   <label className="block text-[11px] font-bold text-groomish-slate/70 mb-1">
                     Reschedule Date
                   </label>
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={editDate}
-                    onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:border-groomish-orange"
+                    onChange={(e, val) => setEditDate(val || e.target?.value || "")}
+                    placeholder="Select Date"
+                    align="left"
+                    className="w-full"
+                    triggerClassName="!py-2 !px-3 !rounded-xl !bg-white"
                   />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-groomish-slate/70 mb-1">
                     Time Slot
                   </label>
-                  <input
-                    type="time"
+                  <CustomTimePicker
                     value={editTime}
-                    onChange={(e) => setEditTime(e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:border-groomish-orange"
+                    onChange={(e, val) => setEditTime(val || e.target?.value || "")}
+                    placeholder="Select Time"
+                    align="right"
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -656,29 +707,35 @@ export default function AdminBookingDetailPage() {
                   <label className="block text-[11px] font-bold text-groomish-slate/70 mb-1">
                     Payment Method
                   </label>
-                  <select
+                  <CustomSelect
+                    name="editPaymentMethod"
+                    options={PAYMENT_METHOD_OPTIONS}
                     value={editPaymentMethod}
-                    onChange={(e) => setEditPaymentMethod(e.target.value)}
-                    className="w-full px-2 py-1.5 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:border-groomish-orange"
-                  >
-                    <option value="CASH">CASH</option>
-                    <option value="CARD">CARD</option>
-                    <option value="UPI">UPI</option>
-                  </select>
+                    onChange={(e) => {
+                      const val = typeof e === "object" && e !== null ? (e.target?.value ?? e.value) : e;
+                      setEditPaymentMethod(val);
+                    }}
+                    searchable={false}
+                    placeholder="Method"
+                    className="!py-2 !px-3 !bg-white font-semibold"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-groomish-slate/70 mb-1">
                     Payment Status
                   </label>
-                  <select
+                  <CustomSelect
+                    name="editPaymentStatus"
+                    options={PAYMENT_STATUS_OPTIONS}
                     value={editPaymentStatus}
-                    onChange={(e) => setEditPaymentStatus(e.target.value)}
-                    className="w-full px-2 py-1.5 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:border-groomish-orange"
-                  >
-                    <option value="PENDING">PENDING</option>
-                    <option value="COMPLETED">COMPLETED</option>
-                    <option value="FAILED">FAILED</option>
-                  </select>
+                    onChange={(e) => {
+                      const val = typeof e === "object" && e !== null ? (e.target?.value ?? e.value) : e;
+                      setEditPaymentStatus(val);
+                    }}
+                    searchable={false}
+                    placeholder="Status"
+                    className="!py-2 !px-3 !bg-white font-semibold"
+                  />
                 </div>
               </div>
 
@@ -692,7 +749,7 @@ export default function AdminBookingDetailPage() {
                   step="0.01"
                   value={editPricePaid}
                   onChange={(e) => setEditPricePaid(e.target.value)}
-                  className="w-full px-3 py-1.5 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 text-xs text-groomish-slate font-bold focus:outline-none focus:border-groomish-orange"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-groomish-slate/15 text-xs text-groomish-slate font-bold focus:outline-none focus:border-groomish-orange focus:ring-2 focus:ring-groomish-orange/20 transition-all"
                 />
               </div>
 
@@ -705,7 +762,7 @@ export default function AdminBookingDetailPage() {
                   value={editNote}
                   onChange={(e) => setEditNote(e.target.value)}
                   placeholder="Notes about client request, staff assignment..."
-                  className="w-full px-3 py-2 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:border-groomish-orange resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:border-groomish-orange focus:ring-2 focus:ring-groomish-orange/20 transition-all resize-none"
                 />
               </div>
 

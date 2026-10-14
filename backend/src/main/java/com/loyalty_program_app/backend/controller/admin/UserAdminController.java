@@ -46,6 +46,15 @@ public class UserAdminController {
         return userAdminService.updateUser(id, request);
     }
 
+    // TOGGLE / UPDATE STATUS
+    @PutMapping("/{id}/status")
+    public UserResponse updateUserStatus(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Boolean active
+    ) {
+        return userAdminService.updateUserStatus(id, active);
+    }
+
     // SOFT DELETE
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable UUID id) {

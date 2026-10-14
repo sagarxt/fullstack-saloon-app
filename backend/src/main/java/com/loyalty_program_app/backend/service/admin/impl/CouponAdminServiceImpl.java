@@ -35,8 +35,11 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         c.setMinAmount(req.getMinAmount());
         c.setMaxDiscount(req.getMaxDiscount());
         c.setDiscount(req.getDiscount());
-        c.setExpiryDate(LocalDateTime.parse(req.getExpiryDate()));
+        c.setExpiryDate(parseExpiryDate(req.getExpiryDate()));
         c.setActive(req.getActive() != null ? req.getActive() : true);
+        if (req.getEligibleCategories() != null) {
+            c.setEligibleCategories(new java.util.ArrayList<>(req.getEligibleCategories()));
+        }
 
         couponRepository.save(c);
         return toDto(c);
@@ -56,9 +59,12 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         if (req.getMaxDiscount() != null) c.setMaxDiscount(req.getMaxDiscount());
         if (req.getDiscount() != null) c.setDiscount(req.getDiscount());
         if (req.getExpiryDate() != null)
-            c.setExpiryDate(LocalDateTime.parse(req.getExpiryDate()));
+            c.setExpiryDate(parseExpiryDate(req.getExpiryDate()));
 
         if (req.getActive() != null) c.setActive(req.getActive());
+        if (req.getEligibleCategories() != null) {
+            c.setEligibleCategories(new java.util.ArrayList<>(req.getEligibleCategories()));
+        }
 
         couponRepository.save(c);
         return toDto(c);
@@ -131,6 +137,22 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         return toDto(c);
     }
 
+    private LocalDateTime parseExpiryDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) return LocalDateTime.now().plusDays(90);
+        try {
+            if (dateStr.endsWith("Z") || dateStr.contains("+")) {
+                return java.time.OffsetDateTime.parse(dateStr).toLocalDateTime();
+            }
+            return LocalDateTime.parse(dateStr);
+        } catch (Exception e) {
+            try {
+                return java.time.Instant.parse(dateStr).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            } catch (Exception ex) {
+                return LocalDateTime.parse(dateStr.substring(0, 19));
+            }
+        }
+    }
+
     // ======================================
     // MANUAL MAPPER
     // ======================================
@@ -144,6 +166,7 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         dto.setDiscount(c.getDiscount());
         dto.setExpiryDate(c.getExpiryDate().toString());
         dto.setActive(c.isActive());
+        dto.setEligibleCategories(c.getEligibleCategories() != null ? new java.util.ArrayList<>(c.getEligibleCategories()) : new java.util.ArrayList<>());
         return dto;
     }
 }

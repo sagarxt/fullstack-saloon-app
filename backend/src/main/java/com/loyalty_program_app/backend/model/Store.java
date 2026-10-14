@@ -38,6 +38,9 @@ public class Store {
     @Column(length = 1024)
     private String image; // Cloudinary primary URL
 
+    @Column(length = 1024)
+    private String logo; // Cloudinary logo URL
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "store_images", joinColumns = @JoinColumn(name = "store_id"))
     @Column(name = "image_url", length = 1024)

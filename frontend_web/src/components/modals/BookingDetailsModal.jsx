@@ -163,9 +163,9 @@ export default function BookingDetailsModal({
       case "CANCELLED":
         return "bg-groomish-crimsonLight text-groomish-crimson border-groomish-crimson/30";
       case "MODIFIED":
-        return "bg-groomish-orangeLight text-groomish-orange border-groomish-orange/30";
+        return "bg-purple-100 text-purple-700 border-purple-200";
       default:
-        return "bg-groomish-goldLight text-groomish-slate border-groomish-gold/40";
+        return "bg-amber-100 text-amber-800 border-amber-300";
     }
   };
 
@@ -234,7 +234,7 @@ export default function BookingDetailsModal({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 transition shadow-soft disabled:opacity-50"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    <span>Approve</span>
+                    <span>Confirm Appointment</span>
                   </button>
                   <button
                     disabled={saving}
@@ -242,12 +242,12 @@ export default function BookingDetailsModal({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-groomish-crimson text-white font-bold text-xs hover:bg-rose-600 transition shadow-soft disabled:opacity-50"
                   >
                     <X className="w-3.5 h-3.5" />
-                    <span>Reject</span>
+                    <span>Cancel</span>
                   </button>
                 </>
               )}
 
-              {booking.status === "CONFIRMED" && (
+              {(booking.status === "CONFIRMED" || booking.status === "MODIFIED") && (
                 <>
                   <button
                     disabled={saving}
@@ -461,11 +461,11 @@ export default function BookingDetailsModal({
                   onChange={(e) => setEditStatus(e.target.value)}
                   className="input-groomish bg-white text-xs cursor-pointer"
                 >
-                  <option value="PENDING">PENDING</option>
-                  <option value="CONFIRMED">CONFIRMED</option>
+                  <option value="CONFIRMED">CONFIRMED (Active Confirmed)</option>
                   <option value="COMPLETED">COMPLETED</option>
-                  <option value="MODIFIED">MODIFIED</option>
+                  <option value="MODIFIED">MODIFIED (Rescheduled)</option>
                   <option value="CANCELLED">CANCELLED</option>
+                  <option value="PENDING">PENDING (Online Payment Pending)</option>
                 </select>
               </div>
 

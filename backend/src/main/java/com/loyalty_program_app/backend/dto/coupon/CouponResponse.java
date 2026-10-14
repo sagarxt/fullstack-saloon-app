@@ -14,4 +14,5 @@ public class CouponResponse {
     private Double discount;
     private String expiryDate;
     private Boolean active;
+    private java.util.List<String> eligibleCategories;
 }

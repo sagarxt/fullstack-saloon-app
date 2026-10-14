@@ -8,4 +8,5 @@ public class PointsBalanceResponse {
     private Integer lifetimePoints;
     private String tier;
     private Integer pendingPoints;
+    private String referralCode;
 }

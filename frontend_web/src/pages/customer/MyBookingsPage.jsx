@@ -42,7 +42,7 @@ export default function MyBookingsPage() {
   const bookingList = extractList(bookings);
 
   const filteredBookings = bookingList.filter((b) => {
-    if (filter === "UPCOMING" && b.status !== "PENDING" && b.status !== "CONFIRMED") return false;
+    if (filter === "UPCOMING" && b.status !== "PENDING" && b.status !== "CONFIRMED" && b.status !== "MODIFIED") return false;
     if (filter === "COMPLETED" && b.status !== "COMPLETED") return false;
     if (filter === "CANCELLED" && b.status !== "CANCELLED") return false;
 
@@ -68,7 +68,7 @@ export default function MyBookingsPage() {
     return true;
   });
 
-  const upcomingCount = bookingList.filter((b) => b.status === "PENDING" || b.status === "CONFIRMED").length;
+  const upcomingCount = bookingList.filter((b) => b.status === "PENDING" || b.status === "CONFIRMED" || b.status === "MODIFIED").length;
   const completedCount = bookingList.filter((b) => b.status === "COMPLETED").length;
 
   return (

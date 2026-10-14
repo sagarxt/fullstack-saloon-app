@@ -56,20 +56,23 @@ For optimal responsiveness, fast CDN delivery, and crisp retina display renderin
 ## ✨ Feature Highlights
 
 ### 💇 1. Customer Experience & Public Catalog
-- **Interactive Multi-Step Booking Flow**:
-  - Interactive calendar date picker & dynamic slot groups with real-time slot availability.
-  - Promo coupon code verification with instant cart deduction.
-  - Itemized billing with tax calculation and payment method selection (UPI, Card, Pay at Salon).
-  - Celebration confirmation dialog detailing booking code and points accrued.
+- **Persistent Database Cart & Unified Checkout (`/cart`, `/checkout`)**:
+  - Replaced direct booking with an e-commerce **"Add Service" / "Add Product" -> Cart -> Checkout** flow.
+  - Cart is persistently backed by PostgreSQL database (`carts` & `cart_items`), preserving selections across refreshes, browsers, and devices.
+  - Live reactive `ShoppingCart` badge in the header navbar and mobile drawer.
+  - Dedicated `/cart` page with treatment and product categorization, quantity adjustment, store assignment, and points preview.
+  - Dedicated `/checkout` page with branch confirmation, appointment date & time slot selection (with 5-stylist capacity check), payment mode selection, and promo coupon or loyalty voucher redemption.
+- **Available Offers & Promotional Coupons Hub**:
+  - Luxury "Available Offers & Promotional Coupons" strip on Treatment Detail (`/services/:id`) and Products page (`/products`).
+  - 1-click clipboard coupon copy with real-time discount preview.
 - **Unique 10-Digit Human-Readable Booking ID (`GN-XX-XXXXXX`)**:
   - Format: `GN-[2 Alphanumeric]-[6 Digits]` (e.g., `GN-7K-481920`).
   - Generated via `SecureRandom` non-ambiguous uppercase characters for easy telephone recitation.
 - **Dedicated Catalog Pages**:
   - Dedicated Categories Gallery (`/categories`) & Category Detail (`/category/:id`) with live gender filtering (**Women**, **Men**, **Unisex**, **All**).
-  - Dedicated Treatment Detail Page (`/services/:id`) featuring high-resolution photography, what-to-expect badges, verified customer reviews, and sticky booking card.
+  - Dedicated Treatment Detail Page (`/services/:id`) featuring high-resolution photography, what-to-expect badges, verified customer reviews, offers section, and "Add Service to Cart" CTA.
 - **Retail Beauty Shop & In-Store Pickup (`/products`)**:
-  - Public catalog for in-store salon beauty products (Hair Care, Skin & Facial, Beard Grooming).
-  - Live search, brand filters, in-store pickup indicators, and loyalty reward calculations.
+  - Public catalog for salon beauty products with promotional offers banner, live search, and "Add Product to Cart" actions.
 - **Verified Customer Reviews & Ratings**:
   - Paginated customer reviews, star breakdown ratings, and public rating summaries.
   - Interactive 5-star review modal submitter for authenticated clients.
@@ -94,6 +97,7 @@ For optimal responsiveness, fast CDN delivery, and crisp retina display renderin
   - Personal info editor for quick Name and Phone updates.
   - Secure Change Password dialog with BCrypt verification and email alerts.
   - Full Assigned Salon Branch card showing branch code, name, phone, email, full address, operating hours, and active status.
+- **Live Customer Cart Management**: Inspect and manage active database carts for any client, adjust quantities, remove items, or clear cart on their behalf.
 - **Walk-in Client Registration**: Fast-track customer enrollment with automatic loyalty account creation.
 
 ### 📍 3. Multi-Store Geolocation & Branch Catalog Architecture
@@ -106,6 +110,7 @@ For optimal responsiveness, fast CDN delivery, and crisp retina display renderin
 
 ### 👑 4. Super Admin Command Center (`/admin/*`)
 - **Real-Time Analytics**: Live metrics on daily revenue, appointments, active clients, and treatment distribution.
+- **Live Customer Cart Oversight**: View and edit any individual customer's database cart directly via the Customer Profile modal ("Active Cart" tab) or customer directory.
 - **Multi-Branch Management (`/admin/stores`)**: CRUD operations for salon branches with coordinates detection, Cloudinary photo uploads, custom opening/closing time pickers (`CustomTimePicker`), and Google Maps deep-links.
 - **Catalog Management**: CRUD operations for Categories, Services, and Store Products with Cloudinary image uploaders.
 - **Compact One-Pager Modals**: Redesigned dialogs (`AddServiceModal`, `EditServiceModal`) fitting comfortably on single screens without vertical scrollbars.
@@ -116,7 +121,7 @@ For optimal responsiveness, fast CDN delivery, and crisp retina display renderin
 ### 💎 5. VIP Loyalty & Gamification Engine
 - **Lifetime Tier Progression**: Automatic advancement through **Silver**, **Gold**, **Platinum**, and **Diamond** based on cumulative lifetime salon spending (no tier downgrade when redeeming points for vouchers).
 - **Points Ledger**: Transparent audit trail tracking points earned (+1 pt per ₹100 spent) and points redeemed for vouchers.
-- **Viral Referral System**: Unique alphanumeric referral codes generated on signup with 1-click clipboard copy and WhatsApp sharing links.
+- **Viral Referral System & Instant Rewards**: Unique 6-character alphanumeric referral codes generated on signup with 1-click clipboard copy and WhatsApp sharing links. When a referred friend signs up, the referrer instantly receives **+10 VIP Reward Points** in their account with a dedicated `PointsLedger` entry (`Referred to <Name>`) and in-app celebratory notification.
 
 ### 📧 6. Asynchronous Gmail SMTP & Tax Invoicing
 - **Non-Blocking Delivery**: Powered by Spring Boot `@Async` thread pools for instant UI responsiveness.

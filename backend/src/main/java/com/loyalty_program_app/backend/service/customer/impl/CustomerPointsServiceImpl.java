@@ -72,11 +72,18 @@ public class CustomerPointsServiceImpl implements CustomerPointsService {
             userRepository.save(user);
         }
 
+        // Guarantee user has a unique referral code
+        if (user.getReferralCode() == null || user.getReferralCode().isBlank()) {
+            user.setReferralCode(com.loyalty_program_app.backend.util.ReferralCodeGenerator.generateUniqueReferralCode(user.getName(), userRepository));
+            userRepository.save(user);
+        }
+
         PointsBalanceResponse dto = new PointsBalanceResponse();
         dto.setPoints(user.getPoints() != null ? user.getPoints() : 0);
         dto.setLifetimePoints(lifetime);
         dto.setTier(user.getTier() != null ? user.getTier().name() : calculatedTier.name());
         dto.setPendingPoints(pending);
+        dto.setReferralCode(user.getReferralCode());
         return dto;
     }
 
@@ -122,6 +129,15 @@ public class CustomerPointsServiceImpl implements CustomerPointsService {
                     dto.setVoucherCode(v.getVoucherCode());
                     dto.setVoucherTitle(v.getTitle());
                     dto.setServiceName(v.getServiceName());
+                } else {
+                    var optUser = userRepository.findById(l.getRelatedId());
+                    if (optUser.isPresent()) {
+                        var u = optUser.get();
+                        dto.setServiceName("Friend Referral: " + u.getName());
+                        if (dto.getNote() == null || dto.getNote().isBlank()) {
+                            dto.setNote("Referred to " + u.getName());
+                        }
+                    }
                 }
             }
         }

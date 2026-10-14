@@ -133,6 +133,12 @@ public class BookingAdminServiceImpl implements BookingAdminService {
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             BookingStatus newStatus = BookingStatus.valueOf(request.getStatus().trim().toUpperCase());
             booking.setStatus(newStatus);
+            if (booking.getBookingItems() != null) {
+                for (BookingItem bi : booking.getBookingItems()) {
+                    bi.setStatus(newStatus);
+                    bookingItemRepository.save(bi);
+                }
+            }
 
             if (newStatus == BookingStatus.CANCELLED) {
                 booking.setCancelledAt(LocalDateTime.now());
@@ -219,6 +225,19 @@ public class BookingAdminServiceImpl implements BookingAdminService {
             }
             p = paymentRepository.save(p);
             booking.setPayment(p);
+
+            // If payment is completed and booking was pending, transition to CONFIRMED
+            if (pStatus == PaymentStatus.COMPLETED && booking.getStatus() == BookingStatus.PENDING) {
+                booking.setStatus(BookingStatus.CONFIRMED);
+                if (booking.getBookingItems() != null) {
+                    for (BookingItem bi : booking.getBookingItems()) {
+                        if (bi.getStatus() == BookingStatus.PENDING) {
+                            bi.setStatus(BookingStatus.CONFIRMED);
+                            bookingItemRepository.save(bi);
+                        }
+                    }
+                }
+            }
         }
 
         if (request.getPaymentMethod() != null && !request.getPaymentMethod().isBlank()) {
@@ -284,6 +303,12 @@ public class BookingAdminServiceImpl implements BookingAdminService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(LocalDateTime.now());
+        if (booking.getBookingItems() != null) {
+            for (BookingItem bi : booking.getBookingItems()) {
+                bi.setStatus(BookingStatus.CANCELLED);
+                bookingItemRepository.save(bi);
+            }
+        }
 
         if (note != null && !note.isBlank()) {
             booking.setNote(note);
@@ -341,7 +366,9 @@ public class BookingAdminServiceImpl implements BookingAdminService {
 
         if (b.getPayment() != null) {
             dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
-            if (b.getStatus() == BookingStatus.CANCELLED) {
+            if (b.getStatus() == BookingStatus.COMPLETED) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (b.getStatus() == BookingStatus.CANCELLED) {
                 if (b.getPayment().getPaymentMethod() == PaymentMethod.CASH || b.getPayment().getStatus() == PaymentStatus.PENDING) {
                     dto.setPaymentStatus("CANCELLED");
                 } else {
@@ -352,7 +379,13 @@ public class BookingAdminServiceImpl implements BookingAdminService {
             }
         } else {
             dto.setPaymentMethod("CASH");
-            dto.setPaymentStatus(b.getStatus() == BookingStatus.CANCELLED ? "CANCELLED" : "PENDING");
+            if (b.getStatus() == BookingStatus.COMPLETED) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (b.getStatus() == BookingStatus.CANCELLED) {
+                dto.setPaymentStatus("CANCELLED");
+            } else {
+                dto.setPaymentStatus("PENDING");
+            }
         }
 
         if (b.getStore() != null) {

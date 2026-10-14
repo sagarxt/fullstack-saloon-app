@@ -35,6 +35,14 @@ export default function RewardLedgerItem({ item }) {
               {item.reason ? item.reason.replaceAll("_", " ") : "Points Activity"}
             </span>
 
+            {/* Referral Tag */}
+            {item.reason === "REFERRAL_BONUS" && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-green/15 text-groomish-green border border-groomish-green/20">
+                <Gift className="w-2.5 h-2.5" />
+                <span>Friend Referral Reward</span>
+              </span>
+            )}
+
             {/* Tracked Order / Booking ID */}
             {item.bookingCode && (
               <Link
@@ -63,7 +71,14 @@ export default function RewardLedgerItem({ item }) {
           {/* Service Name & Bill Amount details */}
           {(item.serviceName || item.orderAmount !== undefined || item.note) && (
             <div className="flex flex-wrap items-center gap-2 text-[11px] text-groomish-slateLight">
-              {item.serviceName && (
+              {item.note && (
+                <span className="flex items-center gap-1 text-groomish-slate font-semibold bg-groomish-cream px-2 py-0.5 rounded-md border border-groomish-slate/10">
+                  <Sparkles className="w-3 h-3 text-groomish-gold shrink-0" />
+                  <span>{item.note}</span>
+                </span>
+              )}
+
+              {item.serviceName && !item.serviceName.startsWith("Friend Referral") && (
                 <span className="flex items-center gap-1 text-groomish-slate font-medium">
                   <Scissors className="w-3 h-3 text-groomish-orange shrink-0" />
                   <span className="line-clamp-1">{item.serviceName}</span>
@@ -74,10 +89,6 @@ export default function RewardLedgerItem({ item }) {
                 <span className="font-bold text-groomish-slate">
                   • Bill: ₹{Number(item.orderAmount).toLocaleString()}
                 </span>
-              )}
-
-              {item.note && !item.serviceName && (
-                <span>• {item.note}</span>
               )}
             </div>
           )}

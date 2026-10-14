@@ -28,6 +28,8 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
     private final com.loyalty_program_app.backend.service.utils.OtpService otpService;
+    private final com.loyalty_program_app.backend.repository.PointsLedgerRepository pointsLedgerRepository;
+    private final com.loyalty_program_app.backend.repository.NotificationRepository notificationRepository;
 
     // ----------------------------------------------------------
     // VERIFY REFERRAL CODE
@@ -95,12 +97,61 @@ public class AuthService {
         userRepository.save(user);
 
         if (referrer != null) {
+            int referralBonus = 10;
+            int newPoints = (referrer.getPoints() != null ? referrer.getPoints() : 0) + referralBonus;
+            int newLifetime = (referrer.getLifetimePoints() != null ? referrer.getLifetimePoints() : (referrer.getPoints() != null ? referrer.getPoints() : 0)) + referralBonus;
+            referrer.setPoints(newPoints);
+            referrer.setLifetimePoints(newLifetime);
+
+            // Tier evaluation
+            if (newLifetime >= 300) {
+                referrer.setTier(Tier.DIAMOND);
+            } else if (newLifetime >= 150) {
+                referrer.setTier(Tier.PLATINUM);
+            } else if (newLifetime >= 50) {
+                referrer.setTier(Tier.GOLD);
+            }
+            userRepository.save(referrer);
+
+            // Record in PointsLedger
+            com.loyalty_program_app.backend.model.PointsLedger ledger = new com.loyalty_program_app.backend.model.PointsLedger();
+            ledger.setUser(referrer);
+            ledger.setChangeAmount(referralBonus);
+            ledger.setReason(com.loyalty_program_app.backend.enums.PointReason.REFERRAL_BONUS);
+            ledger.setRelatedId(user.getId());
+            ledger.setNote("Referred to " + user.getName());
+            ledger.setCreatedAt(java.time.LocalDateTime.now());
+            pointsLedgerRepository.save(ledger);
+
             Referral referral = Referral.builder()
                     .referrer(referrer)
                     .referred(user)
-                    .rewardGiven(false)
+                    .rewardGiven(true)
+                    .pointsLedger(ledger)
                     .build();
             referralRepository.save(referral);
+
+            // In-app Notification for referrer
+            com.loyalty_program_app.backend.model.Notification notif = com.loyalty_program_app.backend.model.Notification.builder()
+                    .user(referrer)
+                    .title("Referral Reward Earned! 🎉")
+                    .message("Your friend " + user.getName() + " joined Groomish using your referral code! 10 reward points have been credited to your account.")
+                    .type(com.loyalty_program_app.backend.enums.NotificationType.OFFER)
+                    .seen(false)
+                    .createdAt(java.time.LocalDateTime.now())
+                    .build();
+            notificationRepository.save(notif);
+
+            // Dispatch Real-time Referral Bonus Email to Referrer
+            if (referrer.getEmail() != null && !referrer.getEmail().isBlank()) {
+                emailService.sendReferralBonusEmail(
+                        referrer.getEmail(),
+                        referrer.getName(),
+                        user.getName(),
+                        referralBonus,
+                        referrer.getPoints()
+                );
+            }
         }
 
         if (role == Role.ROLE_CUSTOMER) {

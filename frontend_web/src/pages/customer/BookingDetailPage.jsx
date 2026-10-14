@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ModalWrapper from "../../components/modals/ModalWrapper";
@@ -13,9 +13,11 @@ import {
   checkoutPayment,
 } from "../../api/customer";
 import { getPublicServicesApi } from "../../api/service";
+import { storeApi } from "../../api/store";
 import { extractList } from "../../utils/dataHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import { showConfirm, showAlert } from "../../context/ConfirmContext";
+import { getBranchNavigationUrl } from "../../utils/mapHelper";
 import {
   Calendar,
   Clock,
@@ -40,11 +42,16 @@ import {
   Zap,
   Smartphone,
   CheckCircle,
+  Navigation,
+  Search,
+  X,
 } from "lucide-react";
 
 export default function BookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const reviewsRef = useRef(null);
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +63,7 @@ export default function BookingDetailPage() {
   const [addServiceModalOpen, setAddServiceModalOpen] = useState(false);
   const [availableServices, setAvailableServices] = useState([]);
   const [serviceSearch, setServiceSearch] = useState("");
+  const [selectedServiceCategory, setSelectedServiceCategory] = useState("ALL");
   const [serviceLoading, setServiceLoading] = useState(false);
   const [addingServiceId, setAddingServiceId] = useState(null);
 
@@ -67,8 +75,9 @@ export default function BookingDetailPage() {
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const [rescheduleError, setRescheduleError] = useState("");
 
-  // Review Modal
+  // Review Modal State (Services & Products)
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [activeReviewItem, setActiveReviewItem] = useState(null);
 
   // Pay Online Modal (Active Window)
   const [payModalOpen, setPayModalOpen] = useState(false);
@@ -126,11 +135,68 @@ export default function BookingDetailPage() {
     }
   }, [id]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("review") === "true" && booking && booking.status === "COMPLETED") {
+      setTimeout(() => {
+        reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 400);
+    }
+  }, [location.search, booking]);
+
+  const handleOpenServiceReview = (grp) => {
+    const existing = (booking?.customerReviews || []).find(
+      (r) => r.serviceId === grp.serviceId
+    );
+    setActiveReviewItem({
+      type: "SERVICE",
+      serviceId: grp.serviceId,
+      serviceName: grp.serviceName,
+      initialRating: existing ? existing.rating : 5,
+      initialReview: existing ? existing.review : "",
+    });
+    setReviewModalOpen(true);
+  };
+
+  const handleOpenProductReview = (prod) => {
+    const prodId = prod.productId || prod.id;
+    const existing = (booking?.customerReviews || []).find(
+      (r) => r.productId === prodId
+    );
+    setActiveReviewItem({
+      type: "PRODUCT",
+      productId: prodId,
+      productName: prod.productName,
+      initialRating: existing ? existing.rating : 5,
+      initialReview: existing ? existing.review : "",
+    });
+    setReviewModalOpen(true);
+  };
+
+  const handleRateExperienceClick = () => {
+    if (reviewsRef.current) {
+      reviewsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const loadAvailableServices = async () => {
     setServiceLoading(true);
     try {
-      const res = await getPublicServicesApi();
-      setAvailableServices(extractList(res.data));
+      let list = [];
+      const storeId = booking?.store?.id || booking?.storeId;
+      if (storeId) {
+        try {
+          const res = await storeApi.getStoreServices(storeId);
+          list = extractList(res.data);
+        } catch (e) {
+          // fallback to public
+        }
+      }
+      if (!list || list.length === 0) {
+        const res = await getPublicServicesApi();
+        list = extractList(res.data);
+      }
+      setAvailableServices(list);
     } catch (err) {
       console.error(err);
       setAvailableServices([]);
@@ -140,10 +206,10 @@ export default function BookingDetailPage() {
   };
 
   const handleOpenAddService = () => {
+    setServiceSearch("");
+    setSelectedServiceCategory("ALL");
     setAddServiceModalOpen(true);
-    if (availableServices.length === 0) {
-      loadAvailableServices();
-    }
+    loadAvailableServices();
   };
 
   /* Add Service to Booking */
@@ -289,25 +355,38 @@ export default function BookingDetailPage() {
       case "MODIFIED":
         return "bg-purple-100 text-purple-700 border-purple-200";
       default:
-        return "bg-groomish-goldLight text-groomish-slate border-groomish-gold/40";
+        return "bg-amber-100 text-amber-800 border-amber-300";
     }
   };
 
   const isModifiable = booking?.status !== "CANCELLED" && booking?.status !== "COMPLETED";
 
-  // Filter available services excluding already booked services
-  const bookedServiceIds = new Set(booking?.items?.map((it) => it.serviceId).filter(Boolean));
+  // Group categories from availableServices for quick filter pills
+  const serviceCategories = [
+    "ALL",
+    ...Array.from(new Set(availableServices.map((s) => s.categoryName).filter(Boolean))),
+  ];
+
+  const getBookedCount = (serviceId) =>
+    (booking?.items || []).filter((it) => it.serviceId === serviceId).length;
+
   const filteredServices = availableServices
-    .filter((s) => !bookedServiceIds.has(s.id))
-    .filter((s) =>
-      serviceSearch.trim()
-        ? s.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
-          (s.categoryName && s.categoryName.toLowerCase().includes(serviceSearch.toLowerCase()))
-        : true
-    );
+    .filter((s) => {
+      if (selectedServiceCategory !== "ALL" && s.categoryName !== selectedServiceCategory) {
+        return false;
+      }
+      if (!serviceSearch.trim()) return true;
+      const q = serviceSearch.toLowerCase();
+      return (
+        (s.name && s.name.toLowerCase().includes(q)) ||
+        (s.categoryName && s.categoryName.toLowerCase().includes(q)) ||
+        (s.description && s.description.toLowerCase().includes(q))
+      );
+    });
 
   const totalDuration =
     booking?.items?.reduce((sum, it) => sum + (it.durationMinutes || 0), 0) || 0;
+  const groupedServices = groupBookingServices(booking?.items || []);
 
   return (
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
@@ -393,6 +472,25 @@ export default function BookingDetailPage() {
                     This booking was automatically cancelled because it was not checked in or rescheduled within the 2-hour grace window after your scheduled slot. A cancellation confirmation was sent to your registered email.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Online Payment Pending Notice Banner */}
+            {booking.status === "PENDING" && (
+              <div className="card-groomish p-4 bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    <strong>Online Payment Pending:</strong> Your appointment is reserved on hold awaiting online payment confirmation. You can complete payment online now to confirm your booking, or settle it upon arrival at the salon.
+                  </span>
+                </div>
+                <button
+                  onClick={handleOpenPayOnline}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition shadow-soft flex items-center justify-center gap-1.5"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Pay Online (₹{booking.pricePaid})</span>
+                </button>
               </div>
             )}
 
@@ -490,21 +588,35 @@ export default function BookingDetailPage() {
                 </div>
 
                 {/* Salon Branch */}
-                <div className="p-4 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/10 flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-groomish-orange/15 text-groomish-orange flex items-center justify-center shrink-0">
-                    <MapPin className="w-5 h-5" />
+                <div className="p-4 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/10 flex flex-col justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-groomish-orange/15 text-groomish-orange flex items-center justify-center shrink-0">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11px] uppercase font-bold text-groomish-orange tracking-wider">
+                        Salon Branch
+                      </div>
+                      <div className="text-base font-bold text-groomish-slate mt-0.5 truncate">
+                        {booking.storeName || "Groomish Now Flagship Lounge"}
+                      </div>
+                      <div className="text-xs text-groomish-slate/60 mt-0.5 line-clamp-2">
+                        {booking.storeAddress || "Indiranagar 100ft Road, Bengaluru"}
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="text-[11px] uppercase font-bold text-groomish-orange tracking-wider">
-                      Salon Branch
-                    </div>
-                    <div className="text-base font-bold text-groomish-slate mt-0.5 truncate">
-                      {booking.storeName || "Groomish Now Flagship Lounge"}
-                    </div>
-                    <div className="text-xs text-groomish-slate/60 mt-0.5 truncate">
-                      {booking.storeAddress || "Indiranagar 100ft Road, Bengaluru"}
-                    </div>
-                  </div>
+
+                  {/* Navigation Button (Opens Google Maps with current location to branch) */}
+                  <a
+                    href={getBranchNavigationUrl(booking)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-groomish-orange hover:bg-groomish-coral text-white font-bold text-xs shadow-soft transition-all duration-200"
+                    title="Open Google Maps with turn-by-turn navigation from your current location"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Navigate to Branch (Google Maps)</span>
+                  </a>
                 </div>
               </div>
             </div>
@@ -673,6 +785,247 @@ export default function BookingDetailPage() {
               </div>
             )}
 
+            {/* Individual Reviews Section for Completed Appointments */}
+            {booking.status === "COMPLETED" && (
+              <div
+                ref={reviewsRef}
+                id="reviews-section"
+                className="card-groomish p-6 sm:p-8 space-y-6 border-2 border-groomish-gold/40 bg-gradient-to-br from-amber-50/40 via-white to-groomish-orangeLight/20 shadow-soft animate-fade-in"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-groomish-slate/10 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-gold/20 text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-groomish-gold fill-current" />
+                        Verified Client Reviews
+                      </span>
+                      {booking.customerReviews && booking.customerReviews.length > 0 && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{booking.customerReviews.length} Submitted</span>
+                        </span>
+                      )}
+                    </div>
+                    <h2 className="text-xl font-heading font-extrabold text-groomish-slate flex items-center gap-2">
+                      <Star className="w-5 h-5 text-groomish-gold fill-current" />
+                      <span>Rate Your Services & Products</span>
+                    </h2>
+                    <p className="text-xs text-groomish-slate/60 mt-0.5">
+                      Share your experience for each unique service and product individually to help us reward top stylists and improve beauty care.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Services Review Cards */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-groomish-slate/70 uppercase tracking-wider flex items-center gap-1.5">
+                    <Scissors className="w-3.5 h-3.5 text-groomish-orange" />
+                    <span>Salon Services ({groupedServices.length})</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {groupedServices.map((grp) => {
+                      const rev = (booking.customerReviews || []).find(
+                        (r) => r.serviceId === grp.serviceId
+                      );
+
+                      return (
+                        <div
+                          key={grp.serviceId || grp.serviceName}
+                          className={`p-4 rounded-2xl border transition ${
+                            rev
+                              ? "bg-white/95 border-groomish-green/35 shadow-sm"
+                              : "bg-white border-groomish-slate/15 hover:border-groomish-gold/60 shadow-soft"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-bold text-groomish-slate truncate">
+                                {grp.serviceName}
+                              </h4>
+                              <p className="text-[11px] text-groomish-slate/50">
+                                {grp.durationMinutes ? `${grp.durationMinutes} mins • ` : ""}₹{grp.unitPrice}
+                              </p>
+                            </div>
+                            {rev ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-groomish-greenLight text-groomish-green flex items-center gap-1 shrink-0">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Rated</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
+                                Awaiting Rating
+                              </span>
+                            )}
+                          </div>
+
+                          {rev ? (
+                            <div className="mt-3 pt-3 border-t border-groomish-slate/10 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star
+                                      key={s}
+                                      className={`w-3.5 h-3.5 ${
+                                        s <= rev.rating
+                                          ? "fill-groomish-gold text-groomish-gold"
+                                          : "text-groomish-slate/20"
+                                      }`}
+                                    />
+                                  ))}
+                                  <span className="text-xs font-bold text-groomish-slate ml-1">
+                                    {rev.rating}.0
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => handleOpenServiceReview(grp)}
+                                  className="text-xs font-bold text-groomish-orange hover:underline"
+                                >
+                                  Edit Review
+                                </button>
+                              </div>
+                              {rev.review && (
+                                <p className="text-xs text-groomish-slate/80 bg-groomish-cream/70 p-2.5 rounded-xl italic">
+                                  "{rev.review}"
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mt-3 pt-3 border-t border-groomish-slate/10 flex items-center justify-between">
+                              <div className="flex items-center gap-1 text-groomish-slate/30">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <Star key={s} className="w-3.5 h-3.5" />
+                                ))}
+                              </div>
+                              <button
+                                onClick={() => handleOpenServiceReview(grp)}
+                                className="px-3.5 py-1.5 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-soft"
+                              >
+                                <Star className="w-3.5 h-3.5 fill-current" />
+                                <span>Rate Service</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Products Review Cards (if products attached) */}
+                {booking.products && booking.products.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <h3 className="text-xs font-bold text-groomish-slate/70 uppercase tracking-wider flex items-center gap-1.5">
+                      <ShoppingBag className="w-3.5 h-3.5 text-groomish-orange" />
+                      <span>Purchased Retail Products ({booking.products.length})</span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {booking.products.map((prod) => {
+                        const prodId = prod.productId || prod.id;
+                        const rev = (booking.customerReviews || []).find(
+                          (r) => r.productId === prodId
+                        );
+
+                        return (
+                          <div
+                            key={prodId}
+                            className={`p-4 rounded-2xl border transition ${
+                              rev
+                                ? "bg-white/95 border-groomish-green/35 shadow-sm"
+                                : "bg-white border-groomish-slate/15 hover:border-groomish-gold/60 shadow-soft"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {prod.image ? (
+                                  <img
+                                    src={prod.image}
+                                    alt={prod.productName}
+                                    className="w-9 h-9 rounded-lg object-cover border border-groomish-slate/10 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-lg bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-slate/40 shrink-0">
+                                    <ShoppingBag className="w-4 h-4" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <h4 className="text-sm font-bold text-groomish-slate truncate">
+                                    {prod.productName}
+                                  </h4>
+                                  <p className="text-[11px] text-groomish-slate/50">
+                                    {prod.brand ? `${prod.brand} • ` : ""}₹{prod.unitPrice}
+                                  </p>
+                                </div>
+                              </div>
+                              {rev ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-groomish-greenLight text-groomish-green flex items-center gap-1 shrink-0">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Rated</span>
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
+                                  Awaiting Rating
+                                </span>
+                              )}
+                            </div>
+
+                            {rev ? (
+                              <div className="mt-3 pt-3 border-t border-groomish-slate/10 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((s) => (
+                                      <Star
+                                        key={s}
+                                        className={`w-3.5 h-3.5 ${
+                                          s <= rev.rating
+                                            ? "fill-groomish-gold text-groomish-gold"
+                                            : "text-groomish-slate/20"
+                                        }`}
+                                      />
+                                    ))}
+                                    <span className="text-xs font-bold text-groomish-slate ml-1">
+                                      {rev.rating}.0
+                                    </span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleOpenProductReview(prod)}
+                                    className="text-xs font-bold text-groomish-orange hover:underline"
+                                  >
+                                    Edit Review
+                                  </button>
+                                </div>
+                                {rev.review && (
+                                  <p className="text-xs text-groomish-slate/80 bg-groomish-cream/70 p-2.5 rounded-xl italic">
+                                    "{rev.review}"
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="mt-3 pt-3 border-t border-groomish-slate/10 flex items-center justify-between">
+                                <div className="flex items-center gap-1 text-groomish-slate/30">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star key={s} className="w-3.5 h-3.5" />
+                                  ))}
+                                </div>
+                                <button
+                                  onClick={() => handleOpenProductReview(prod)}
+                                  className="px-3.5 py-1.5 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-soft"
+                                >
+                                  <Star className="w-3.5 h-3.5 fill-current" />
+                                  <span>Rate Product</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Bill Summary & Breakdown */}
             <div className="card-groomish p-6 sm:p-8 space-y-4">
               <h2 className="text-lg font-heading font-bold text-groomish-slate flex items-center gap-2 border-b border-groomish-slate/10 pb-3">
@@ -718,11 +1071,18 @@ export default function BookingDetailPage() {
                         <AlertCircle className="w-3 h-3" />
                         <span>Cancelled • No Payment Received</span>
                       </span>
-                    ) : booking.paymentStatus === "COMPLETED" && booking.paymentMethod !== "CASH" ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Paid Online ({booking.paymentMethod || "UPI"})</span>
-                      </span>
+                    ) : (booking.status === "COMPLETED" || booking.paymentStatus === "COMPLETED") ? (
+                      booking.paymentMethod === "CASH" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Paid at Salon</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Paid Online ({booking.paymentMethod || "UPI"})</span>
+                        </span>
+                      )
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
                         <Clock className="w-3 h-3" />
@@ -747,7 +1107,7 @@ export default function BookingDetailPage() {
 
               {/* Pay Online Anytime in Active Window Callout */}
               {(booking.paymentStatus === "PENDING" || !booking.paymentStatus || booking.paymentMethod === "CASH") &&
-                booking.status !== "CANCELLED" && (
+                booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (
                   <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-groomish-orangeLight/80 via-amber-50 to-groomish-orangeLight/60 border border-groomish-orange/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 text-groomish-orange font-bold text-xs uppercase tracking-wider">
@@ -806,10 +1166,10 @@ export default function BookingDetailPage() {
               <div className="flex items-center gap-2.5 flex-wrap">
                 {booking.status === "COMPLETED" && (
                   <button
-                    onClick={() => setReviewModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-groomish-orange bg-groomish-orangeLight hover:bg-groomish-orange hover:text-white rounded-xl transition"
+                    onClick={handleRateExperienceClick}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-groomish-orange bg-groomish-orangeLight hover:bg-groomish-orange hover:text-white rounded-xl transition shadow-soft"
                   >
-                    <Star className="w-4 h-4 fill-current" />
+                    <Star className="w-4 h-4 fill-current text-groomish-gold" />
                     <span>Rate Experience</span>
                   </button>
                 )}
@@ -844,71 +1204,159 @@ export default function BookingDetailPage() {
       <ModalWrapper
         open={addServiceModalOpen}
         onClose={() => setAddServiceModalOpen(false)}
-        maxWidth="max-w-lg"
+        maxWidth="max-w-xl"
       >
         <div className="space-y-4">
-          <div className="border-b border-groomish-slate/10 pb-3">
-            <h3 className="text-lg font-heading font-bold text-groomish-slate flex items-center gap-2">
-              <Plus className="w-5 h-5 text-groomish-orange" />
-              <span>Add Service to Appointment</span>
-            </h3>
-            <p className="text-xs text-groomish-slate/60 mt-0.5">
-              Select additional salon care to attach to this visit.
-            </p>
+          <div className="border-b border-groomish-slate/10 pb-3 flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-heading font-bold text-groomish-slate flex items-center gap-2">
+                <Scissors className="w-5 h-5 text-groomish-orange" />
+                <span>Add Service to Appointment</span>
+              </h3>
+              <p className="text-xs text-groomish-slate/60 mt-0.5">
+                Select additional salon care to attach to this visit.
+              </p>
+            </div>
+            <button
+              onClick={() => setAddServiceModalOpen(false)}
+              className="p-1.5 rounded-xl text-groomish-slate/40 hover:text-groomish-slate hover:bg-groomish-cream transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Search bar */}
-          <input
-            type="text"
-            placeholder="Search salon services..."
-            value={serviceSearch}
-            onChange={(e) => setServiceSearch(e.target.value)}
-            className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-groomish-slate placeholder:text-groomish-slate/40 focus:outline-none focus:border-groomish-orange"
-          />
+          {/* Search bar with clear button */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-groomish-slate/40" />
+            <input
+              type="text"
+              placeholder="Search salon services by name or category..."
+              value={serviceSearch}
+              onChange={(e) => setServiceSearch(e.target.value)}
+              className="w-full pl-10 pr-9 py-2.5 text-xs rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-groomish-slate placeholder:text-groomish-slate/40 focus:outline-none focus:border-groomish-orange focus:bg-white transition"
+            />
+            {serviceSearch && (
+              <button
+                type="button"
+                onClick={() => setServiceSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-groomish-slate/40 hover:text-groomish-slate p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Category Filter Pills */}
+          {serviceCategories.length > 2 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {serviceCategories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedServiceCategory(cat)}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap transition ${
+                    selectedServiceCategory === cat
+                      ? "bg-groomish-orange text-white shadow-soft"
+                      : "bg-groomish-cream hover:bg-groomish-slate/10 text-groomish-slate/70"
+                  }`}
+                >
+                  {cat === "ALL" ? "All Services" : cat}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Service options list */}
-          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+          <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
             {serviceLoading ? (
-              <div className="py-8 text-center text-xs text-groomish-slate/50">
+              <div className="py-10 text-center text-xs text-groomish-slate/50">
                 <RefreshCw className="w-5 h-5 animate-spin text-groomish-orange mx-auto mb-2" />
                 Loading salon services...
               </div>
             ) : filteredServices.length > 0 ? (
-              filteredServices.map((srv) => (
-                <div
-                  key={srv.id}
-                  className="p-3 rounded-xl border border-groomish-slate/10 hover:border-groomish-orange/30 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/40"
-                >
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-groomish-slate truncate">
-                      {srv.name}
-                    </h4>
-                    <p className="text-[11px] text-groomish-slate/50">
-                      {srv.durationMinutes} mins • {srv.categoryName || "Salon Care"}
-                    </p>
+              filteredServices.map((srv) => {
+                const bookedCount = getBookedCount(srv.id);
+                return (
+                  <div
+                    key={srv.id}
+                    className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                        <img
+                          src={
+                            srv.image ||
+                            "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=200&q=80"
+                          }
+                          alt={srv.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="text-xs font-bold text-groomish-slate truncate">
+                            {srv.name}
+                          </h4>
+                          {bookedCount > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-groomish-greenLight text-groomish-green">
+                              In Visit ({bookedCount})
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-groomish-slate/50 mt-0.5">
+                          {srv.durationMinutes || 30} mins • {srv.categoryName || "Salon Care"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <span className="text-xs font-extrabold text-groomish-slate block">
+                          ₹{srv.price}
+                        </span>
+                        {srv.mrp && srv.mrp > srv.price && (
+                          <span className="text-[10px] text-groomish-slate/40 line-through">
+                            ₹{srv.mrp}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleAddService(srv.id)}
+                        disabled={addingServiceId === srv.id}
+                        className="btn-primary text-xs px-3.5 py-1.5 font-bold shadow-soft flex items-center gap-1"
+                      >
+                        {addingServiceId === srv.id ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{bookedCount > 0 ? "Add Again" : "Add"}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs font-bold text-groomish-slate">
-                      ₹{srv.price}
-                    </span>
-                    <button
-                      onClick={() => handleAddService(srv.id)}
-                      disabled={addingServiceId === srv.id}
-                      className="btn-primary text-xs px-3 py-1.5"
-                    >
-                      {addingServiceId === srv.id ? (
-                        <RefreshCw className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <span>Add</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
-              <p className="text-xs text-groomish-slate/50 text-center py-6">
-                No services found.
-              </p>
+              <div className="text-center py-8">
+                <Scissors className="w-8 h-8 text-groomish-slate/20 mx-auto mb-2" />
+                <p className="text-xs font-bold text-groomish-slate/70">
+                  {serviceSearch.trim() || selectedServiceCategory !== "ALL"
+                    ? "No services matched your search"
+                    : "No salon services found."}
+                </p>
+                {(serviceSearch.trim() || selectedServiceCategory !== "ALL") && (
+                  <button
+                    onClick={() => {
+                      setServiceSearch("");
+                      setSelectedServiceCategory("ALL");
+                    }}
+                    className="mt-2 text-xs text-groomish-orange font-bold hover:underline"
+                  >
+                    Clear Search Filters
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -1000,12 +1448,21 @@ export default function BookingDetailPage() {
       </ModalWrapper>
 
       {/* ---------------- REVIEW MODAL ---------------- */}
-      {reviewModalOpen && booking && (
+      {reviewModalOpen && booking && activeReviewItem && (
         <LeaveReviewModal
           open={reviewModalOpen}
-          onClose={() => setReviewModalOpen(false)}
-          booking={booking}
-          onSuccess={loadBooking}
+          onClose={() => {
+            setReviewModalOpen(false);
+            setActiveReviewItem(null);
+          }}
+          bookingId={booking.id}
+          serviceId={activeReviewItem.serviceId}
+          serviceName={activeReviewItem.serviceName}
+          productId={activeReviewItem.productId}
+          productName={activeReviewItem.productName}
+          initialRating={activeReviewItem.initialRating}
+          initialReview={activeReviewItem.initialReview}
+          onReviewSubmitted={loadBooking}
         />
       )}
 

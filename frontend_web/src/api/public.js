@@ -19,3 +19,7 @@ export const getServiceReviews = (serviceId, page = 0, size = 10) => {
 export const getServiceRatingSummary = (serviceId) => {
   return axiosClient.get(`/public/reviews/service/${serviceId}/summary`);
 };
+
+export const getPublicCoupons = () => {
+  return axiosClient.get("/public/coupons");
+};

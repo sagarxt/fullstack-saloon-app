@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { getUsersApi, deactivateUserApi } from "../../api/admin";
+import { getUsersApi } from "../../api/admin";
 import Pagination from "../../components/common/Pagination";
 import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import { extractList } from "../../utils/dataHelper";
-import { Users, Search, Crown, Sparkles, RefreshCw, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import { Search, Crown, Sparkles, RefreshCw } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -14,6 +14,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [selectedCustomerData, setSelectedCustomerData] = useState(null);
+  const [modalInitialTab, setModalInitialTab] = useState("ORDERS");
 
   const loadUsers = async () => {
     setLoading(true);
@@ -35,15 +36,6 @@ export default function CustomersPage() {
   useEffect(() => {
     setPage(1);
   }, [search]);
-
-  const handleToggleActive = async (id) => {
-    try {
-      await deactivateUserApi(id);
-      loadUsers();
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const userList = extractList(users);
   const filtered = userList.filter((u) => {
@@ -79,12 +71,12 @@ export default function CustomersPage() {
 
       {/* Search Input */}
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-groomish-slate/40 absolute left-3.5 top-3.5" />
+        <Search className="w-4 h-4 text-groomish-slate/40 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search customer by name, email, phone, or code..."
-          className="input-groomish pl-10"
+          className="input-groomish pl-11"
         />
       </div>
 
@@ -110,29 +102,31 @@ export default function CustomersPage() {
                   <th className="py-3 px-6">Loyalty Points</th>
                   <th className="py-3 px-6">Referral Code</th>
                   <th className="py-3 px-6">Status</th>
-                  <th className="py-3 px-6 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-groomish-slate/10">
                 {filtered
                   .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                   .map((u) => (
-                  <tr key={u.id} className="hover:bg-groomish-cream/30 transition">
+                  <tr
+                    key={u.id}
+                    onClick={() => {
+                      setModalInitialTab("ORDERS");
+                      setSelectedCustomerId(u.id);
+                      setSelectedCustomerData(u);
+                    }}
+                    className="hover:bg-groomish-cream/40 transition cursor-pointer group"
+                    title="Click to view customer profile, bookings, points & live cart"
+                  >
                     <td className="py-4 px-6 font-bold text-groomish-slate">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedCustomerId(u.id);
-                          setSelectedCustomerData(u);
-                        }}
-                        className="flex items-center gap-2.5 hover:text-groomish-orange transition group text-left"
-                        title="Click to view customer profile, orders and reward points"
-                      >
+                      <div className="flex items-center gap-2.5 text-left">
                         <div className="w-8 h-8 rounded-full bg-groomish-orangeLight text-groomish-orange flex items-center justify-center font-extrabold text-xs group-hover:scale-105 transition shadow-sm">
                           {u.name?.charAt(0) || "U"}
                         </div>
-                        <span className="group-hover:underline underline-offset-2 font-bold">{u.name}</span>
-                      </button>
+                        <span className="group-hover:text-groomish-orange group-hover:underline underline-offset-2 font-bold transition">
+                          {u.name}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-4 px-6 text-groomish-slate/70">
                       <div>{u.email}</div>
@@ -155,36 +149,14 @@ export default function CustomersPage() {
                     </td>
                     <td className="py-4 px-6">
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                           u.active !== false
                             ? "bg-groomish-greenLight text-groomish-green"
                             : "bg-groomish-crimsonLight text-groomish-crimson"
                         }`}
                       >
-                        {u.active !== false ? "Active" : "Inactive"}
+                        {u.active !== false ? "Active" : "Deactive"}
                       </span>
-                    </td>
-                    <td className="py-4 px-6 text-right space-x-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedCustomerId(u.id);
-                          setSelectedCustomerData(u);
-                        }}
-                        className="text-xs font-bold text-groomish-orange hover:underline inline-flex items-center gap-1"
-                      >
-                        <span>View Profile</span>
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(u.id)}
-                        className={`text-xs font-bold ${
-                          u.active !== false
-                            ? "text-groomish-crimson hover:underline"
-                            : "text-groomish-green hover:underline"
-                        }`}
-                      >
-                        {u.active !== false ? "Deactivate" : "Activate"}
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -210,7 +182,9 @@ export default function CustomersPage() {
       <CustomerProfileModal
         customerId={selectedCustomerId}
         initialData={selectedCustomerData}
+        initialTab={modalInitialTab}
         open={Boolean(selectedCustomerId)}
+        onStatusChange={loadUsers}
         onClose={() => {
           setSelectedCustomerId(null);
           setSelectedCustomerData(null);
