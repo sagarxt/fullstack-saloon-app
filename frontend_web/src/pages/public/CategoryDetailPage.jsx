@@ -7,6 +7,7 @@ import AuthModal from "../../components/modals/AuthModal";
 import CustomSelect from "../../components/common/CustomSelect";
 import { getCategories, getServices } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
+import { useCart } from "../../context/CartContext";
 import { extractList } from "../../utils/dataHelper";
 import {
   Scissors,
@@ -18,12 +19,14 @@ import {
   ChevronRight,
   Home,
   Layers,
+  ShoppingCart,
 } from "lucide-react";
 
 export default function CategoryDetailPage() {
   const { categoryId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addItem } = useCart();
 
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
@@ -125,13 +128,17 @@ export default function CategoryDetailPage() {
     UNISEX: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80",
   };
 
-  const handleBook = (srv) => {
+  const handleAddToCart = async (srv) => {
     if (!user) {
       setAuthOpen(true);
       return;
     }
-    setSelectedService(srv);
-    setBookingOpen(true);
+    await addItem({
+      itemType: "SERVICE",
+      serviceId: srv.id,
+      name: srv.name,
+      quantity: 1,
+    });
   };
 
   const categoryName = currentCategory ? currentCategory.name : "Category";
@@ -350,21 +357,13 @@ export default function CategoryDetailPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => navigate(`/services/${service.id}`)}
-                          className="btn-secondary text-xs px-3 py-2"
-                          title="View service details & reviews"
-                        >
-                          Details
-                        </button>
-                        <button
-                          onClick={() => handleBook(service)}
-                          className="btn-primary text-xs px-3.5 py-2"
-                        >
-                          Book Now
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleAddToCart(service)}
+                        className="btn-primary text-xs px-3.5 py-2 flex items-center gap-1.5 shadow-sm"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                        <span>Add Service</span>
+                      </button>
                     </div>
                   </div>
                 );

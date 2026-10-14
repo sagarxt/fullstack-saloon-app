@@ -24,6 +24,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
     private final UserRepository userRepository;
     private final ServiceRepository serviceRepository;
     private final BookingRepository bookingRepository;
+    private final PaymentRepository paymentRepository;
     private final CouponRepository couponRepository;
     private final StoreRepository storeRepository;
     private final NotificationRepository notificationRepository;
@@ -80,7 +81,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         }
         booking.setBookingCode(com.loyalty_program_app.backend.util.BookingCodeGenerator.generateUniqueCode(bookingRepository));
         booking.setScheduledAt(scheduledAt);
-        booking.setStatus(BookingStatus.PENDING);
+        booking.setStatus(BookingStatus.CONFIRMED);
         booking.setNote(request.getNote());
         booking.setBookedBy("BOOKED_BY_STAFF - " + staff.getName());
         booking.setCreatedAt(LocalDateTime.now());
@@ -95,7 +96,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             item.setServiceNameSnapshot(s.getName());
             item.setServicePriceSnapshot(s.getPrice());
             item.setServiceDurationSnapshot(s.getDurationMinutes());
-            item.setStatus(BookingStatus.PENDING);
+            item.setStatus(BookingStatus.CONFIRMED);
 
             items.add(item);
             totalAmount += s.getPrice();
@@ -116,6 +117,17 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                 throw new RuntimeException("Minimum amount for coupon is: " + coupon.getMinAmount());
             }
 
+            final java.util.List<String> eligibleCats = coupon.getEligibleCategories();
+            if (eligibleCats != null && !eligibleCats.isEmpty()) {
+                boolean hasEligible = items.stream().anyMatch(item ->
+                    item.getService() != null && item.getService().getCategory() != null &&
+                    eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(item.getService().getCategory().getName()))
+                );
+                if (!hasEligible) {
+                    throw new RuntimeException("Coupon '" + coupon.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
+                }
+            }
+
             double discount = coupon.getDiscount();
             if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
                 discount = coupon.getMaxDiscount();
@@ -127,13 +139,24 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
         booking.setPricePaid(pricePaid);
 
+        Payment payment = Payment.builder()
+                .user(customer)
+                .amount(pricePaid)
+                .paymentMethod(com.loyalty_program_app.backend.enums.PaymentMethod.CASH)
+                .paymentModeDetails("Pay at Salon")
+                .status(com.loyalty_program_app.backend.enums.PaymentStatus.PENDING)
+                .invoiceNumber("INV-STAFF-" + (System.currentTimeMillis() % 1000000))
+                .build();
+        paymentRepository.save(payment);
+        booking.setPayment(payment);
+
         Booking saved = bookingRepository.save(booking);
 
         bookingTimelineService.recordTimeline(
                 saved,
                 "CREATED",
-                "Walk-In Appointment Created",
-                "Appointment registered for " + customer.getName() + " by stylist " + staff.getName() + " with " + services.size() + " service(s).",
+                "Walk-In Appointment Confirmed",
+                "Appointment registered and confirmed for " + customer.getName() + " by stylist " + staff.getName() + " with " + services.size() + " service(s).",
                 staff.getName(),
                 "STAFF",
                 staff.getEmail()
@@ -427,8 +450,32 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         dto.setPricePaid(b.getPricePaid());
         dto.setStatus(b.getStatus().name());
         dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt() : null);
-        dto.setNote(b.getNote());
         dto.setBookedBy(b.getBookedBy());
+
+        if (b.getPayment() != null) {
+            dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
+            if (b.getStatus() == BookingStatus.COMPLETED) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (b.getStatus() == BookingStatus.CANCELLED) {
+                if (b.getPayment().getPaymentMethod() == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ||
+                    b.getPayment().getStatus() == com.loyalty_program_app.backend.enums.PaymentStatus.PENDING) {
+                    dto.setPaymentStatus("CANCELLED");
+                } else {
+                    dto.setPaymentStatus(b.getPayment().getStatus().name());
+                }
+            } else {
+                dto.setPaymentStatus(b.getPayment().getStatus() != null ? b.getPayment().getStatus().name() : "PENDING");
+            }
+        } else {
+            dto.setPaymentMethod("CASH");
+            if (b.getStatus() == BookingStatus.COMPLETED) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (b.getStatus() == BookingStatus.CANCELLED) {
+                dto.setPaymentStatus("CANCELLED");
+            } else {
+                dto.setPaymentStatus("PENDING");
+            }
+        }
 
         if (b.getStore() != null) {
             dto.setStoreId(b.getStore().getId());
@@ -478,5 +525,54 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         dto.setTimeline(bookingTimelineService.getTimelineForBooking(b));
 
         return dto;
+    }
+
+    @Override
+    public BookingResponse confirmBookingForCustomer(UUID staffId, UUID bookingId) {
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new RuntimeException("Cannot confirm a " + booking.getStatus() + " booking");
+        }
+
+        booking.setStatus(BookingStatus.CONFIRMED);
+        if (booking.getBookingItems() != null) {
+            for (BookingItem bi : booking.getBookingItems()) {
+                if (bi.getStatus() == BookingStatus.PENDING) {
+                    bi.setStatus(BookingStatus.CONFIRMED);
+                    bookingItemRepository.save(bi);
+                }
+            }
+        }
+        booking.setBookedBy(booking.getBookedBy() != null ? booking.getBookedBy() : ("CONFIRMED_BY_STAFF - " + staff.getName()));
+
+        Booking saved = bookingRepository.save(booking);
+
+        bookingTimelineService.recordTimeline(
+                saved,
+                "CONFIRMED",
+                "Appointment Confirmed by Staff",
+                "Appointment confirmed by salon stylist " + staff.getName() + " (payment verified/accepted at salon).",
+                staff.getName(),
+                "STAFF",
+                staff.getEmail()
+        );
+
+        if (saved.getUser() != null) {
+            String displayCode = saved.getBookingCode() != null ? saved.getBookingCode() : "GN-" + saved.getId().toString().substring(0, 8).toUpperCase();
+            Notification notif = Notification.builder()
+                    .user(saved.getUser())
+                    .title("Appointment Confirmed")
+                    .message("Your appointment (" + displayCode + ") has been confirmed by salon stylist " + staff.getName() + ".")
+                    .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                    .build();
+            notificationRepository.save(notif);
+        }
+
+        return toDto(saved);
     }
 }

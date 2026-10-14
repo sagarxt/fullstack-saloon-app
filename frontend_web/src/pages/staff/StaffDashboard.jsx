@@ -10,6 +10,7 @@ import {
   addProductToBookingByStaff,
   removeProductFromBookingByStaff,
   completeBookingAndSendBillByStaff,
+  confirmBookingByStaff,
   getStaffBooking,
   updateStaffBooking,
   getCustomerBookingsByStaff,
@@ -170,6 +171,20 @@ export default function StaffDashboard() {
       loadDashboard();
     } catch (err) {
       console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  /* Confirm Booking (Payment verified / Pay at salon) */
+  const handleConfirm = async (bookingId) => {
+    setActionLoading(true);
+    try {
+      await confirmBookingByStaff(bookingId);
+      loadDashboard();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Failed to confirm appointment");
     } finally {
       setActionLoading(false);
     }
@@ -1155,12 +1170,14 @@ export default function StaffDashboard() {
                                 ? "bg-groomish-greenLight text-groomish-green"
                                 : b.status === "COMPLETED"
                                 ? "bg-groomish-blueLight text-groomish-blue"
+                                : b.status === "MODIFIED"
+                                ? "bg-purple-100 text-purple-700"
                                 : b.status === "CANCELLED"
                                 ? "bg-groomish-crimsonLight text-groomish-crimson"
-                                : "bg-groomish-goldLight text-groomish-slate"
+                                : "bg-amber-100 text-amber-800"
                             }`}
                           >
-                            {b.status}
+                            {b.status === "PENDING" ? "PENDING (ONLINE PAYMENT)" : b.status}
                           </span>
                         </div>
 
@@ -1239,7 +1256,7 @@ export default function StaffDashboard() {
                           </button>
                         )}
 
-                        {b.status === "CONFIRMED" && (
+                        {(b.status === "CONFIRMED" || b.status === "MODIFIED") && (
                           <button
                             disabled={actionLoading}
                             onClick={() => handleMarkComplete(b.id)}
@@ -1252,14 +1269,26 @@ export default function StaffDashboard() {
                         )}
 
                         {b.status === "PENDING" && (
-                          <button
-                            disabled={actionLoading}
-                            onClick={() => handleCancel(b.id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-crimsonLight text-groomish-crimson font-bold text-xs hover:bg-groomish-crimson hover:text-white transition"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>Cancel</span>
-                          </button>
+                          <>
+                            <button
+                              disabled={actionLoading}
+                              onClick={() => handleConfirm(b.id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 transition shadow-soft"
+                              title="Confirm appointment (payment verified at salon)"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Confirm</span>
+                            </button>
+                            <button
+                              disabled={actionLoading}
+                              onClick={() => handleCancel(b.id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-crimsonLight text-groomish-crimson font-bold text-xs hover:bg-groomish-crimson hover:text-white transition"
+                              title="Cancel appointment"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Cancel</span>
+                            </button>
+                          </>
                         )}
 
                         <button

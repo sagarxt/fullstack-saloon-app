@@ -10,4 +10,5 @@ public class UserUpdateRequest {
     private String password; // optional, hashed only if provided
     private String gender;
     private java.util.UUID storeId;
+    private Boolean active;
 }

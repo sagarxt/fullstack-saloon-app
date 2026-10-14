@@ -31,6 +31,12 @@ public class Coupon {
     @Builder.Default
     private boolean active = true;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "coupon_eligible_categories", joinColumns = @JoinColumn(name = "coupon_id"))
+    @Column(name = "category_name")
+    @Builder.Default
+    private java.util.List<String> eligibleCategories = new java.util.ArrayList<>();
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

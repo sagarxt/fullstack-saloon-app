@@ -21,6 +21,7 @@ public class BookingResponse {
     private String status;
     private String paymentMethod;
     private String paymentStatus;
+    private String invoiceNumber;
     private LocalDateTime scheduledAt;
     private String note;
     private String bookedBy;
@@ -29,6 +30,8 @@ public class BookingResponse {
     private UUID storeId;
     private String storeName;
     private String storeAddress;
+    private Double storeLatitude;
+    private Double storeLongitude;
     private Integer expectedRewardPoints;
     private Boolean pointsConfirmed;
     private List<BookingItemDetailsResponse> items;

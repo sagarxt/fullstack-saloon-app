@@ -69,6 +69,11 @@ export const createCustomerByAdminApi = (data) =>
 export const updateUserApi = (id, data) =>
   axiosClient.put(`/admin/users/${id}`, data);
 
+export const toggleUserStatusApi = (id, active) => {
+  const query = typeof active === "boolean" ? `?active=${active}` : "";
+  return axiosClient.put(`/admin/users/${id}/status${query}`);
+};
+
 export const deactivateUserApi = (id) =>
   axiosClient.delete(`/admin/users/${id}`);
 

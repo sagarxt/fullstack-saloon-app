@@ -1,17 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ModalWrapper from "./ModalWrapper";
 import { createReview } from "../../api/customer";
 import { Star, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 
-export default function LeaveReviewModal({ open, onClose, serviceId, serviceName, onReviewSubmitted }) {
-  const [rating, setRating] = useState(5);
+export default function LeaveReviewModal({
+  open,
+  onClose,
+  bookingId,
+  serviceId,
+  serviceName,
+  productId,
+  productName,
+  initialRating,
+  initialReview,
+  onReviewSubmitted,
+}) {
+  const [rating, setRating] = useState(initialRating || 5);
   const [hoverRating, setHoverRating] = useState(0);
-  const [review, setReview] = useState("");
+  const [review, setReview] = useState(initialReview || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  if (!serviceId) return null;
+  useEffect(() => {
+    if (open) {
+      setRating(initialRating || 5);
+      setReview(initialReview || "");
+      setError("");
+      setSubmitted(false);
+    }
+  }, [open, initialRating, initialReview]);
+
+  if (!serviceId && !productId) return null;
+
+  const itemName = serviceName || productName || "Item";
+  const itemType = productId ? "Product" : "Service";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +48,9 @@ export default function LeaveReviewModal({ open, onClose, serviceId, serviceName
 
     try {
       await createReview({
-        serviceId: serviceId,
+        bookingId: bookingId || undefined,
+        serviceId: serviceId || undefined,
+        productId: productId || undefined,
         rating: rating,
         review: review.trim(),
       });
@@ -33,7 +58,6 @@ export default function LeaveReviewModal({ open, onClose, serviceId, serviceName
       if (onReviewSubmitted) onReviewSubmitted();
       setTimeout(() => {
         setSubmitted(false);
-        setReview("");
         onClose();
       }, 1500);
     } catch (err) {
@@ -63,13 +87,13 @@ export default function LeaveReviewModal({ open, onClose, serviceId, serviceName
           <form onSubmit={handleSubmit} className="space-y-4 text-left">
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full inline-block mb-1">
-                Verified Salon Review
+                Verified {itemType} Review
               </span>
               <h2 className="text-xl font-heading font-bold text-groomish-slate">
                 Rate & Review
               </h2>
               <p className="text-xs text-groomish-slate/60">
-                How was your experience with <b>{serviceName || "this service"}</b>?
+                How was your experience with <b>{itemName}</b>?
               </p>
             </div>
 
@@ -114,13 +138,17 @@ export default function LeaveReviewModal({ open, onClose, serviceId, serviceName
             {/* Comment Area */}
             <div>
               <label className="block text-xs font-semibold text-groomish-slate/80 mb-1.5">
-                Your Review & Stylist Feedback
+                {productId ? "Product Feedback & Review" : "Service & Stylist Feedback"}
               </label>
               <textarea
                 rows={4}
                 value={review}
                 onChange={(e) => setReview(e.target.value)}
-                placeholder="Share your thoughts on the service quality, hygiene, ambiance, and staff professionalism..."
+                placeholder={
+                  productId
+                    ? "Share your thoughts on the product effectiveness, scent, texture, and results..."
+                    : "Share your thoughts on the service quality, hygiene, ambiance, and staff professionalism..."
+                }
                 className="input-groomish resize-none"
                 required
               />

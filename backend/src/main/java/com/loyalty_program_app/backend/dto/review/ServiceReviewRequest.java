@@ -17,8 +17,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ServiceReviewRequest {
 
-    @NotNull(message = "Service ID is required")
     private UUID serviceId;
+    private UUID productId;
+    private UUID bookingId;
 
     @NotNull(message = "Rating is required")
     @Min(value = 1, message = "Rating must be at least 1")

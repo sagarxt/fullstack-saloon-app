@@ -82,13 +82,23 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
        =============================== */
     private CustomerProfileResponse mapToResponse(User user) {
 
+        // Guarantee user has a unique referral code
+        if (user.getReferralCode() == null || user.getReferralCode().isBlank()) {
+            user.setReferralCode(com.loyalty_program_app.backend.util.ReferralCodeGenerator.generateUniqueReferralCode(user.getName(), userRepository));
+            userRepository.save(user);
+        }
+
         CustomerProfileResponse dto = new CustomerProfileResponse();
         dto.setId(user.getId());
         dto.setName(user.getName());
         dto.setDob(user.getDob());
-        dto.setGender(user.getGender().toString());
+        dto.setGender(user.getGender() != null ? user.getGender().name() : "NOT_SPECIFIED");
         dto.setPhone(user.getPhone());
         dto.setEmail(user.getEmail());
+        dto.setReferralCode(user.getReferralCode());
+        dto.setMembershipTier(user.getTier() != null ? user.getTier().name() : "SILVER");
+        dto.setLoyaltyPoints(user.getPoints() != null ? user.getPoints() : 0);
+        dto.setLifetimePoints(user.getLifetimePoints() != null ? user.getLifetimePoints() : (user.getPoints() != null ? user.getPoints() : 0));
         return dto;
     }
 }

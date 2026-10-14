@@ -27,6 +27,9 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username:testmailemployee@gmail.com}")
     private String fromEmail;
 
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy 'at' hh:mm a");
     private static final DateTimeFormatter INVOICE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
 
@@ -103,6 +106,13 @@ public class EmailServiceImpl implements EmailService {
                 + "<p>Dear " + name + ",</p>"
                 + "<p>This is to inform you that your booking status for <strong>" + serviceName + "</strong> (Ref: " + bookingId + ") has been updated to <strong style='color: " + statusColor + ";'>" + status + "</strong>.</p>"
                 + (note != null && !note.isBlank() ? "<p style='background: #FAF6ED; padding: 14px; border-left: 4px solid " + statusColor + "; border-radius: 6px; margin: 16px 0; font-size: 13px; color: #373A43;'>" + note + "</p>" : "")
+                + ("COMPLETED".equalsIgnoreCase(status) ? (
+                    "<div style='background: #FAF6ED; border: 1px dashed #FC6957; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;'>"
+                    + "<h3 style='margin: 0 0 6px 0; font-size: 16px; color: #373A43; font-weight: 800;'>How was your appointment today?</h3>"
+                    + "<p style='margin: 0 0 14px 0; font-size: 13px; color: #7A7E89;'>Your honest feedback helps us recognize our stylists and maintain the highest standard of service.</p>"
+                    + "<a href='" + frontendUrl + "/customer/bookings/" + bookingId + "?review=true' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(252, 105, 87, 0.3);'>⭐ Please Review Your Experience</a>"
+                    + "</div>"
+                ) : "")
                 + "<p style='color: #7A7E89; font-size: 13px;'>If you have any questions or require assistance, please contact our salon desk.</p>"
                 + "<p style='margin-top: 24px; font-size: 13px;'>Warm regards,<br><strong style='color: #373A43;'>Groomish Now Team</strong></p>"
                 + "</div>";
@@ -143,6 +153,57 @@ public class EmailServiceImpl implements EmailService {
                 + "<p>Your password for Groomish Now was successfully updated on " + LocalDateTime.now().format(DATE_FORMATTER) + ".</p>"
                 + "<p style='color: #EA4158; font-size: 13px;'>If you did not make this change, please contact support immediately at support@groomishnow.com.</p>"
                 + "<p style='margin-top: 24px; font-size: 13px;'>Best regards,<br><strong style='color: #373A43;'>Groomish Now Security Team</strong></p>"
+                + "</div>";
+
+        String fullHtml = templateService.buildTemplate(subject, body);
+        sendHtmlEmail(to, subject, fullHtml);
+    }
+
+    @Override
+    @Async
+    public void sendReferralBonusEmail(String to, String referrerName, String referredFriendName, int pointsEarned, int totalPointsBalance) {
+        String subject = "🎉 +" + pointsEarned + " Points Added to Your Wallet! " + referredFriendName + " joined using your invite code";
+
+        String body = "<div style='color: #373A43;'>"
+                + "<h2 style='color: #FC6957; margin-top: 0; font-size: 22px; font-weight: 800;'>+" + pointsEarned + " Points Added to Your Wallet! 🎁</h2>"
+                + "<p>Dear <strong>" + referrerName + "</strong>,</p>"
+                + "<p>Exciting news! Your friend <strong style='color: #FC6957;'>" + referredFriendName + "</strong> just registered for Groomish Now using your unique referral invite code.</p>"
+                + "<p>As a thank you for expanding our salon community, we have credited <strong>" + pointsEarned + " VIP Reward Points</strong> directly to your account wallet!</p>"
+
+                // Highlighted Summary Card
+                + "<div style='background: #FAF6ED; border: 1px solid rgba(55,58,67,0.12); border-radius: 14px; padding: 20px; margin: 24px 0;'>"
+                + "<table style='width: 100%; border-collapse: collapse;'>"
+                + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'>"
+                + "<td style='padding: 10px 0; color: #7A7E89; font-size: 13px; font-weight: 600;'>Points Credited:</td>"
+                + "<td style='padding: 10px 0; color: #34A955; font-size: 16px; font-weight: 800; text-align: right;'>+" + pointsEarned + " pts</td>"
+                + "</tr>"
+                + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'>"
+                + "<td style='padding: 10px 0; color: #7A7E89; font-size: 13px; font-weight: 600;'>Referred to (Friend):</td>"
+                + "<td style='padding: 10px 0; color: #373A43; font-size: 14px; font-weight: 700; text-align: right;'>" + referredFriendName + "</td>"
+                + "</tr>"
+                + "<tr>"
+                + "<td style='padding: 10px 0; color: #7A7E89; font-size: 13px; font-weight: 600;'>Total Available Balance:</td>"
+                + "<td style='padding: 10px 0; color: #FC6957; font-size: 18px; font-weight: 800; text-align: right;'>" + totalPointsBalance + " pts</td>"
+                + "</tr>"
+                + "</table>"
+                + "</div>"
+
+                // Instructions & How to Use
+                + "<div style='background: #FFFFFF; border-left: 4px solid #FC6957; padding: 16px 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);'>"
+                + "<h4 style='margin: 0 0 10px 0; color: #373A43; font-size: 14px; font-weight: 700;'>How You Can Use Your Points:</h4>"
+                + "<ul style='margin: 0; padding-left: 20px; color: #555A64; font-size: 13px; line-height: 1.6;'>"
+                + "<li><strong>Redeem Salon Perks:</strong> Head to the <em>Rewards</em> section to exchange your points for complimentary treatments, hair spa vouchers, and discounts.</li>"
+                + "<li><strong>Service Billing Deductions:</strong> Apply your points at checkout for haircuts, beard trims, facials, and grooming at any Groomish branch.</li>"
+                + "<li><strong>Lifetime VIP Tiers:</strong> Your points also count towards ascending to Gold, Platinum, and Diamond VIP tiers with higher bonus multipliers!</li>"
+                + "<li><strong>Invite More Friends:</strong> There is no limit! Continue sharing your referral code with friends and family to earn 10 points on each new registration.</li>"
+                + "</ul>"
+                + "</div>"
+
+                + "<div style='text-align: center; margin: 28px 0 20px 0;'>"
+                + "<a href='https://groomishnow.com/customer/rewards' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>View Your Points & Rewards</a>"
+                + "</div>"
+
+                + "<p style='margin-top: 24px; font-size: 13px; color: #7A7E89;'>Thank you for choosing Groomish Now!<br><strong style='color: #373A43;'>The Groomish Now Team</strong></p>"
                 + "</div>";
 
         String fullHtml = templateService.buildTemplate(subject, body);
@@ -245,7 +306,13 @@ public class EmailServiceImpl implements EmailService {
                 + "<p style='margin: 4px 0 0 0; font-size: 12px; color: #7A7E89;'>Points have been credited to your loyalty balance. Use them towards your next treatment or retail purchase.</p>"
                 + "</div>"
 
-                + "<p style='font-size: 13px; color: #5D616D;'>We hope you loved your treatment! Feel free to leave a review through your account dashboard.</p>"
+                + "<div style='background: #FAF6ED; border: 1px dashed #FC6957; border-radius: 14px; padding: 22px; margin: 24px 0; text-align: center;'>"
+                + "<h3 style='margin: 0 0 6px 0; font-size: 16px; color: #373A43; font-weight: 800;'>How was your experience today?</h3>"
+                + "<p style='margin: 0 0 16px 0; font-size: 13px; color: #7A7E89;'>Your honest feedback helps us reward our stylists and curate top products.</p>"
+                + "<a href='" + frontendUrl + "/customer/bookings/" + bookingId + "?review=true' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 14px 34px; border-radius: 12px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>⭐ Please Review Your Experience</a>"
+                + "<p style='margin: 10px 0 0 0; font-size: 11px; color: #7A7E89;'>Rate each service and purchased product individually in your booking details.</p>"
+                + "</div>"
+
                 + "<p style='margin-top: 24px; font-size: 13px;'>Warmest regards,<br><strong style='color: #373A43;'>Groomish Now Salon & Spa</strong></p>"
                 + "</div>";
 

@@ -13,6 +13,7 @@ import { generateSlots, isPastSlot, getTodayDateString } from "../../utils/slots
 import { useAuth } from "../../context/useAuth";
 import { useStore } from "../../context/StoreContext";
 import { useNavigate } from "react-router-dom";
+import { getBranchNavigationUrl } from "../../utils/mapHelper";
 import {
   Calendar,
   Clock,
@@ -31,6 +32,7 @@ import {
   Trash2,
   X,
   AlertTriangle,
+  Navigation,
 } from "lucide-react";
 
 const PLATFORM_FEE = 15;
@@ -152,9 +154,18 @@ export default function BookingFlowModal({ open, onClose, service }) {
     setCouponError("");
     try {
       const res = await applyCoupon(coupon.trim(), price);
+      if (res.data?.eligibleCategories && res.data.eligibleCategories.length > 0) {
+        const hasEligible = selectedServices.some(s => {
+          const catName = s.category?.name || s.categoryName || s.category;
+          return catName && res.data.eligibleCategories.some(ec => ec.toLowerCase() === catName.toLowerCase());
+        });
+        if (!hasEligible) {
+          throw new Error(`Coupon '${res.data.code}' is only valid for: ${res.data.eligibleCategories.join(", ")}`);
+        }
+      }
       setCouponData(res.data);
     } catch (err) {
-      const msg = err.response?.data?.message || "Invalid or expired coupon code";
+      const msg = err.response?.data?.message || err.message || "Invalid or expired coupon code";
       setCouponError(msg);
       setCouponData(null);
     } finally {
@@ -725,11 +736,23 @@ export default function BookingFlowModal({ open, onClose, service }) {
               <span className="text-groomish-slate/60">Service:</span>
               <span className="font-semibold text-groomish-slate">{service.name}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center py-1">
               <span className="text-groomish-slate/60">Salon Branch:</span>
-              <span className="font-semibold text-groomish-slate">
-                {completedBooking?.storeName || selectedStore?.name || "Flagship Salon"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-groomish-slate">
+                  {completedBooking?.storeName || selectedStore?.name || "Flagship Salon"}
+                </span>
+                <a
+                  href={getBranchNavigationUrl(completedBooking || selectedStore)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-groomish-orange bg-groomish-orangeLight hover:bg-groomish-orange hover:text-white px-2.5 py-1 rounded-xl transition shadow-xs"
+                  title="Open Google Maps navigation from your current location"
+                >
+                  <Navigation className="w-3 h-3" />
+                  <span>Navigate</span>
+                </a>
+              </div>
             </div>
             <div className="flex justify-between">
               <span className="text-groomish-slate/60">Scheduled At:</span>

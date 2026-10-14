@@ -22,6 +22,7 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
 
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
+    private final BookingItemRepository bookingItemRepository;
     private final UserRepository userRepository;
     private final PointsLedgerRepository pointsLedgerRepository;
     private final NotificationRepository notificationRepository;
@@ -95,6 +96,14 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
 
         booking.setPayment(savedPayment);
         booking.setStatus(BookingStatus.CONFIRMED);
+        if (booking.getBookingItems() != null) {
+            for (BookingItem bi : booking.getBookingItems()) {
+                if (bi.getStatus() == BookingStatus.PENDING) {
+                    bi.setStatus(BookingStatus.CONFIRMED);
+                    bookingItemRepository.save(bi);
+                }
+            }
+        }
         Booking savedBooking = bookingRepository.save(booking);
 
         bookingTimelineService.recordTimeline(

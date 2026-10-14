@@ -20,4 +20,6 @@ public interface UserAdminService {
     UserResponse createStaff(UserUpdateRequest request);
 
     UserResponse createCustomer(UserUpdateRequest request);
+
+    UserResponse updateUserStatus(UUID id, Boolean active);
 }

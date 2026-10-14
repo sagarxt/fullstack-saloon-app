@@ -17,6 +17,7 @@ export default function CustomDatePicker({
   maxDate,
   align = "left",
   className = "",
+  triggerClassName = "",
   disabled = false,
 }) {
   const [open, setOpen] = useState(false);
@@ -171,37 +172,50 @@ export default function CustomDatePicker({
     return false;
   };
 
+  const isFullWidth = className.includes("w-full");
+
   return (
-    <div ref={containerRef} className={`relative inline-block text-left select-none ${className}`}>
+    <div
+      ref={containerRef}
+      className={`relative select-none text-left ${
+        isFullWidth ? "w-full block" : "inline-block"
+      } ${className}`}
+    >
       {/* Trigger Button */}
       <div
         onClick={() => !disabled && setOpen(!open)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+        className={`flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl border transition-all duration-200 cursor-pointer ${
           open
             ? "border-groomish-orange ring-2 ring-groomish-orange/25 bg-white shadow-soft"
             : "border-groomish-slate/15 bg-groomish-cream/70 hover:bg-white hover:border-groomish-slate/30"
-        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${triggerClassName}`}
       >
-        {label && (
-          <span className="text-[11px] font-semibold text-groomish-slate/60 shrink-0">
-            {label}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <CalendarIcon className="w-4 h-4 text-groomish-orange shrink-0" />
+
+          {label && (
+            <span className="text-[11px] font-semibold text-groomish-slate/60 shrink-0">
+              {label}
+            </span>
+          )}
+
+          <span
+            className={`text-xs font-bold truncate ${
+              selectedDate ? "text-groomish-slate" : "text-groomish-slate/40"
+            }`}
+          >
+            {displayFormatted || placeholder}
           </span>
-        )}
-
-        <CalendarIcon className="w-3.5 h-3.5 text-groomish-orange shrink-0" />
-
-        <span className={`text-xs font-bold truncate ${selectedDate ? "text-groomish-slate" : "text-groomish-slate/40"}`}>
-          {displayFormatted || placeholder}
-        </span>
+        </div>
 
         {selectedDate && !disabled && (
           <button
             type="button"
             onClick={handleClear}
-            className="p-0.5 rounded-full hover:bg-groomish-slate/10 text-groomish-slate/40 hover:text-groomish-crimson transition shrink-0 ml-0.5"
+            className="p-1 rounded-full hover:bg-groomish-slate/10 text-groomish-slate/40 hover:text-groomish-crimson transition shrink-0 ml-1"
             title="Clear date"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

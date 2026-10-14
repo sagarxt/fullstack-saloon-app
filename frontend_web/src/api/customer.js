@@ -89,6 +89,9 @@ export const clearAllNotifications = () =>
 export const createReview = (data) =>
   axiosClient.post("/customer/reviews", data);
 
+export const getCustomerReviewsForBooking = (bookingId) =>
+  axiosClient.get(`/customer/reviews/booking/${bookingId}`);
+
 export const getMyReviews = (page = 0, size = 10) =>
   axiosClient.get(`/customer/reviews/my?page=${page}&size=${size}`);
 

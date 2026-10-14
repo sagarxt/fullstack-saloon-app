@@ -10,6 +10,7 @@ import {
   addProductToBookingByStaff,
   removeProductFromBookingByStaff,
   completeBookingAndSendBillByStaff,
+  confirmBookingByStaff,
 } from "../../api/staff";
 import StaffSidebar from "../../components/staff/StaffSidebar";
 import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
@@ -41,6 +42,8 @@ import {
   Tag,
   Receipt,
   Layers,
+  Search,
+  Minus,
 } from "lucide-react";
 
 export default function StaffBookingDetailPage() {
@@ -61,6 +64,14 @@ export default function StaffBookingDetailPage() {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [productQty, setProductQty] = useState(1);
+  const [productQtyMap, setProductQtyMap] = useState({});
+  const [addingItemId, setAddingItemId] = useState(null);
+
+  // Search and filter states
+  const [serviceSearchQuery, setServiceSearchQuery] = useState("");
+  const [serviceSelectedCategory, setServiceSelectedCategory] = useState("ALL");
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [productSelectedCategory, setProductSelectedCategory] = useState("ALL");
 
   // Modals for adding items
   const [addServiceOpen, setAddServiceOpen] = useState(false);
@@ -110,22 +121,34 @@ export default function StaffBookingDetailPage() {
     }
   };
 
-  const handleAddService = async (e) => {
-    e.preventDefault();
-    if (!selectedServiceId) return;
+  const handleOpenAddServiceModal = () => {
+    setServiceSearchQuery("");
+    setServiceSelectedCategory("ALL");
+    setAddServiceOpen(true);
+    loadCatalog();
+  };
+
+  const handleOpenAddProductModal = () => {
+    setProductSearchQuery("");
+    setProductSelectedCategory("ALL");
+    setAddProductOpen(true);
+    loadCatalog();
+  };
+
+  const handleAddServiceDirect = async (serviceId) => {
     setActionLoading(true);
+    setAddingItemId(serviceId);
     setError("");
     setSuccessMsg("");
     try {
-      await addServiceToBookingByStaff(id, selectedServiceId);
+      await addServiceToBookingByStaff(id, serviceId);
       setSuccessMsg("Salon service added to appointment!");
-      setSelectedServiceId("");
-      setAddServiceOpen(false);
       await loadBooking();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to add service");
     } finally {
       setActionLoading(false);
+      setAddingItemId(null);
     }
   };
 
@@ -152,28 +175,78 @@ export default function StaffBookingDetailPage() {
     }
   };
 
-  const handleAddProduct = async (e) => {
-    e.preventDefault();
-    if (!selectedProductId) return;
+  const handleAddProductDirect = async (productId) => {
+    const qty = Number(productQtyMap[productId]) || 1;
     setActionLoading(true);
+    setAddingItemId(productId);
     setError("");
     setSuccessMsg("");
     try {
       await addProductToBookingByStaff(id, {
-        productId: selectedProductId,
-        quantity: Number(productQty) || 1,
+        productId,
+        quantity: qty,
       });
       setSuccessMsg("Retail product added to appointment bill!");
-      setSelectedProductId("");
-      setProductQty(1);
-      setAddProductOpen(false);
+      setProductQtyMap((prev) => ({ ...prev, [productId]: 1 }));
       await loadBooking();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to add product");
     } finally {
       setActionLoading(false);
+      setAddingItemId(null);
     }
   };
+
+  const handleQtyChange = (productId, delta) => {
+    setProductQtyMap((prev) => {
+      const current = prev[productId] || 1;
+      const next = Math.max(1, Math.min(20, current + delta));
+      return { ...prev, [productId]: next };
+    });
+  };
+
+  // Service Filter & Categories
+  const serviceCategories = [
+    "ALL",
+    ...Array.from(new Set(availableServices.map((s) => s.categoryName).filter(Boolean))),
+  ];
+
+  const filteredServices = availableServices.filter((s) => {
+    if (serviceSelectedCategory !== "ALL" && s.categoryName !== serviceSelectedCategory) {
+      return false;
+    }
+    if (!serviceSearchQuery.trim()) return true;
+    const q = serviceSearchQuery.toLowerCase();
+    return (
+      (s.name && s.name.toLowerCase().includes(q)) ||
+      (s.categoryName && s.categoryName.toLowerCase().includes(q)) ||
+      (s.description && s.description.toLowerCase().includes(q))
+    );
+  });
+
+  // Product Filter & Categories
+  const productCategories = [
+    "ALL",
+    ...Array.from(new Set(availableProducts.map((p) => p.category || p.brand).filter(Boolean))),
+  ];
+
+  const filteredProducts = availableProducts.filter((p) => {
+    if (
+      productSelectedCategory !== "ALL" &&
+      p.category !== productSelectedCategory &&
+      p.brand !== productSelectedCategory
+    ) {
+      return false;
+    }
+    if (!productSearchQuery.trim()) return true;
+    const q = productSearchQuery.toLowerCase();
+    return (
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.brand && p.brand.toLowerCase().includes(q)) ||
+      (p.category && p.category.toLowerCase().includes(q)) ||
+      (p.description && p.description.toLowerCase().includes(q))
+    );
+  });
 
   const handleRemoveProduct = async (bookingProductId) => {
     const ok = await showConfirm({
@@ -238,16 +311,33 @@ export default function StaffBookingDetailPage() {
     }
   };
 
+  const handleConfirmBooking = async () => {
+    setActionLoading(true);
+    setError("");
+    setSuccessMsg("");
+    try {
+      await confirmBookingByStaff(id);
+      setSuccessMsg("Appointment successfully confirmed!");
+      await loadBooking();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to confirm appointment");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case "CONFIRMED":
         return "bg-groomish-greenLight text-groomish-green border-groomish-green/30";
       case "COMPLETED":
         return "bg-groomish-blueLight text-groomish-blue border-groomish-blue/30";
+      case "MODIFIED":
+        return "bg-purple-100 text-purple-700 border-purple-200";
       case "CANCELLED":
         return "bg-groomish-crimsonLight text-groomish-crimson border-groomish-crimson/30";
       default:
-        return "bg-groomish-goldLight text-groomish-slate border-groomish-gold/40";
+        return "bg-amber-100 text-amber-800 border-amber-300";
     }
   };
 
@@ -331,11 +421,23 @@ export default function StaffBookingDetailPage() {
 
             {/* Quick Staff Actions */}
             <div className="flex items-center gap-2 flex-wrap">
+              {booking.status === "PENDING" && (
+                <button
+                  disabled={actionLoading}
+                  onClick={handleConfirmBooking}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition shadow-soft"
+                  title="Confirm booking (payment received at counter / verified)"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Confirm Appointment</span>
+                </button>
+              )}
+
               {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                 <button
                   disabled={actionLoading}
                   onClick={handleCompleteAndBill}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition shadow-soft"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 active:scale-95 transition shadow-soft"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Complete & Bill</span>
@@ -385,6 +487,25 @@ export default function StaffBookingDetailPage() {
               </div>
               <button onClick={() => setError("")} className="hover:opacity-75">
                 <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Online Payment Pending Notice */}
+          {booking.status === "PENDING" && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
+              <div className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Online Payment Pending:</strong> This appointment is on hold awaiting online payment confirmation. You can confirm it once payment is completed or received at the counter.
+                </span>
+              </div>
+              <button
+                onClick={handleConfirmBooking}
+                disabled={actionLoading}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition"
+              >
+                Confirm Booking Now
               </button>
             </div>
           )}
@@ -518,7 +639,7 @@ export default function StaffBookingDetailPage() {
                   </div>
                   {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                     <button
-                      onClick={() => setAddServiceOpen(true)}
+                      onClick={handleOpenAddServiceModal}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-groomish-orange text-white text-xs font-bold hover:bg-groomish-orangeDark active:scale-95 transition shadow-soft"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -606,7 +727,7 @@ export default function StaffBookingDetailPage() {
                   </div>
                   {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                     <button
-                      onClick={() => setAddProductOpen(true)}
+                      onClick={handleOpenAddProductModal}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-groomish-blue text-white text-xs font-bold hover:bg-sky-600 active:scale-95 transition shadow-soft"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -670,12 +791,14 @@ export default function StaffBookingDetailPage() {
                   </div>
                   <span
                     className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${
-                      booking.paymentStatus === "COMPLETED"
+                      booking.paymentStatus === "COMPLETED" || booking.status === "COMPLETED"
                         ? "bg-groomish-greenLight text-groomish-green border border-groomish-green/30"
                         : "bg-groomish-goldLight text-groomish-slate border border-groomish-gold/40"
                     }`}
                   >
-                    {booking.paymentStatus || "PENDING"}
+                    {booking.status === "COMPLETED" || booking.paymentStatus === "COMPLETED"
+                      ? (booking.paymentMethod === "CASH" ? "Paid at Salon" : `Paid Online (${booking.paymentMethod || "UPI"})`)
+                      : (booking.paymentStatus || "PENDING")}
                   </span>
                 </div>
 
@@ -730,55 +853,159 @@ export default function StaffBookingDetailPage() {
       {/* Add Service Modal */}
       {addServiceOpen && (
         <div className="fixed inset-0 z-50 bg-groomish-slate/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-groomish-slate/10 space-y-4 animate-scale-up">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-groomish-slate/10 space-y-4 animate-scale-up">
             <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
               <div className="flex items-center gap-2">
-                <Scissors className="w-4 h-4 text-groomish-orange" />
-                <h3 className="font-heading font-bold text-base text-groomish-slate">
-                  Add Service to Appointment
-                </h3>
+                <Scissors className="w-5 h-5 text-groomish-orange" />
+                <div>
+                  <h3 className="font-heading font-bold text-base text-groomish-slate">
+                    Add Service to Appointment
+                  </h3>
+                  <p className="text-[11px] text-groomish-slate/60">
+                    Search and attach salon services directly to this customer visit
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setAddServiceOpen(false)}
-                className="p-1 rounded-lg text-groomish-slate/40 hover:text-groomish-slate hover:bg-groomish-cream transition"
+                className="p-1.5 rounded-xl text-groomish-slate/40 hover:text-groomish-slate hover:bg-groomish-cream transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={handleAddService} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-groomish-slate/70 mb-1.5">
-                  Select Salon Service
-                </label>
-                <CustomSelect
-                  value={selectedServiceId}
-                  onChange={(e) => setSelectedServiceId(e.value || e.target.value)}
-                  placeholder="-- Choose a salon service --"
-                  searchPlaceholder="Search services..."
-                  searchable={true}
-                  options={availableServices.map((s) => ({
-                    value: s.id,
-                    label: `${s.name} - ₹${s.price} (${s.durationMinutes} mins)`,
-                  }))}
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-groomish-slate/10">
+
+            {/* Live Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-groomish-slate/40" />
+              <input
+                type="text"
+                placeholder="Search services by name or category..."
+                value={serviceSearchQuery}
+                onChange={(e) => setServiceSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2.5 text-xs rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-groomish-slate placeholder:text-groomish-slate/40 focus:outline-none focus:border-groomish-orange focus:bg-white transition"
+              />
+              {serviceSearchQuery && (
                 <button
                   type="button"
-                  onClick={() => setAddServiceOpen(false)}
-                  className="btn-secondary text-xs px-4 py-2"
+                  onClick={() => setServiceSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-groomish-slate/40 hover:text-groomish-slate p-0.5"
                 >
-                  Cancel
+                  <X className="w-3.5 h-3.5" />
                 </button>
-                <button
-                  type="submit"
-                  disabled={!selectedServiceId || actionLoading}
-                  className="btn-primary text-xs px-5 py-2 font-bold shadow-soft"
-                >
-                  {actionLoading ? "Adding..." : "Add Service"}
-                </button>
+              )}
+            </div>
+
+            {/* Category Filter Pills */}
+            {serviceCategories.length > 2 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {serviceCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setServiceSelectedCategory(cat)}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap transition ${
+                      serviceSelectedCategory === cat
+                        ? "bg-groomish-orange text-white shadow-soft"
+                        : "bg-groomish-cream hover:bg-groomish-slate/10 text-groomish-slate/70"
+                    }`}
+                  >
+                    {cat === "ALL" ? "All Services" : cat}
+                  </button>
+                ))}
               </div>
-            </form>
+            )}
+
+            {/* Services List */}
+            <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
+              {filteredServices.length > 0 ? (
+                filteredServices.map((srv) => {
+                  const inBookingCount = (booking?.bookingItems || []).filter(
+                    (bi) => bi.serviceId === srv.id
+                  ).length;
+                  const isAdding = addingItemId === srv.id;
+                  return (
+                    <div
+                      key={srv.id}
+                      className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                          <img
+                            src={
+                              srv.image ||
+                              "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=200&q=80"
+                            }
+                            alt={srv.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs font-bold text-groomish-slate truncate">
+                              {srv.name}
+                            </h4>
+                            {inBookingCount > 0 && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-groomish-greenLight text-groomish-green">
+                                In Booking ({inBookingCount})
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-groomish-slate/50 mt-0.5">
+                            {srv.durationMinutes || 30} mins • {srv.categoryName || "Salon Care"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs font-extrabold text-groomish-slate">
+                          ₹{srv.price}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleAddServiceDirect(srv.id)}
+                          disabled={actionLoading}
+                          className="btn-primary text-xs px-3.5 py-1.5 font-bold shadow-soft flex items-center gap-1"
+                        >
+                          {isAdding ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{inBookingCount > 0 ? "Add Again" : "Add Service"}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8">
+                  <Scissors className="w-8 h-8 text-groomish-slate/20 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-groomish-slate/70">
+                    No services matched your search
+                  </p>
+                  <button
+                    onClick={() => {
+                      setServiceSearchQuery("");
+                      setServiceSelectedCategory("ALL");
+                    }}
+                    className="mt-2 text-xs text-groomish-orange font-bold hover:underline"
+                  >
+                    Clear Search Filters
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-groomish-slate/10">
+              <button
+                type="button"
+                onClick={() => setAddServiceOpen(false)}
+                className="btn-secondary text-xs px-4 py-2 font-bold"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -786,68 +1013,189 @@ export default function StaffBookingDetailPage() {
       {/* Add Product Modal */}
       {addProductOpen && (
         <div className="fixed inset-0 z-50 bg-groomish-slate/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-groomish-slate/10 space-y-4 animate-scale-up">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-groomish-slate/10 space-y-4 animate-scale-up">
             <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
               <div className="flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-groomish-blue" />
-                <h3 className="font-heading font-bold text-base text-groomish-slate">
-                  Add Retail Product to Bill
-                </h3>
+                <ShoppingBag className="w-5 h-5 text-groomish-blue" />
+                <div>
+                  <h3 className="font-heading font-bold text-base text-groomish-slate">
+                    Add Retail Product to Bill
+                  </h3>
+                  <p className="text-[11px] text-groomish-slate/60">
+                    Search and bill salon retail care items for this customer
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setAddProductOpen(false)}
-                className="p-1 rounded-lg text-groomish-slate/40 hover:text-groomish-slate hover:bg-groomish-cream transition"
+                className="p-1.5 rounded-xl text-groomish-slate/40 hover:text-groomish-slate hover:bg-groomish-cream transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={handleAddProduct} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-groomish-slate/70 mb-1.5">
-                  Select Product
-                </label>
-                <CustomSelect
-                  value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.value || e.target.value)}
-                  placeholder="-- Choose a product --"
-                  searchPlaceholder="Search 100+ retail products..."
-                  searchable={true}
-                  options={availableProducts.map((p) => ({
-                    value: p.id,
-                    label: `${p.name} - ₹${p.price} (${p.stockQuantity ?? 10} in stock)`,
-                  }))}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-groomish-slate/70 mb-1.5">
-                  Quantity
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={productQty}
-                  onChange={(e) => setProductQty(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 text-xs text-groomish-slate font-bold focus:outline-none focus:border-groomish-orange"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-groomish-slate/10">
+
+            {/* Live Search Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-groomish-slate/40" />
+              <input
+                type="text"
+                placeholder="Search retail products by name, brand or category..."
+                value={productSearchQuery}
+                onChange={(e) => setProductSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2.5 text-xs rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-groomish-slate placeholder:text-groomish-slate/40 focus:outline-none focus:border-groomish-orange focus:bg-white transition"
+              />
+              {productSearchQuery && (
                 <button
                   type="button"
-                  onClick={() => setAddProductOpen(false)}
-                  className="btn-secondary text-xs px-4 py-2"
+                  onClick={() => setProductSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-groomish-slate/40 hover:text-groomish-slate p-0.5"
                 >
-                  Cancel
+                  <X className="w-3.5 h-3.5" />
                 </button>
-                <button
-                  type="submit"
-                  disabled={!selectedProductId || actionLoading}
-                  className="btn-primary text-xs px-5 py-2 font-bold shadow-soft"
-                >
-                  {actionLoading ? "Adding..." : "Add to Bill"}
-                </button>
+              )}
+            </div>
+
+            {/* Product Category Filter Pills */}
+            {productCategories.length > 2 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {productCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setProductSelectedCategory(cat)}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap transition ${
+                      productSelectedCategory === cat
+                        ? "bg-groomish-blue text-white shadow-soft"
+                        : "bg-groomish-cream hover:bg-groomish-slate/10 text-groomish-slate/70"
+                    }`}
+                  >
+                    {cat === "ALL" ? "All Products" : cat}
+                  </button>
+                ))}
               </div>
-            </form>
+            )}
+
+            {/* Products List */}
+            <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((p) => {
+                  const qty = productQtyMap[p.id] || 1;
+                  const isAdding = addingItemId === p.id;
+                  const inBillCount = (booking?.products || []).filter(
+                    (bp) => bp.productId === p.id
+                  ).reduce((sum, bp) => sum + (bp.quantity || 1), 0);
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-blue/40 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                          <img
+                            src={
+                              p.image ||
+                              "https://images.unsplash.com/photo-1608248597359-52e805562d7c?auto=format&fit=crop&w=200&q=80"
+                            }
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs font-bold text-groomish-slate truncate">
+                              {p.name}
+                            </h4>
+                            {inBillCount > 0 && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-groomish-blue">
+                                In Bill ({inBillCount})
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-groomish-slate/50 mt-0.5">
+                            {p.brand || "Groomish"} • {p.volumeOrSize || "Standard"} •{" "}
+                            <span className="text-groomish-green font-semibold">
+                              {p.stockQuantity ?? 10} in stock
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <span className="text-xs font-extrabold text-groomish-slate block">
+                            ₹{p.price}
+                          </span>
+                        </div>
+
+                        {/* Quantity Stepper */}
+                        <div className="flex items-center border border-groomish-slate/20 rounded-xl overflow-hidden bg-groomish-cream/40">
+                          <button
+                            type="button"
+                            onClick={() => handleQtyChange(p.id, -1)}
+                            className="p-1.5 hover:bg-groomish-slate/10 text-groomish-slate transition"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="px-2 text-xs font-bold text-groomish-slate min-w-[20px] text-center">
+                            {qty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleQtyChange(p.id, 1)}
+                            className="p-1.5 hover:bg-groomish-slate/10 text-groomish-slate transition"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddProductDirect(p.id)}
+                          disabled={actionLoading}
+                          className="px-3.5 py-1.5 rounded-xl bg-groomish-blue text-white text-xs font-bold hover:bg-sky-600 active:scale-95 transition shadow-soft flex items-center gap-1"
+                        >
+                          {isAdding ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Add</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8">
+                  <ShoppingBag className="w-8 h-8 text-groomish-slate/20 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-groomish-slate/70">
+                    No products matched your search
+                  </p>
+                  <button
+                    onClick={() => {
+                      setProductSearchQuery("");
+                      setProductSelectedCategory("ALL");
+                    }}
+                    className="mt-2 text-xs text-groomish-blue font-bold hover:underline"
+                  >
+                    Clear Search Filters
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-groomish-slate/10">
+              <button
+                type="button"
+                onClick={() => setAddProductOpen(false)}
+                className="btn-secondary text-xs px-4 py-2 font-bold"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

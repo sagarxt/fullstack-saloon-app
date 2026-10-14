@@ -1,7 +1,7 @@
 # Salon Booking & Loyalty Program - Project Progress Tracker
 
-> **Last Updated:** October 12, 2026  
-> **Status:** Backend & Frontend Web (Groomish Now) 100% Completed, Verified & Production Ready. Multi-Store Geolocation Architecture, Branch Catalogs, Staff Operations Hub, Visual Analytics & Custom UI Component System Fully Deployed.
+> **Last Updated:** October 13, 2026  
+> **Status:** Backend & Frontend Web (Groomish Now) 100% Completed, Verified & Production Ready. Multi-Store Geolocation Architecture, Branch Catalogs, Staff Operations Hub, Visual Analytics, Database-Persistent Cart & Unified Checkout System Fully Deployed.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | Subsystem | Tech Stack | Completion | Status Summary |
 | :--- | :--- | :---: | :--- |
-| **Backend** | Spring Boot 3.5, Java 21, PostgreSQL, JPA, JWT, JavaMail | **100%** | **Completed, Tested & Live Running.** Multi-store branch architecture, localized service/product availability overrides, staff profile & password change endpoints, branch analytics API with customizable timeframes, real-time Gmail SMTP asynchronous mailing, complete Service Review system, payment checkout & point accruals, in-app notifications, and request context fixes verified with live test user. |
-| **Frontend Web** | React 19, Vite 7, Tailwind CSS 3, Lucide Icons | **100%** | **Completed & Fully Production-Ready.** Overhauled with official Groomish Now brand palette, smooth keyframe animations, glassmorphism navbar, store geolocation selector with Haversine distance, Staff Station with tabbed appointment queues (Today, Upcoming, Completed, All), Staff Booking Detail page with itemized billing, Staff Branch Analytics dashboard with toggleable Bar/Line charts, Staff Profile & Branch Info hub, Custom Groomish Date & Time Pickers, searchable `CustomSelect` dropdowns, item multiplier displays (`Item X {qty}`), and a global modal confirmation/alert system (`ConfirmContext`) replacing all native browser dialogs. Production build passes cleanly with 0 errors (`vite build` ✓). |
+| **Backend** | Spring Boot 3.5, Java 21, PostgreSQL, JPA, JWT, JavaMail | **100%** | **Completed, Tested & Live Running.** Multi-store branch architecture, database-persistent Cart (`Cart` & `CartItem`), multi-item checkout converting to bookings & product attachments, coupon/voucher redemption, localized service/product availability overrides, staff/admin cart management, staff profile & password change endpoints, branch analytics API with customizable timeframes, real-time Gmail SMTP asynchronous mailing, complete Service Review system, payment checkout & point accruals, in-app notifications, and request context verified with live test user. |
+| **Frontend Web** | React 19, Vite 7, Tailwind CSS 3, Lucide Icons | **100%** | **Completed & Fully Production-Ready.** Overhauled with official Groomish Now brand palette, smooth keyframe animations, glassmorphism navbar, persistent Cart system with reactive cart badge, dedicated `/cart` and `/checkout` pages, promo coupon & loyalty voucher redemption, "Available Offers" sections on service & product pages, store geolocation selector with Haversine distance, Staff Station with tabbed appointment queues (Today, Upcoming, Completed, All), Staff Booking Detail page with itemized billing, Staff Branch Analytics dashboard, Staff & Admin customer cart inspector, Custom Groomish Date & Time Pickers, searchable `CustomSelect` dropdowns, item multiplier displays (`Item X {qty}`), and a global modal confirmation/alert system (`ConfirmContext`). Production build passes cleanly with 0 errors (`vite build` ✓). |
 | **Mobile App** | React Native (Expo SDK 54), TypeScript, NativeWind | **~15%** | Skeleton only: splash, login, register screens. Contains runtime bugs (missing logo asset, `/api/` instead of `/api/v1/`), no token persistence, and lacks customer browsing/booking/rewards screens. Next phase. |
 
 ---
@@ -30,6 +30,12 @@
     - Public Verification Endpoint `GET /api/v1/auth/verify-referral?code={code}` validating referral codes prior to or during signup. Returns 200 with `{ valid: true, referrerName: ... }` or 400 Bad Request with `{ valid: false, message: "Invalid Referral Code" }`.
     - Enforced strict referral validation in `AuthService.registerUser`: if an invalid referral code is provided, registration is rejected with `Invalid Referral Code` and user creation is blocked.
     - Automatic `Referral` entity association when a valid referral code is provided upon registration.
+    - **Instant 10 Reward Points Accrual & Real-Time Email Notification**: When a new friend registers using a customer's unique referral code:
+      - The referrer automatically receives **+10 VIP Reward Points** in their account (incrementing both spendable `points` and `lifetimePoints`).
+      - A dedicated `PointsLedger` audit record is generated (`reason = REFERRAL_BONUS`, `note = "Referred to <Friend Name>"`).
+      - An in-app celebratory notification is dispatched.
+      - A branded real-time transaction email (`sendReferralBonusEmail`) is dispatched via Gmail SMTP to the referrer detailing: `+10 Points Added`, the referred friend's name, total available points balance, and actionable instructions on redeeming points for salon vouchers and treatments.
+    - **Customer Profile Referral Synchronization**: Expanded `CustomerProfileResponse` and `PointsBalanceResponse` to return the real `referralCode` (e.g. `RASR3A`), removing static fallback defaults (`GROOMISH`) in `ProfilePage.jsx` and `RewardsPage.jsx`. Also backfills unique 6-character referral codes for any existing customer accounts on startup.
     - Frontend registration flows (`AuthModal.jsx` and `Register.jsx`) provide live verification, `"Invalid Referral Code"` alert, with actionable **"Retry / Edit Code"** and **"Sign up without referral code"** options.
   - **Auto-Login on Registration & Browsing Context Preservation**:
     - Backend `registerCustomer` (`AuthService.registerUser`) now generates and returns an active JWT Bearer token directly on `UserResponse.token`.
@@ -379,6 +385,57 @@
    - **Global Select & Form Styling (`index.css`)**: Groomish orange SVG chevron, rounded borders, focus glow, and custom `-webkit-calendar-picker-indicator` filter.
    - **Item Multiplier Display (`Item Name X {quantity}`)**: Universally applied when multiple quantities of a service or product exist.
    - **Global Modal Confirmation & Alert System (`ConfirmContext.jsx`)**: Replaced all native browser `window.confirm()` and `alert()` calls across the entire application with branded Groomish modal popups.
+
+---
+
+### 🛒 Phase E: Database-Persistent Multi-Item Cart, Unified Checkout, Promo Offers & Staff/Admin Cart Management (✅ 100% COMPLETED)
+1. **Database-Persistent Cart Architecture (`Cart` & `CartItem`)**:
+   - Built backend persistent entities `Cart.java` and `CartItem.java` with enum `CartItemType` (`SERVICE`, `PRODUCT`).
+   - Every cart modification (add, update quantity, remove, branch change, clear) is saved in database tables (`carts`, `cart_items`), eliminating item loss on page refresh, cross-browser, or cross-device sessions.
+   - Branch-level validation ensures services and products are verified against the selected branch store.
+
+2. **Unified Cart-to-Booking Transition Engine (`checkoutCart`)**:
+   - Supports single or multi-service treatments plus retail products in one seamless transaction.
+   - Converts cart services into `Booking` + `BookingItem`s with stylist slot capacity check (max 5 stylists per slot).
+   - Converts cart products into attached `BookingProduct`s with automated stock decrement.
+   - Full coupon redemption (`Coupon`) with minimum spend and max discount limits.
+   - Loyalty voucher redemption (`RedeemedVoucher`) with percentage deduction and status update to `APPLIED`.
+   - Generates 10-character human-readable booking code (`GN-XX-XXXXXX`), calculates loyalty points (+1 pt per ₹100), creates payment records, timeline events, in-app notifications, and dispatches confirmation emails.
+   - Automatically clears the user's database cart upon successful booking.
+
+3. **Staff & Admin Real-Time Cart Oversight**:
+   - Dedicated endpoints `/api/v1/admin/carts/customer/{customerId}` and `/api/v1/staff/carts/customer/{customerId}` allowing staff and admins to view and modify any customer's active database cart.
+   - Integrated an **Active Cart** tab in [`CustomerProfileModal.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/modals/CustomerProfileModal.jsx) with live quantity controls, item removals, clear cart actions, and subtotal calculation.
+   - Quick "Cart" action button directly in [`CustomersPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/CustomersPage.jsx) user table.
+
+4. **Dedicated Customer Cart & Checkout Experience**:
+   - **Header Cart Badge**: Real-time reactive `ShoppingCart` badge in [`Navbar.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/Navbar.jsx) and mobile navigation drawer.
+   - **Dedicated Cart Page (`/cart` - `CartPage.jsx`)**: Separated treatment cards and retail product cards, quantity adjustment (+/-), preference notes, branch selector, loyalty points to earn preview, and "Proceed to Checkout" CTA.
+   - **Dedicated Checkout Page (`/checkout` - `CheckoutPage.jsx`)**: Salon branch confirmation, appointment date & time slot picker with stylist capacity verification, promo coupon redemption OR redeemed loyalty voucher selection, payment method choices (Cash at Salon, UPI, Card), and final order confirmation.
+
+5. **Available Offers & Promotional Coupons Hub**:
+   - Added `PublicCouponController` at `/api/v1/public/coupons` exposing active promotional discounts.
+   - **Service Detail Page (`ServiceDetailPage.jsx`)**: Luxury "Available Offers & Promotional Coupons" section with 1-click clipboard code copy.
+   - **Products Page (`ProductsPage.jsx`)**: Promotional offers marquee banner at the top of the store and dedicated "Available Offers for this Category" block on the Product Detail page.
+   - Replaced all legacy direct booking buttons with "Add Service to Cart" and "Add Product to Cart" actions across the store and catalog.
+
+6. **Dedicated Product Detail Page & Universal Card Navigation Overhaul**:
+   - Built [`ProductDetailPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/public/ProductDetailPage.jsx) at `/products/:productId` replacing the previous popup modal with a full e-commerce product experience (gallery with multi-image thumbnails, stock indicators, authentic salon guarantee, points multiplier, category offers with 1-click copy, quantity stepper, and related products carousel).
+   - Cleaned up cards across **Services** ([`ServicesPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/public/ServicesPage.jsx)), **Categories** ([`CategoryDetailPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/public/CategoryDetailPage.jsx)), and **Products** ([`ProductsPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/public/ProductsPage.jsx)): removed redundant "Details" buttons. Clicking on any card's Image or Title now smoothly navigates to the dedicated details page (`/services/:id`, `/category/:id`, `/products/:id`), leaving "Add Service" and "Add Product" as the clean, focused primary card action buttons.
+
+7. **Admin Staff & Station Management Enhancements**:
+   - **Admin Staff Password Override**: Admin can directly update any staff member's password without requiring their old password in [`StaffPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/StaffPage.jsx). Includes eye/eye-off toggle and helper hint.
+   - **Indian Phone Number Standard (+91)**: In Add Staff and Edit Staff modals, added a locked `🇮🇳 +91` badge with 10-digit number validation and real-time character counter.
+
+8. **Admin Controls & Dropdown Theming Overhaul**:
+   - Upgraded all native controls in **Admin &rarr; Booking Details &rarr; Admin Controls & Overrides** ([`AdminBookingDetailPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/AdminBookingDetailPage.jsx)) to Groomish theme components: `CustomSelect` for Appointment Status, Payment Method, and Payment Status; `CustomDatePicker` for Reschedule Date; `CustomTimePicker` for Time Slot.
+   - Upgraded **Catalog View & Branch Scope** dropdowns in both **Services** ([`ServicesPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/ServicesPage.jsx)) and **Store Products** ([`ProductsPage.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/ProductsPage.jsx)) from default native selects to searchable `CustomSelect`.
+
+9. **Promo Coupon Category Scope & Multi-Select**:
+   - Added `eligibleCategories` element collection to `Coupon` model, DTOs, and controller endpoints.
+   - Implemented [`CustomMultiSelect.jsx`](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/common/CustomMultiSelect.jsx) with custom checkboxes, category tag chips, "Select All", "Clear All", and search filtering.
+   - If no category is selected, the coupon defaults to "🌐 All Categories" (applicable to all salon treatments).
+   - Enforced category validation on checkout (`CartServiceImpl`), customer booking (`CustomerBookingServiceImpl`), and staff booking (`StaffBookingServiceImpl`). Displays category badges on admin coupon cards and customer checkout toasts.
 
 ---
 

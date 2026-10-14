@@ -18,6 +18,8 @@ public interface EmailService {
 
     void sendPasswordChangedEmail(String to, String name);
 
+    void sendReferralBonusEmail(String to, String referrerName, String referredFriendName, int pointsEarned, int totalPointsBalance);
+
     void sendPaymentBillEmail(
             String to,
             String name,

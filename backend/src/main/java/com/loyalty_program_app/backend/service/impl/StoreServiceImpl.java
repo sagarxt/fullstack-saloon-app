@@ -92,6 +92,7 @@ public class StoreServiceImpl implements StoreService {
                 .pincode(request.getPincode())
                 .phone(request.getPhone())
                 .email(request.getEmail())
+                .logo(request.getLogo())
                 .image(primaryImage)
                 .images(images)
                 .latitude(request.getLatitude())
@@ -127,6 +128,7 @@ public class StoreServiceImpl implements StoreService {
         if (request.getPincode() != null) store.setPincode(request.getPincode().trim());
         if (request.getPhone() != null) store.setPhone(request.getPhone().trim());
         if (request.getEmail() != null) store.setEmail(request.getEmail().trim());
+        if (request.getLogo() != null) store.setLogo(request.getLogo());
         if (request.getImage() != null) store.setImage(request.getImage());
         if (request.getImages() != null) {
             store.setImages(new ArrayList<>(request.getImages()));
@@ -181,6 +183,7 @@ public class StoreServiceImpl implements StoreService {
                 .pincode(store.getPincode())
                 .phone(store.getPhone())
                 .email(store.getEmail())
+                .logo(store.getLogo())
                 .image(store.getImage())
                 .images(store.getImages() != null && !store.getImages().isEmpty() ? store.getImages() : (store.getImage() != null ? List.of(store.getImage()) : List.of()))
                 .latitude(store.getLatitude())

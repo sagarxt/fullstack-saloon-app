@@ -21,11 +21,14 @@ import {
   Sparkles,
   MapPin,
   Ticket,
+  ShoppingCart,
 } from "lucide-react";
+import { useCart } from "../context/CartContext";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { selectedStore } = useStore();
+  const { cartCount } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -161,6 +164,21 @@ export default function Navbar() {
 
           {/* RIGHT UTILITY ICONS & USER SECTION */}
           <div className="flex items-center gap-1.5 xs:gap-2.5 sm:gap-3 shrink-0">
+            {/* Cart Icon */}
+            <button
+              onClick={() => navigate("/cart")}
+              className="relative p-1.5 sm:p-2 rounded-full hover:bg-groomish-cream text-groomish-slate transition group"
+              aria-label="Shopping Cart"
+              title="Cart & Checkout"
+            >
+              <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-groomish-slate/80 group-hover:text-groomish-orange transition-colors" />
+              {cartCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 sm:top-0.5 sm:right-0.5 min-w-[16px] h-4 sm:min-w-[18px] sm:h-4.5 px-1 rounded-full bg-groomish-orange text-white text-[9px] sm:text-[10px] font-extrabold flex items-center justify-center shadow-sm animate-pulse">
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
+            </button>
+
             {/* Notification Bell */}
             {user && (
               <button
@@ -200,6 +218,25 @@ export default function Navbar() {
                       <p className="text-[10px] text-groomish-slate/50 uppercase tracking-wider font-semibold">Signed in</p>
                       <p className="text-xs font-bold text-groomish-slate truncate">{user.email}</p>
                     </div>
+
+                    {/* My Cart */}
+                    <button
+                      onClick={() => {
+                        setUserDropdown(false);
+                        navigate("/cart");
+                      }}
+                      className="w-full px-4 py-2 text-left text-xs font-semibold text-groomish-slate hover:bg-groomish-cream flex items-center justify-between transition"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <ShoppingCart className="w-4 h-4 text-groomish-orange" />
+                        <span>My Cart</span>
+                      </div>
+                      {cartCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-groomish-orange/15 text-groomish-orange font-bold text-[10px]">
+                          {cartCount}
+                        </span>
+                      )}
+                    </button>
 
                     {/* My Profile */}
                     <button
@@ -366,6 +403,24 @@ export default function Navbar() {
 
             {isCustomer && (
               <>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate("/cart");
+                  }}
+                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4 text-groomish-orange" />
+                    <span>My Cart</span>
+                  </div>
+                  {cartCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-groomish-orange text-white font-bold text-[10px]">
+                      {cartCount}
+                    </span>
+                  )}
+                </button>
+
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

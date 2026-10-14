@@ -14,4 +14,8 @@ public class CustomerProfileResponse {
     private String gender;
     private String phone;
     private String email;
+    private String referralCode;
+    private String membershipTier;
+    private Integer loyaltyPoints;
+    private Integer lifetimePoints;
 }

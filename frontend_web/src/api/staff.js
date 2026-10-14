@@ -56,6 +56,9 @@ export const removeProductFromBookingByStaff = (bookingId, bookingProductId) =>
 export const completeBookingAndSendBillByStaff = (bookingId) =>
   axiosClient.post(`/staff/products/booking/${bookingId}/complete-and-bill`);
 
+export const confirmBookingByStaff = (bookingId) =>
+  axiosClient.post(`/staff/bookings/${bookingId}/confirm`);
+
 /* STAFF STORE CATALOG & INVENTORY (OWN BRANCH) */
 export const getStaffStoreInfo = () =>
   axiosClient.get("/staff/store/info");

@@ -56,6 +56,16 @@ public class CustomerReviewController {
         return ResponseEntity.ok(reviewService.getMyReviews(userId, pageable));
     }
 
+    @GetMapping("/booking/{bookingId}")
+    public ResponseEntity<java.util.List<ServiceReviewResponse>> getCustomerReviewsForBooking(
+            @AuthenticationPrincipal CustomUserDetails user,
+            HttpServletRequest request,
+            @PathVariable UUID bookingId
+    ) {
+        UUID userId = getUserId(user, request);
+        return ResponseEntity.ok(reviewService.getCustomerReviewsForBooking(userId, bookingId));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteReview(
             @AuthenticationPrincipal CustomUserDetails user,

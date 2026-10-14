@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import CustomSelect from "../../components/common/CustomSelect";
-import { getMyProfile, updateMyProfile, changePassword } from "../../api/customer";
+import { getMyProfile, updateMyProfile, changePassword, getReferralCode } from "../../api/customer";
 import {
   User,
   Mail,
@@ -64,7 +64,17 @@ export default function ProfilePage() {
       setEmail(u.email || "");
       setMembershipTier(u.membershipTier || "SILVER");
       setLoyaltyPoints(u.loyaltyPoints || 0);
-      setReferralCode(u.referralCode || "GROOMISH");
+
+      if (u.referralCode) {
+        setReferralCode(u.referralCode);
+      } else {
+        try {
+          const refRes = await getReferralCode();
+          if (refRes.data?.referralCode) {
+            setReferralCode(refRes.data.referralCode);
+          }
+        } catch (_) { }
+      }
     } catch (err) {
       console.error(err);
     }
@@ -147,7 +157,7 @@ export default function ProfilePage() {
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Header */}
-        <div className="mb-8">
+        {/* <div className="mb-8">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-groomish-orange mb-1">
             <User className="w-4 h-4" />
             <span>Account Center</span>
@@ -158,7 +168,7 @@ export default function ProfilePage() {
           <p className="text-sm text-groomish-slate/60 mt-1">
             Manage your personal details, referral bonuses, and security credentials.
           </p>
-        </div>
+        </div> */}
 
         {/* PROFILE HEADER HERO */}
         <div className="bg-white rounded-3xl border border-groomish-slate/10 p-6 shadow-soft mb-8 flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -211,11 +221,10 @@ export default function ProfilePage() {
 
               {alert.message && (
                 <div
-                  className={`p-3 rounded-xl mb-4 flex items-center gap-2 text-xs font-semibold ${
-                    alert.type === "success"
-                      ? "bg-groomish-green/10 text-groomish-green"
-                      : "bg-groomish-crimson/10 text-groomish-crimson"
-                  }`}
+                  className={`p-3 rounded-xl mb-4 flex items-center gap-2 text-xs font-semibold ${alert.type === "success"
+                    ? "bg-groomish-green/10 text-groomish-green"
+                    : "bg-groomish-crimson/10 text-groomish-crimson"
+                    }`}
                 >
                   {alert.type === "success" ? (
                     <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -307,11 +316,10 @@ export default function ProfilePage() {
 
               {pwAlert.message && (
                 <div
-                  className={`p-3 rounded-xl mb-4 flex items-center gap-2 text-xs font-semibold ${
-                    pwAlert.type === "success"
-                      ? "bg-groomish-green/10 text-groomish-green"
-                      : "bg-groomish-crimson/10 text-groomish-crimson"
-                  }`}
+                  className={`p-3 rounded-xl mb-4 flex items-center gap-2 text-xs font-semibold ${pwAlert.type === "success"
+                    ? "bg-groomish-green/10 text-groomish-green"
+                    : "bg-groomish-crimson/10 text-groomish-crimson"
+                    }`}
                 >
                   {pwAlert.type === "success" ? (
                     <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -400,10 +408,10 @@ export default function ProfilePage() {
               </div>
 
               <h3 className="font-heading font-bold text-lg leading-snug">
-                Invite Friends, Earn 50 Points!
+                Invite Friends, Earn 10 Points!
               </h3>
               <p className="text-xs text-white/80 mt-1 leading-relaxed">
-                Share your unique code. Whenever a friend books their first salon service with your code, both of you receive 50 bonus points.
+                Share your unique code. Whenever a friend signs up using your code, you will receive 10 VIP reward points credited directly to your account.
               </p>
 
               {/* Code Box */}
@@ -412,7 +420,7 @@ export default function ProfilePage() {
                   Your Referral Code
                 </span>
                 <span className="font-mono text-2xl font-extrabold tracking-widest text-groomish-gold">
-                  {referralCode || "GROOMISH50"}
+                  {referralCode || "..."}
                 </span>
               </div>
 

@@ -7,7 +7,8 @@ import {
 } from "../../api/customer";
 import RescheduleBookingModal from "./RescheduleBookingModal";
 import { showConfirm } from "../../context/ConfirmContext";
-import { Calendar, Clock, CreditCard, Tag, AlertCircle, Scissors, UserCheck, ChevronRight } from "lucide-react";
+import { getBranchNavigationUrl } from "../../utils/mapHelper";
+import { Calendar, Clock, CreditCard, Tag, AlertCircle, Scissors, UserCheck, ChevronRight, Navigation, MapPin } from "lucide-react";
 
 export default function CustomerBookingDetailsModal({
   open,
@@ -111,6 +112,25 @@ export default function CustomerBookingDetailsModal({
                   <UserCheck className="w-3.5 h-3.5 text-groomish-orange" />
                   {booking.staffAssigned}
                 </span>
+              </div>
+            )}
+
+            {booking.storeName && (
+              <div className="flex justify-between items-center pt-1 border-t border-groomish-slate/10">
+                <span className="text-groomish-slate/60">Salon Branch:</span>
+                <div className="flex items-center gap-2 text-right">
+                  <span className="font-medium text-groomish-slate">{booking.storeName}</span>
+                  <a
+                    href={getBranchNavigationUrl(booking)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] font-bold text-groomish-orange bg-white border border-groomish-orange/30 px-2 py-0.5 rounded-lg hover:bg-groomish-orange hover:text-white transition shadow-2xs"
+                    title="Open Google Maps with turn-by-turn navigation from your current location"
+                  >
+                    <Navigation className="w-2.5 h-2.5" />
+                    <span>Navigate</span>
+                  </a>
+                </div>
               </div>
             )}
           </div>

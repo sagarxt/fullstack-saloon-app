@@ -16,6 +16,14 @@ public interface ServiceReviewService {
 
     ServiceRatingSummaryResponse getRatingSummary(UUID serviceId);
 
+    Page<ServiceReviewResponse> getReviewsForProduct(UUID productId, Pageable pageable);
+
+    ServiceRatingSummaryResponse getProductRatingSummary(UUID productId);
+
+    java.util.List<ServiceReviewResponse> getReviewsForBooking(UUID bookingId);
+
+    java.util.List<ServiceReviewResponse> getCustomerReviewsForBooking(UUID userId, UUID bookingId);
+
     Page<ServiceReviewResponse> getMyReviews(UUID userId, Pageable pageable);
 
     void deleteReview(UUID reviewId, UUID userId, boolean isAdmin);

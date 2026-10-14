@@ -2,15 +2,17 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
-import ModalWrapper from "../../components/modals/ModalWrapper";
 import AuthModal from "../../components/modals/AuthModal";
 import CustomSelect from "../../components/common/CustomSelect";
 import Pagination from "../../components/common/Pagination";
 import { getPublicProducts, getProductCategories } from "../../api/products";
+import { getPublicCoupons } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
+import { useCart } from "../../context/CartContext";
 import { extractList } from "../../utils/dataHelper";
 import {
   ShoppingBag,
+  ShoppingCart,
   Sparkles,
   Search,
   Package,
@@ -24,14 +26,19 @@ import {
   Tag,
   Clock,
   Info,
+  Copy,
 } from "lucide-react";
 
 export default function ProductsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addItem } = useCart();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [coupons, setCoupons] = useState([]);
+  const [copiedCode, setCopiedCode] = useState("");
+  const [addingToCartId, setAddingToCartId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Filters & Search
@@ -47,10 +54,6 @@ export default function ProductsPage() {
   }, [selectedCategory, search, sortBy]);
 
   // Modals
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [modalImageIdx, setModalImageIdx] = useState(0);
-  const [pickupModalOpen, setPickupModalOpen] = useState(false);
-  const [reservationSuccess, setReservationSuccess] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
 
   useEffect(() => {
@@ -69,14 +72,16 @@ export default function ProductsPage() {
   const loadProductsData = async () => {
     setLoading(true);
     try {
-      const [prodsRes, catsRes] = await Promise.all([
+      const [prodsRes, catsRes, coupRes] = await Promise.all([
         getPublicProducts(),
         getProductCategories().catch(() => ({ data: [] })),
+        getPublicCoupons().catch(() => ({ data: [] })),
       ]);
       const rawProducts = extractList(prodsRes.data);
       // Strictly show only active products in shop
       const activeProducts = rawProducts.filter((p) => p && p.active !== false);
       setProducts(activeProducts);
+      setCoupons(extractList(coupRes.data));
 
       // Dynamically load categories strictly from active products or backend
       const serverCats = extractList(catsRes.data).filter(Boolean);
@@ -93,6 +98,27 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddToCart = async (product) => {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
+    setAddingToCartId(product.id);
+    await addItem({
+      itemType: "PRODUCT",
+      productId: product.id,
+      name: product.name,
+      quantity: 1,
+    });
+    setAddingToCartId(null);
+  };
+
+  const handleCopyCode = (code) => {
+    navigator.clipboard?.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(""), 2500);
   };
 
   const productList = extractList(products);
@@ -229,7 +255,63 @@ export default function ProductsPage() {
         </section>
 
         {/* PRODUCTS GRID */}
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          {/* PROMOTIONAL OFFERS STRIP */}
+          {coupons.length > 0 && (
+            <div className="bg-gradient-to-r from-groomish-slateDark via-groomish-slate to-groomish-slateDark text-white p-5 sm:p-6 rounded-3xl shadow-soft">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-groomish-orange text-white flex items-center justify-center shrink-0">
+                    <Tag className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-extrabold text-sm sm:text-base tracking-tight">
+                      Exclusive Retail & Salon Offers Available
+                    </h3>
+                    <p className="text-[11px] text-white/70">
+                      Copy any promo voucher code below and redeem at checkout for instant savings.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+                  {coupons.map((coupon) => (
+                    <div
+                      key={coupon.id}
+                      className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 flex items-center gap-2.5 shrink-0 transition"
+                    >
+                      <div>
+                        <span className="font-mono text-xs font-black text-groomish-gold block">
+                          {coupon.code}
+                        </span>
+                        <span className="text-[10px] text-white/80 block">
+                          ₹{coupon.discount} OFF • Min ₹{coupon.minAmount || 0}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCode(coupon.code)}
+                        className="px-2 py-1 rounded-lg bg-groomish-orange hover:bg-groomish-orangeDark text-white text-[10px] font-bold transition flex items-center gap-1"
+                      >
+                        {copiedCode === coupon.code ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            <span>Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="py-20 text-center">
               <div className="w-10 h-10 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -287,10 +369,7 @@ export default function ProductsPage() {
                     <div>
                       {/* Image Thumbnail */}
                       <div
-                        onClick={() => {
-                          setSelectedProduct(product);
-                          setModalImageIdx(0);
-                        }}
+                        onClick={() => navigate(`/products/${product.id}`)}
                         className="relative h-52 overflow-hidden bg-white flex items-center justify-center p-4 cursor-pointer"
                       >
                         <img
@@ -338,7 +417,7 @@ export default function ProductsPage() {
                         </div>
 
                         <h3
-                          onClick={() => setSelectedProduct(product)}
+                          onClick={() => navigate(`/products/${product.id}`)}
                           className="font-heading font-bold text-base text-groomish-slate group-hover:text-groomish-orange transition-colors line-clamp-1 cursor-pointer"
                         >
                           {product.name}
@@ -369,21 +448,15 @@ export default function ProductsPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setSelectedProduct(product)}
-                          className="btn-secondary text-xs px-2.5 py-2"
-                        >
-                          Details
-                        </button>
-                        <button
-                          onClick={() => handleOpenReserve(product)}
-                          className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Reserve</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAddToCart(product)}
+                        disabled={addingToCartId === product.id}
+                        className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                        <span>{addingToCartId === product.id ? "Adding..." : "Add Product"}</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -405,204 +478,6 @@ export default function ProductsPage() {
         )}
       </section>
       </main>
-
-      {/* PRODUCT DETAILS MODAL */}
-      {selectedProduct && (
-        <ModalWrapper
-          open={!!selectedProduct && !pickupModalOpen}
-          onClose={() => setSelectedProduct(null)}
-          maxWidth="max-w-xl"
-        >
-          <div className="space-y-5">
-            <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
-              <div className="flex flex-col items-center gap-2 shrink-0">
-                <div className="w-44 h-44 bg-white rounded-2xl border border-groomish-slate/10 p-2 flex items-center justify-center relative overflow-hidden">
-                  <img
-                    src={
-                      (selectedProduct.images && selectedProduct.images[modalImageIdx]) ||
-                      selectedProduct.image
-                    }
-                    alt={selectedProduct.name}
-                    className="max-h-full max-w-full object-contain transition-all duration-300"
-                  />
-                </div>
-
-                {/* Multi-image thumbnail bar */}
-                {selectedProduct.images && selectedProduct.images.length > 1 && (
-                  <div className="flex items-center gap-1.5 max-w-[176px] overflow-x-auto py-1">
-                    {selectedProduct.images.map((img, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setModalImageIdx(idx)}
-                        className={`w-9 h-9 rounded-lg overflow-hidden border p-0.5 bg-white transition shrink-0 ${
-                          modalImageIdx === idx
-                            ? "border-groomish-orange ring-2 ring-groomish-orange/20"
-                            : "border-groomish-slate/20 hover:border-groomish-slate/40 opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        <img src={img} alt="Thumb" className="w-full h-full object-cover rounded" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2 text-center sm:text-left flex-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full">
-                  {selectedProduct.brand || "Groomish Pro"}
-                </span>
-                <h3 className="font-heading font-extrabold text-xl text-groomish-slate">
-                  {selectedProduct.name}
-                </h3>
-                <p className="text-xs text-groomish-slate/60">
-                  Category: <b>{selectedProduct.category}</b> • Volume: <b>{selectedProduct.volumeOrSize || "Standard Size"}</b>
-                </p>
-
-                <div className="flex items-baseline gap-2 justify-center sm:justify-start pt-1">
-                  <span className="text-2xl font-extrabold text-groomish-slate">
-                    ₹{selectedProduct.price}
-                  </span>
-                  {selectedProduct.mrp > selectedProduct.price && (
-                    <span className="text-sm text-groomish-slate/40 line-through">
-                      ₹{selectedProduct.mrp}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-groomish-cream p-4 rounded-2xl text-xs text-groomish-slate/80 leading-relaxed">
-              <h4 className="font-bold text-groomish-slate mb-1">Product Description</h4>
-              <p>{selectedProduct.description}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl border border-groomish-slate/10 bg-white flex items-center gap-2.5">
-                <ShieldCheck className="w-5 h-5 text-groomish-green shrink-0" />
-                <div>
-                  <p className="font-bold text-groomish-slate">100% Genuine</p>
-                  <p className="text-[10px] text-groomish-slate/50">Direct from authorized distributors</p>
-                </div>
-              </div>
-              <div className="p-3 rounded-xl border border-groomish-slate/10 bg-white flex items-center gap-2.5">
-                <Store className="w-5 h-5 text-groomish-orange shrink-0" />
-                <div>
-                  <p className="font-bold text-groomish-slate">Store Pickup</p>
-                  <p className="text-[10px] text-groomish-slate/50">Collect or add during appointment</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="btn-secondary flex-1 text-xs py-3"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  const prod = selectedProduct;
-                  setSelectedProduct(null);
-                  handleOpenReserve(prod);
-                }}
-                className="btn-primary flex-1 text-xs py-3 flex items-center justify-center gap-2"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span>Reserve for In-Store Pickup</span>
-              </button>
-            </div>
-          </div>
-        </ModalWrapper>
-      )}
-
-      {/* IN-STORE PICKUP CONFIRMATION MODAL */}
-      {selectedProduct && pickupModalOpen && (
-        <ModalWrapper
-          open={pickupModalOpen}
-          onClose={() => setPickupModalOpen(false)}
-          maxWidth="max-w-md"
-        >
-          {reservationSuccess ? (
-            <div className="text-center py-4 space-y-4">
-              <div className="w-14 h-14 bg-groomish-greenLight text-groomish-green rounded-full flex items-center justify-center mx-auto">
-                <Check className="w-7 h-7" />
-              </div>
-              <h3 className="font-heading font-extrabold text-xl text-groomish-slate">
-                Product Reserved Successfully!
-              </h3>
-              <p className="text-xs text-groomish-slate/70 max-w-sm mx-auto leading-relaxed">
-                Your reservation for <b>{selectedProduct.name}</b> has been received. Our salon team will hold it at the front desk.
-              </p>
-              <div className="p-4 bg-groomish-cream rounded-2xl text-left text-xs space-y-1.5 border border-groomish-slate/10">
-                <p className="text-groomish-slate font-bold">How to collect:</p>
-                <p className="text-groomish-slate/70">• Pick up anytime during salon opening hours.</p>
-                <p className="text-groomish-slate/70">• Or ask your stylist during your next appointment; they will include it directly on your final bill with your loyalty discount!</p>
-              </div>
-              <button
-                onClick={() => setPickupModalOpen(false)}
-                className="btn-primary w-full text-xs py-3 mt-2"
-              >
-                Done
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-groomish-orangeLight text-groomish-orange rounded-2xl flex items-center justify-center mx-auto mb-2">
-                  <Store className="w-6 h-6" />
-                </div>
-                <h3 className="font-heading font-extrabold text-xl text-groomish-slate">
-                  In-Store Product Reservation
-                </h3>
-                <p className="text-xs text-groomish-slate/60 mt-1">
-                  Hold this item at the salon for your next visit. No online payment required.
-                </p>
-              </div>
-
-              <div className="p-4 bg-groomish-cream rounded-2xl flex items-center gap-3 border border-groomish-slate/10">
-                <img
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  className="w-14 h-14 object-contain rounded-xl bg-white p-1"
-                />
-                <div className="text-xs flex-1">
-                  <p className="font-bold text-groomish-slate">{selectedProduct.name}</p>
-                  <p className="text-[11px] text-groomish-slate/60">{selectedProduct.brand} • {selectedProduct.volumeOrSize}</p>
-                  <p className="font-extrabold text-groomish-orange mt-1">₹{selectedProduct.price}</p>
-                </div>
-              </div>
-
-              <div className="text-xs text-groomish-slate/70 space-y-2 bg-white p-3 rounded-xl border border-groomish-slate/10">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0" />
-                  <span>Held for 48 hours under your name (<b>{user?.name}</b>).</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0" />
-                  <span>Pay upon pickup or have your stylist bill it with your service.</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  onClick={() => setPickupModalOpen(false)}
-                  className="btn-secondary flex-1 text-xs py-3"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setReservationSuccess(true)}
-                  className="btn-primary flex-1 text-xs py-3"
-                >
-                  Confirm Reservation
-                </button>
-              </div>
-            </div>
-          )}
-        </ModalWrapper>
-      )}
 
       {/* AUTH MODAL */}
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />

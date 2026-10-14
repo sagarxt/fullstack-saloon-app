@@ -23,4 +23,6 @@ public interface StaffBookingService {
     BookingResponse addServiceToBooking(UUID staffId, UUID bookingId, UUID serviceId);
 
     BookingResponse removeServiceFromBooking(UUID staffId, UUID bookingId, UUID itemId);
+
+    BookingResponse confirmBookingForCustomer(UUID staffId, UUID bookingId);
 }

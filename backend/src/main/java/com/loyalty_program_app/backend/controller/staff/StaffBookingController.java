@@ -48,6 +48,14 @@ public class StaffBookingController {
         return staffBookingService.cancelBookingForCustomer(getCurrentStaffId(request), id, note);
     }
 
+    @PostMapping("/{id}/confirm")
+    public BookingResponse confirmBookingForCustomer(
+            HttpServletRequest request,
+            @PathVariable UUID id
+    ) {
+        return staffBookingService.confirmBookingForCustomer(getCurrentStaffId(request), id);
+    }
+
     @GetMapping("/customer/{customerId}")
     public Page<BookingResponse> getCustomerBookings(
             @PathVariable UUID customerId,

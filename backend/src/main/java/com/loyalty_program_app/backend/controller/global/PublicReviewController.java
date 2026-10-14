@@ -35,4 +35,21 @@ public class PublicReviewController {
     ) {
         return ResponseEntity.ok(reviewService.getRatingSummary(serviceId));
     }
+
+    @GetMapping("/product/{productId}")
+    public ResponseEntity<Page<ServiceReviewResponse>> getReviewsForProduct(
+            @PathVariable UUID productId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(reviewService.getReviewsForProduct(productId, pageable));
+    }
+
+    @GetMapping("/product/{productId}/summary")
+    public ResponseEntity<ServiceRatingSummaryResponse> getProductRatingSummary(
+            @PathVariable UUID productId
+    ) {
+        return ResponseEntity.ok(reviewService.getProductRatingSummary(productId));
+    }
 }

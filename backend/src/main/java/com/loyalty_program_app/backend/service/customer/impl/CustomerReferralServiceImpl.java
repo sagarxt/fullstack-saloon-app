@@ -26,6 +26,11 @@ public class CustomerReferralServiceImpl implements CustomerReferralService {
         User referrer = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (referrer.getReferralCode() == null || referrer.getReferralCode().isBlank()) {
+            referrer.setReferralCode(com.loyalty_program_app.backend.util.ReferralCodeGenerator.generateUniqueReferralCode(referrer.getName(), userRepository));
+            userRepository.save(referrer);
+        }
+
         long total = referralRepository.findAll().stream()
                 .filter(r -> r.getReferrer().getId().equals(userId))
                 .count();

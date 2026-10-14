@@ -34,6 +34,7 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final BookingRepository bookingRepository;
+    private final BookingItemRepository bookingItemRepository;
     private final BookingProductRepository bookingProductRepository;
     private final UserRepository userRepository;
     private final PointsLedgerRepository pointsLedgerRepository;
@@ -42,6 +43,7 @@ public class ProductServiceImpl implements ProductService {
     private final com.loyalty_program_app.backend.service.utils.CloudinaryService cloudinaryService;
     private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
     private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
+    private final PaymentRepository paymentRepository;
 
     @Override
     public List<ProductResponse> getAllActiveProducts() {
@@ -276,6 +278,41 @@ public class ProductServiceImpl implements ProductService {
 
         booking.setStatus(BookingStatus.COMPLETED);
         booking.setCompletedAt(LocalDateTime.now());
+        if (booking.getBookingItems() != null) {
+            for (BookingItem item : booking.getBookingItems()) {
+                item.setStatus(BookingStatus.COMPLETED);
+                bookingItemRepository.save(item);
+            }
+        }
+
+        double finalAmount = booking.getPricePaid() != null ? booking.getPricePaid() : (booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0);
+        double originalTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : finalAmount;
+        double discount = Math.max(0, originalTotal - finalAmount);
+
+        // Ensure payment status is marked COMPLETED upon appointment completion
+        Payment payment = booking.getPayment();
+        if (payment == null) {
+            payment = Payment.builder()
+                    .user(booking.getUser())
+                    .amount(finalAmount)
+                    .paymentMethod(com.loyalty_program_app.backend.enums.PaymentMethod.CASH)
+                    .paymentModeDetails("Pay at Salon")
+                    .status(com.loyalty_program_app.backend.enums.PaymentStatus.COMPLETED)
+                    .invoiceNumber("INV-GN-" + (System.currentTimeMillis() % 1000000))
+                    .build();
+            payment = paymentRepository.save(payment);
+            booking.setPayment(payment);
+        } else {
+            payment.setStatus(com.loyalty_program_app.backend.enums.PaymentStatus.COMPLETED);
+            if (payment.getPaymentMethod() == null) {
+                payment.setPaymentMethod(com.loyalty_program_app.backend.enums.PaymentMethod.CASH);
+            }
+            if (payment.getAmount() == null || payment.getAmount() == 0.0) {
+                payment.setAmount(finalAmount);
+            }
+            paymentRepository.save(payment);
+        }
+        bookingRepository.save(booking);
 
         // Prepare line items for bill email
         List<BillItemDto> billItems = new ArrayList<>();
@@ -304,10 +341,6 @@ public class ProductServiceImpl implements ProductService {
                         .build());
             }
         }
-
-        double finalAmount = booking.getPricePaid() != null ? booking.getPricePaid() : (booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0);
-        double originalTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : finalAmount;
-        double discount = Math.max(0, originalTotal - finalAmount);
 
         User customer = booking.getUser();
         // Calculate points based on user's tier multiplier (Silver: 1x, Gold: 1.25x, Platinum: 1.5x, Diamond: 2.0x)
@@ -383,7 +416,7 @@ public class ProductServiceImpl implements ProductService {
                         customer.getEmail(),
                         customer.getName(),
                         invoiceNumber,
-                        booking.getBookingCode() != null ? booking.getBookingCode() : "GN-" + booking.getId().toString().substring(0, 8).toUpperCase(),
+                        booking.getId().toString(),
                         billItems,
                         originalTotal,
                         discount,
@@ -442,8 +475,16 @@ public class ProductServiceImpl implements ProductService {
         dto.setPricePaid(b.getPricePaid());
         dto.setStatus(b.getStatus() != null ? b.getStatus().name() : null);
         dto.setScheduledAt(b.getScheduledAt());
-        dto.setNote(b.getNote());
         dto.setBookedBy(b.getBookedBy());
+
+        if (b.getPayment() != null) {
+            dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
+            dto.setPaymentStatus(b.getPayment().getStatus() != null ? b.getPayment().getStatus().name() : (b.getStatus() == BookingStatus.COMPLETED ? "COMPLETED" : "PENDING"));
+            dto.setInvoiceNumber(b.getPayment().getInvoiceNumber());
+        } else if (b.getStatus() == BookingStatus.COMPLETED) {
+            dto.setPaymentMethod("CASH");
+            dto.setPaymentStatus("COMPLETED");
+        }
 
         if (b.getBookingItems() != null && !b.getBookingItems().isEmpty()) {
             BookingItem first = b.getBookingItems().get(0);

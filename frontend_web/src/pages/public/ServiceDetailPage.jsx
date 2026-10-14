@@ -9,8 +9,10 @@ import {
   getCategories,
   getServiceReviews,
   getServiceRatingSummary,
+  getPublicCoupons,
 } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
+import { useCart } from "../../context/CartContext";
 import { extractList } from "../../utils/dataHelper";
 import {
   Scissors,
@@ -27,6 +29,10 @@ import {
   User,
   Heart,
   Share2,
+  ShoppingCart,
+  Tag,
+  Copy,
+  Check,
 } from "lucide-react";
 
 export default function ServiceDetailPage() {
@@ -39,7 +45,12 @@ export default function ServiceDetailPage() {
   const [relatedServices, setRelatedServices] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [ratingSummary, setRatingSummary] = useState(null);
+  const [coupons, setCoupons] = useState([]);
+  const [copiedCode, setCopiedCode] = useState("");
+  const [addingToCart, setAddingToCart] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const { addItem, items } = useCart();
 
   // Modals
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -62,11 +73,12 @@ export default function ServiceDetailPage() {
   const loadServiceDetails = async () => {
     setLoading(true);
     try {
-      const [srvListRes, catListRes, revRes, sumRes] = await Promise.all([
+      const [srvListRes, catListRes, revRes, sumRes, coupRes] = await Promise.all([
         getServices(),
         getCategories(),
         getServiceReviews(serviceId).catch(() => ({ data: { content: [] } })),
         getServiceRatingSummary(serviceId).catch(() => ({ data: null })),
+        getPublicCoupons().catch(() => ({ data: [] })),
       ]);
 
       const allServices = extractList(srvListRes.data);
@@ -76,6 +88,7 @@ export default function ServiceDetailPage() {
       setCategories(extractList(catListRes.data));
       setReviews(extractList(revRes.data));
       setRatingSummary(sumRes.data || null);
+      setCoupons(extractList(coupRes.data));
 
       if (current) {
         setRelatedServices(
@@ -91,13 +104,28 @@ export default function ServiceDetailPage() {
     }
   };
 
-  const handleBook = () => {
+  const handleAddToCart = async () => {
     if (!user) {
       setAuthOpen(true);
       return;
     }
-    setBookingOpen(true);
+    setAddingToCart(true);
+    await addItem({
+      itemType: "SERVICE",
+      serviceId: service.id,
+      name: service.name,
+      quantity: 1,
+    });
+    setAddingToCart(false);
   };
+
+  const handleCopyCode = (code) => {
+    navigator.clipboard?.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(""), 2500);
+  };
+
+  const isAlreadyInCart = items.some((i) => i.serviceId === service?.id);
 
   const defaultServiceImages = {
     MALE: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1000&q=80",
@@ -294,6 +322,76 @@ export default function ServiceDetailPage() {
                 </div>
               </div>
 
+              {/* AVAILABLE OFFERS & PROMOTIONAL COUPONS */}
+              {coupons.length > 0 && (
+                <div className="bg-gradient-to-br from-white to-groomish-cream/40 rounded-3xl p-6 sm:p-8 border border-groomish-orange/20 shadow-soft space-y-5">
+                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center">
+                        <Tag className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h2 className="font-heading font-extrabold text-base sm:text-lg text-groomish-slate">
+                          Available Offers & Promotional Coupons
+                        </h2>
+                        <p className="text-[11px] text-groomish-slate/60">
+                          Redeemable during cart checkout on {categoryName} treatments
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-extrabold text-groomish-orange bg-groomish-orangeLight px-2.5 py-1 rounded-full">
+                      {coupons.length} Offers Active
+                    </span>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-3.5">
+                    {coupons.map((coupon) => (
+                      <div
+                        key={coupon.id}
+                        className="p-4 rounded-2xl bg-white border border-groomish-slate/15 hover:border-groomish-orange transition-all shadow-sm space-y-2.5 flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-xs font-extrabold tracking-wider bg-groomish-cream text-groomish-orange px-2.5 py-1 rounded-lg border border-groomish-orange/20">
+                              {coupon.code}
+                            </span>
+                            <span className="text-xs font-black text-groomish-green">
+                              FLAT ₹{coupon.discount} OFF
+                            </span>
+                          </div>
+                          <p className="text-xs text-groomish-slate/80 mt-2 font-medium line-clamp-2">
+                            {coupon.description}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-groomish-slate/10 flex items-center justify-between text-[11px]">
+                          <span className="text-groomish-slate/50">
+                            Min Order: ₹{coupon.minAmount || 0}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyCode(coupon.code)}
+                            className="text-groomish-orange hover:text-groomish-orangeDark font-bold flex items-center gap-1 transition"
+                          >
+                            {copiedCode === coupon.code ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-groomish-green" />
+                                <span className="text-groomish-green">Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Copy Code</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* VERIFIED CUSTOMER REVIEWS & RATINGS */}
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-groomish-slate/10 shadow-soft space-y-6">
                 <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4">
@@ -423,15 +521,27 @@ export default function ServiceDetailPage() {
                   </div>
                 </div>
 
-                {/* CTA Button */}
-                <button
-                  type="button"
-                  onClick={handleBook}
-                  className="btn-auth py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange"
-                >
-                  <CalendarCheck className="w-4 h-4" />
-                  <span>Book Appointment Now</span>
-                </button>
+                {/* CTA Buttons */}
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    disabled={addingToCart}
+                    className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>{addingToCart ? "Adding to Cart..." : isAlreadyInCart ? "Add Another to Cart (+1)" : "Add Service to Cart"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/cart")}
+                    className="btn-secondary w-full py-3 text-xs flex items-center justify-center gap-2"
+                  >
+                    <span>View Cart & Checkout</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
                 {/* Trust Points */}
                 <div className="space-y-2.5 pt-2 text-xs text-groomish-slate/70">

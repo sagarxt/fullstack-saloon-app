@@ -8,6 +8,7 @@ import CategoryDetailPage from "./pages/public/CategoryDetailPage";
 import PublicServicesPage from "./pages/public/ServicesPage";
 import ServiceDetailPage from "./pages/public/ServiceDetailPage";
 import PublicProductsPage from "./pages/public/ProductsPage";
+import ProductDetailPage from "./pages/public/ProductDetailPage";
 
 // Customer Pages
 import MyBookingsPage from "./pages/customer/MyBookingsPage";
@@ -15,6 +16,8 @@ import BookingDetailPage from "./pages/customer/BookingDetailPage";
 import RewardsPage from "./pages/customer/RewardsPage";
 import MyVouchersPage from "./pages/customer/MyVouchersPage";
 import ProfilePage from "./pages/customer/ProfilePage";
+import CartPage from "./pages/customer/CartPage";
+import CheckoutPage from "./pages/customer/CheckoutPage";
 
 // Admin Pages
 import AdminLayout from "./layouts/AdminLayout";
@@ -47,9 +50,13 @@ function App() {
       <Route path="/services" element={<PublicServicesPage />} />
       <Route path="/services/:serviceId" element={<ServiceDetailPage />} />
       <Route path="/products" element={<PublicProductsPage />} />
+      <Route path="/products/:productId" element={<ProductDetailPage />} />
+      <Route path="/product/:productId" element={<ProductDetailPage />} />
+      <Route path="/cart" element={<CartPage />} />
 
       {/* Customer Protected Routes (Only Authorized Customers) */}
       <Route element={<PrivateRoute roles={["CUSTOMER"]} />}>
+        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/customer/bookings" element={<MyBookingsPage />} />
         <Route path="/customer/bookings/:id" element={<BookingDetailPage />} />
         <Route path="/customer/rewards" element={<RewardsPage />} />
