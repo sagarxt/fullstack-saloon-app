@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png" alt="Groomish Now" width="280" style="border-radius: 14px; margin-bottom: 16px;" />
+<img src="https://res.cloudinary.com/dfdnljcyt/image/upload/v1792095435/groomish_logo_2_sby1pb.png" alt="Groomish Now" width="280" style="border-radius: 14px; margin-bottom: 16px;" />
 
-# Groomish Now
+<!-- # Groomish Now -->
 ### Luxury Salon Management, Retail E-Commerce and VIP Loyalty Ecosystem
 
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
