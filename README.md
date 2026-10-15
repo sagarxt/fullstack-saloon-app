@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png" alt="Groomish Now" width="280" style="border-radius: 14px; margin-bottom: 16px;" />
+<img src="https://res.cloudinary.com/dfdnljcyt/image/upload/groomish_logo_white_bg.png" alt="Groomish Now" width="280" style="border-radius: 14px; margin-bottom: 16px;" />
 
 # Groomish Now
 ### Luxury Salon Management, Retail E-Commerce and VIP Loyalty Ecosystem
