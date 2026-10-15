@@ -20,4 +20,7 @@ public class AddToCartRequest {
     private Integer quantity = 1;
     private String customNotes;
     private UUID storeId;
+    private String subServiceName;
+    private Double subServicePrice;
+    private Integer subServiceDuration;
 }

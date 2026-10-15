@@ -78,6 +78,15 @@ public class BranchCatalogServiceImpl implements BranchCatalogService {
                     .storeId(store.getId())
                     .storeName(store.getName())
                     .updatedBy(ssa != null ? ssa.getUpdatedBy() : null)
+                    .subServices(s.getSubServices() != null ? s.getSubServices().stream()
+                            .map(sub -> com.loyalty_program_app.backend.dto.service.SubServiceDto.builder()
+                                    .id(sub.getId())
+                                    .name(sub.getName())
+                                    .price(sub.getPrice())
+                                    .durationMinutes(sub.getDurationMinutes())
+                                    .active(sub.isActive())
+                                    .build())
+                            .toList() : java.util.Collections.emptyList())
                     .build());
         }
 
@@ -135,6 +144,7 @@ public class BranchCatalogServiceImpl implements BranchCatalogService {
                 .durationMinutes(service.getDurationMinutes())
                 .image(service.getImage())
                 .description(service.getDescription())
+                .rewards(service.getRewards())
                 .globalActive(service.isActive())
                 .storeActive(storeActive)
                 .effectiveActive(effectiveActive)

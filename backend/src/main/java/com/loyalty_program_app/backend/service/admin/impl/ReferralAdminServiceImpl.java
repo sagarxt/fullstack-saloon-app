@@ -26,6 +26,7 @@ public class ReferralAdminServiceImpl implements ReferralAdminService {
 
     private final ReferralRepository referralRepository;
     private final PointsLedgerRepository pointsLedgerRepository;
+    private final com.loyalty_program_app.backend.repository.UserRepository userRepository;
 
     // ================== SEARCH ==================
     @Override
@@ -89,10 +90,8 @@ public class ReferralAdminServiceImpl implements ReferralAdminService {
         }
 
         User referrer = r.getReferrer();
-        referrer.setPoints(referrer.getPoints() + bonusPoints);
-
-        // If you have a UserRepository, better to save explicitly:
-        // userRepository.save(referrer);
+        referrer.addPoints(bonusPoints);
+        userRepository.save(referrer);
 
         PointsLedger ledger = new PointsLedger();
         ledger.setUser(referrer);

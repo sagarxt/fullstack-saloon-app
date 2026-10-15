@@ -44,6 +44,7 @@ public class ProductServiceImpl implements ProductService {
     private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
     private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
     private final PaymentRepository paymentRepository;
+    private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
 
     @Override
     public List<ProductResponse> getAllActiveProducts() {
@@ -88,6 +89,11 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<String> getProductBrands() {
+        return productRepository.findDistinctBrands();
+    }
+
+    @Override
     public ProductResponse createProduct(ProductRequest request) {
         List<String> images = request.getImages() != null ? new ArrayList<>(request.getImages()) : new ArrayList<>();
         String finalImageUrl = request.getImage();
@@ -98,7 +104,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         if (finalImageUrl != null && !finalImageUrl.isBlank() && !finalImageUrl.contains("cloudinary.com")) {
-            finalImageUrl = cloudinaryService.upload(finalImageUrl.trim(), "groomishnow/product");
+            finalImageUrl = cloudinaryService.upload(finalImageUrl.trim(), "groomishnow/product", request.getName());
             if (!images.isEmpty()) {
                 images.set(0, finalImageUrl);
             }
@@ -138,8 +144,9 @@ public class ProductServiceImpl implements ProductService {
         if (request.getStockQuantity() != null) product.setStockQuantity(request.getStockQuantity());
         if (request.getImage() != null) {
             String updatedImage = request.getImage();
+            String prodName = request.getName() != null ? request.getName() : product.getName();
             if (!updatedImage.isBlank() && !updatedImage.contains("cloudinary.com")) {
-                updatedImage = cloudinaryService.upload(updatedImage.trim(), "groomishnow/product");
+                updatedImage = cloudinaryService.upload(updatedImage.trim(), "groomishnow/product", prodName);
             }
             product.setImage(updatedImage);
         }
@@ -353,7 +360,13 @@ public class ProductServiceImpl implements ProductService {
                 case SILVER -> multiplier = 1.0;
             }
         }
-        int pointsEarned = Math.max(1, (int) Math.round((finalAmount / 100.0) * multiplier));
+        double spendPerCoin = 100.0;
+        try {
+            spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+            if (spendPerCoin <= 0) spendPerCoin = 100.0;
+        } catch (Exception ignored) {}
+
+        int pointsEarned = Math.max(1, (int) Math.round((finalAmount / spendPerCoin) * multiplier));
 
         if (customer != null) {
             customer.setPoints((customer.getPoints() != null ? customer.getPoints() : 0) + pointsEarned);

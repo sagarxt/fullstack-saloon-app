@@ -131,8 +131,12 @@ public class StaffCustomerServiceImpl implements StaffCustomerService {
         dto.setRole(user.getRole().name());
         dto.setTier(user.getTier() != null ? user.getTier().name() : null);
         dto.setPoints(user.getPoints());
+        dto.setLifetimePoints(user.getLifetimePoints() != null ? user.getLifetimePoints() : (user.getPoints() != null ? user.getPoints() : 0));
         dto.setReferralCode(user.getReferralCode());
         dto.setActive(user.isActive());
+        dto.setUserGroups(user.getUserGroups());
+        dto.setEffectiveGroups(user.getAllEffectiveGroups());
+        dto.setCreatedAt(user.getCreatedAt());
         return dto;
     }
 }

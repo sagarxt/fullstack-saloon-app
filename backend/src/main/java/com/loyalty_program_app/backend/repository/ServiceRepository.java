@@ -13,4 +13,6 @@ public interface ServiceRepository extends JpaRepository<ServiceEntity, UUID>, J
 
     List<ServiceEntity> findTop6ByActiveTrueOrderByCreatedAtDesc();
 
+    List<ServiceEntity> findByCategoryId(UUID categoryId);
+
 }

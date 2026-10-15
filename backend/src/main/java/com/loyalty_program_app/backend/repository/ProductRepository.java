@@ -28,4 +28,9 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @Query("SELECT DISTINCT p.category FROM Product p WHERE p.active = true AND p.category IS NOT NULL")
     List<String> findDistinctCategories();
+
+    @Query("SELECT DISTINCT p.brand FROM Product p WHERE p.active = true AND p.brand IS NOT NULL AND TRIM(p.brand) != ''")
+    List<String> findDistinctBrands();
+
+    List<Product> findByBrandIgnoreCaseAndActiveTrue(String brand);
 }

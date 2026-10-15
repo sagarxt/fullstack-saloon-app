@@ -68,6 +68,10 @@
     @apply w-full inline-flex items-center justify-center py-3 rounded-full font-bold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:shadow-glowOrange transition-all duration-200 active:scale-95;
   }
 
+  .btn-groomish-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:from-groomish-orangeDark hover:to-groomish-coral shadow-glowOrange transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
   /* Card & Surface Utilities */
   .card-groomish {
     @apply bg-white rounded-2xl border border-groomish-slate/10 shadow-soft hover:shadow-card transition-all duration-300;

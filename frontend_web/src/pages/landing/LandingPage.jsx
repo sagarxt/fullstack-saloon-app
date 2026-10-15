@@ -5,11 +5,13 @@ import Footer from "../../components/Footer";
 import CategoriesSection from "../../components/landing/CategoriesSection";
 import ServicesSection from "../../components/landing/ServicesSection";
 import BookingFlowModal from "../../components/modals/BookingFlowModal";
+import AuthModal from "../../components/modals/AuthModal";
 import { getServices, getCategories, getPublicHome } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
 import { useStore } from "../../context/StoreContext";
 import { extractList } from "../../utils/dataHelper";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import {
   Sparkles,
   Award,
@@ -34,13 +36,15 @@ import {
 export default function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { stores, selectedStore, setSelectedStore } = useStore();
+  const { stores, selectedStore, selectStore } = useStore();
 
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [pendingService, setPendingService] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Branch hero slider states
@@ -48,19 +52,12 @@ export default function LandingPage() {
   const [isPaused, setIsPaused] = useState(false);
   const [branchSelectorOpen, setBranchSelectorOpen] = useState(false);
 
-  const fallbackImages = [
-    "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?auto=format&fit=crop&w=1200&q=80",
-  ];
-
   const branchImages = (
     Array.isArray(selectedStore?.images) && selectedStore.images.length > 0
       ? selectedStore.images
       : selectedStore?.image
         ? [selectedStore.image]
-        : fallbackImages
+        : []
   );
 
   useEffect(() => {
@@ -120,8 +117,8 @@ export default function LandingPage() {
 
   const handleBook = async (service) => {
     if (!user) {
-      setSelectedService(service);
-      setBookingOpen(true);
+      setPendingService(service);
+      setAuthOpen(true);
       return;
     }
     const added = await addItem({
@@ -132,6 +129,22 @@ export default function LandingPage() {
     });
     if (added) {
       navigate("/cart");
+    }
+  };
+
+  const handleAuthSuccess = async () => {
+    setAuthOpen(false);
+    if (pendingService) {
+      const added = await addItem({
+        itemType: "SERVICE",
+        serviceId: pendingService.id,
+        name: pendingService.name,
+        quantity: 1,
+      });
+      setPendingService(null);
+      if (added) {
+        navigate("/cart");
+      }
     }
   };
 
@@ -162,7 +175,7 @@ export default function LandingPage() {
 
                 {/* Subtitle */}
                 <p className="text-base sm:text-lg text-groomish-slateLight max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                  Reserve certified salon specialists, luxurious grooming therapies, and unlock complimentary upgrades with Groomish Now loyalty points.
+                  Reserve certified salon specialists, luxurious grooming therapies, and unlock complimentary upgrades with Groomish Now Groom Coins.
                 </p>
 
                 {/* CTAs */}
@@ -224,12 +237,31 @@ export default function LandingPage() {
                   {/* Decorative Ambient Glow */}
                   <div className="absolute -inset-4 bg-gradient-to-tr from-groomish-orange/20 via-groomish-gold/20 to-groomish-coral/20 rounded-3xl blur-2xl -z-10" />
 
-                  {/* Main Showcase Container */}
-                  <div
-                    className="bg-white rounded-3xl p-3.5 sm:p-4 shadow-card border border-groomish-slate/10 space-y-3 relative group"
-                    onMouseEnter={() => setIsPaused(true)}
-                    onMouseLeave={() => setIsPaused(false)}
-                  >
+                  {!selectedStore || branchImages.length === 0 ? (
+                    <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-card border border-groomish-slate/10 text-center space-y-4">
+                      <div className="w-16 h-16 rounded-2xl bg-groomish-cream text-groomish-orange flex items-center justify-center mx-auto border border-groomish-slate/10">
+                        <MapPin className="w-8 h-8" />
+                      </div>
+                      <h3 className="font-heading font-extrabold text-xl text-groomish-slate">
+                        {selectedStore ? selectedStore.name : "Welcome to Groomish Now"}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-groomish-slateLight max-w-md mx-auto leading-relaxed">
+                        {selectedStore
+                          ? `${selectedStore.address || ""}, ${selectedStore.city || ""}`
+                          : "No salon branches are currently available. Salon branch locations and photos will appear here once configured in the system."}
+                      </p>
+                      <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-groomish-slate/70">
+                        <span className="px-3 py-1 rounded-full bg-groomish-cream border border-groomish-slate/10">VIP Loyalty Program</span>
+                        <span className="px-3 py-1 rounded-full bg-groomish-cream border border-groomish-slate/10">Instant Rewards</span>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Main Showcase Container */
+                    <div
+                      className="bg-white rounded-3xl p-3.5 sm:p-4 shadow-card border border-groomish-slate/10 space-y-3 relative group"
+                      onMouseEnter={() => setIsPaused(true)}
+                      onMouseLeave={() => setIsPaused(false)}
+                    >
                     {/* Branch Header Bar */}
                     <div className="flex items-center justify-between px-1.5 pt-0.5">
                       <div className="flex items-center gap-2.5 sm:gap-3">
@@ -237,9 +269,11 @@ export default function LandingPage() {
                         <div className="w-11 h-11 rounded-2xl bg-groomish-cream border border-groomish-slate/15 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-sm">
                           {selectedStore?.logo ? (
                             <img
-                              src={selectedStore.logo}
+                              src={getOptimizedImageUrl(selectedStore.logo, { width: 120 })}
                               alt={`${selectedStore.name} Logo`}
                               className="w-full h-full object-contain rounded-xl"
+                              loading="lazy"
+                              decoding="async"
                             />
                           ) : (
                             <img
@@ -252,7 +286,7 @@ export default function LandingPage() {
                         <div>
                           <div className="flex items-center gap-1.5 sm:gap-2">
                             <h3 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate leading-tight line-clamp-1">
-                              {selectedStore?.name || "Ambika Groomish Salon"}
+                              {selectedStore?.name}
                             </h3>
                             {selectedStore?.code && (
                               <span className="font-mono text-[10px] font-extrabold bg-groomish-slate text-white px-1.5 py-0.5 rounded-md shrink-0">
@@ -263,7 +297,7 @@ export default function LandingPage() {
                           <p className="text-[11px] text-groomish-slateLight flex items-center gap-1 mt-0.5">
                             <MapPin className="w-3 h-3 text-groomish-orange shrink-0" />
                             <span className="truncate max-w-[190px] sm:max-w-[260px]">
-                              {selectedStore?.city || "Bangalore"}, {selectedStore?.address || "Flagship Salon Lounge"}
+                              {selectedStore?.city ? `${selectedStore.city}, ` : ""}{selectedStore?.address || "Salon Lounge"}
                             </span>
                           </p>
                         </div>
@@ -292,8 +326,7 @@ export default function LandingPage() {
                                       key={s.id}
                                       type="button"
                                       onClick={() => {
-                                        setSelectedStore(s);
-                                        localStorage.setItem("groomish_selected_store_id", s.id);
+                                        selectStore(s);
                                         setBranchSelectorOpen(false);
                                       }}
                                       className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between transition ${
@@ -329,10 +362,11 @@ export default function LandingPage() {
                           }`}
                         >
                           <img
-                            src={imgUrl}
+                            src={getOptimizedImageUrl(imgUrl, { width: 1200 })}
                             alt={`${selectedStore?.name || "Salon"} Photo ${idx + 1}`}
                             className="w-full h-full object-cover select-none"
                             loading={idx === 0 ? "eager" : "lazy"}
+                            decoding="async"
                           />
                         </div>
                       ))}
@@ -385,11 +419,10 @@ export default function LandingPage() {
                       <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between text-white">
                         <div className="space-y-0.5 max-w-[70%]">
                           <p className="text-xs font-bold drop-shadow-sm flex items-center gap-1.5">
-                            <span>{selectedStore?.name || "Ambika Groomish Salon"}</span>
-                            <span className="text-[10px] text-groomish-gold font-normal">★ 4.9</span>
+                            <span>{selectedStore?.name}</span>
                           </p>
                           <p className="text-[10px] text-white/85 line-clamp-1 drop-shadow-sm">
-                            {selectedStore?.address || "Modern styling stations, private wash zones & luxury lounge"}
+                            {selectedStore?.address}
                           </p>
                         </div>
 
@@ -438,6 +471,7 @@ export default function LandingPage() {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -609,6 +643,16 @@ export default function LandingPage() {
         open={bookingOpen}
         onClose={() => setBookingOpen(false)}
         service={selectedService}
+      />
+
+      {/* AUTH MODAL FOR PROMPTING LOGIN / REGISTER */}
+      <AuthModal
+        open={authOpen}
+        onClose={() => {
+          setAuthOpen(false);
+          setPendingService(null);
+        }}
+        onSuccess={handleAuthSuccess}
       />
     </div>
   );

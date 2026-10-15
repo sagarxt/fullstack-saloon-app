@@ -2,7 +2,9 @@ import { useState } from "react";
 import { deactivateCategoryApi } from "../../api/admin";
 import EditCategoryModal from "../modals/EditCategoryModal";
 import CategoryServicesModal from "../modals/CategoryServicesModal";
-import { Layers, Edit3, Power, ListFilter } from "lucide-react";
+import { Layers, Edit3, Power, ListFilter, Trash2 } from "lucide-react";
+import { forceDeleteCategoryApi } from "../../api/maintenance";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
 
 export default function CategoryCard({ category, refresh }) {
   const [editOpen, setEditOpen] = useState(false);
@@ -37,9 +39,11 @@ export default function CategoryCard({ category, refresh }) {
       <div className="bg-white rounded-2xl border border-groomish-slate/10 p-5 flex flex-col sm:flex-row gap-5 items-start sm:items-center shadow-soft hover:shadow-card transition">
         {/* Category Image */}
         <img
-          src={imgSrc}
+          src={getOptimizedImageUrl(imgSrc, { width: 250 })}
           alt={category.name}
-          className="h-20 w-20 object-cover rounded-2xl border border-groomish-slate/10 shrink-0"
+          loading="lazy"
+          decoding="async"
+          className="h-20 w-20 object-cover rounded-full border-2 border-groomish-orange/30 p-0.5 bg-white shrink-0 shadow-sm"
         />
 
         {/* Details */}
@@ -92,6 +96,28 @@ export default function CategoryCard({ category, refresh }) {
             }`}
           >
             {category.active ? "Deactivate" : "Activate"}
+          </button>
+
+          <button
+            disabled={loading}
+            onClick={async () => {
+              if (window.confirm(`FORCE DELETE category "${category.name}"?\nThis permanently removes this category and unlinks all treatments.`)) {
+                try {
+                  setLoading(true);
+                  await forceDeleteCategoryApi(category.id);
+                  refresh();
+                } catch (err) {
+                  alert(err.response?.data?.message || "Failed to force delete category.");
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-1 shadow-xs"
+            title="Permanently remove category from database"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Force Delete</span>
           </button>
         </div>
       </div>

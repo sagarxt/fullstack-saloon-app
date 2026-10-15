@@ -36,6 +36,7 @@ public class BookingAdminServiceImpl implements BookingAdminService {
     private final UserRepository userRepository;
     private final PointsLedgerRepository pointsLedgerRepository;
     private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
+    private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
 
     // ===================== ADVANCED SEARCH =====================
     @Override
@@ -183,7 +184,21 @@ public class BookingAdminServiceImpl implements BookingAdminService {
                                 case SILVER -> multiplier = 1.0;
                             }
                         }
-                        int earned = Math.max(1, (int) Math.round((amount / 100.0) * multiplier));
+                        double spendPerCoin = 100.0;
+                        try {
+                            spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+                            if (spendPerCoin <= 0) spendPerCoin = 100.0;
+                        } catch (Exception ignored) {}
+
+                        int baseEarned = (int) Math.round((amount / spendPerCoin) * multiplier);
+                        int bonusCoins = 0;
+                        if (booking.getBookingItems() != null) {
+                            bonusCoins = booking.getBookingItems().stream()
+                                    .filter(i -> i.getService() != null && i.getService().getRewards() != null && i.getService().getRewards() > 0)
+                                    .mapToInt(i -> i.getService().getRewards())
+                                    .sum();
+                        }
+                        int earned = Math.max(1, baseEarned + bonusCoins);
                         customer.setPoints((customer.getPoints() != null ? customer.getPoints() : 0) + earned);
                         int lifetime = (customer.getLifetimePoints() != null ? customer.getLifetimePoints() : 0) + earned;
                         customer.setLifetimePoints(lifetime);

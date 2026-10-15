@@ -108,7 +108,7 @@ export default function PaymentsPage() {
                             });
                           }}
                           className="font-bold text-groomish-slate hover:text-groomish-orange hover:underline text-left block"
-                          title="Click to view customer profile, orders and reward points"
+                          title="Click to view customer profile, orders and Groom Coins"
                         >
                           {p.userName || "Client"}
                         </button>

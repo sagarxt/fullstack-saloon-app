@@ -22,10 +22,12 @@ public class BranchServiceResponse {
     private Integer durationMinutes;
     private String image;
     private String description;
+    private Integer rewards;
     private boolean globalActive;
     private boolean storeActive; // whether enabled for this specific store
     private boolean effectiveActive; // globalActive && storeActive
     private UUID storeId;
     private String storeName;
     private String updatedBy;
+    private java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices;
 }

@@ -110,6 +110,18 @@ public class ServiceService {
             res.setCategoryName(service.getCategory().getName());
         }
 
+        if (service.getSubServices() != null) {
+            res.setSubServices(service.getSubServices().stream()
+                    .map(sub -> com.loyalty_program_app.backend.dto.service.SubServiceDto.builder()
+                            .id(sub.getId())
+                            .name(sub.getName())
+                            .price(sub.getPrice())
+                            .durationMinutes(sub.getDurationMinutes())
+                            .active(sub.isActive())
+                            .build())
+                    .toList());
+        }
+
         return res;
     }
 }

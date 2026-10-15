@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { deactivateServiceApi } from "../../api/admin";
 import EditServiceModal from "../modals/EditServiceModal";
-import { Scissors, Edit3, Clock, Tag } from "lucide-react";
+import { Scissors, Edit3, Clock, Tag, Trash2 } from "lucide-react";
+import { forceDeleteServiceApi } from "../../api/maintenance";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
+
+import GroomCoinIcon from "../common/GroomCoinIcon";
 
 export default function ServiceCard({ service, categories, refresh }) {
   const [editOpen, setEditOpen] = useState(false);
@@ -37,8 +41,10 @@ export default function ServiceCard({ service, categories, refresh }) {
       <div className="bg-white rounded-2xl border border-groomish-slate/10 p-5 flex flex-col sm:flex-row gap-5 items-start sm:items-center shadow-soft hover:shadow-card transition">
         {/* Service Image */}
         <img
-          src={imgSrc}
+          src={getOptimizedImageUrl(imgSrc, { width: 250 })}
           alt={service.name}
+          loading="lazy"
+          decoding="async"
           className="h-20 w-20 object-cover rounded-2xl border border-groomish-slate/10 shrink-0"
         />
 
@@ -63,6 +69,12 @@ export default function ServiceCard({ service, categories, refresh }) {
             >
               {service.active ? "Active" : "Disabled"}
             </span>
+            {service.rewards > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                <GroomCoinIcon className="w-3 h-3" />
+                <span>+{service.rewards} Extra Coins</span>
+              </span>
+            )}
           </div>
 
           <p className="text-xs text-groomish-slate/60 line-clamp-1">
@@ -83,6 +95,23 @@ export default function ServiceCard({ service, categories, refresh }) {
               )}
             </span>
           </div>
+
+          {/* Sub-Services Options display if configured */}
+          {service.subServices && service.subServices.length > 0 && (
+            <div className="pt-1.5 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-bold text-groomish-slate/60 uppercase tracking-wider">
+                {service.subServices.length} Options:
+              </span>
+              {service.subServices.map((sub, sIdx) => (
+                <span
+                  key={sub.id || sIdx}
+                  className="px-2 py-0.5 rounded-md bg-groomish-orangeLight/60 text-groomish-slate text-[10px] font-semibold border border-groomish-orange/20"
+                >
+                  {sub.name} • ₹{sub.price} ({sub.durationMinutes}m)
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -105,6 +134,28 @@ export default function ServiceCard({ service, categories, refresh }) {
             }`}
           >
             {service.active ? "Deactivate" : "Activate"}
+          </button>
+
+          <button
+            disabled={loading}
+            onClick={async () => {
+              if (window.confirm(`FORCE DELETE service "${service.name}"?\nThis permanently removes this service from database and bookings.`)) {
+                try {
+                  setLoading(true);
+                  await forceDeleteServiceApi(service.id);
+                  refresh();
+                } catch (err) {
+                  alert(err.response?.data?.message || "Failed to force delete service.");
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-1 shadow-xs"
+            title="Permanently remove service from database"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Force Delete</span>
           </button>
         </div>
       </div>

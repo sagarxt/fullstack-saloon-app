@@ -46,7 +46,18 @@ export const CartProvider = ({ children }) => {
     }
   }, [isCustomer, fetchCart]);
 
-  const addItem = async ({ itemType, serviceId, productId, quantity = 1, customNotes = null, storeId = null, name = "Item" }) => {
+  const addItem = async ({
+    itemType,
+    serviceId,
+    productId,
+    quantity = 1,
+    customNotes = null,
+    storeId = null,
+    name = "Item",
+    subServiceName = null,
+    subServicePrice = null,
+    subServiceDuration = null,
+  }) => {
     if (!user) {
       showToast("Please sign in to add items to your cart", "info");
       return false;
@@ -65,9 +76,13 @@ export const CartProvider = ({ children }) => {
         quantity,
         customNotes,
         storeId,
+        subServiceName,
+        subServicePrice,
+        subServiceDuration,
       });
       setCart(res.data);
-      showToast(`Added ${name} to your cart`, "success");
+      const label = subServiceName ? `${name} (${subServiceName})` : name;
+      showToast(`Added ${label} to your cart`, "success");
       return true;
     } catch (err) {
       const msg = err.response?.data?.message || err.message || "Failed to add to cart";

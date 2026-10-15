@@ -18,6 +18,7 @@ import java.util.UUID;
 public class ServiceAdminController {
 
     private final ServiceAdminService serviceAdminService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @PostMapping(consumes = {"multipart/form-data"})
     public ServiceResponse createServiceMultipart(
@@ -30,10 +31,19 @@ public class ServiceAdminController {
             @RequestParam(required = false) Integer rewards,
             @RequestParam(defaultValue = "30") Integer durationMinutes,
             @RequestParam(required = false) MultipartFile image,
-            @RequestParam(required = false) String imageUrl
+            @RequestParam(required = false) String imageUrl,
+            @RequestParam(required = false) String subServicesJson
     ) {
+        java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subList = null;
+        if (subServicesJson != null && !subServicesJson.isBlank()) {
+            try {
+                subList = objectMapper.readValue(subServicesJson, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto>>() {});
+            } catch (Exception e) {
+                // ignore parsing error
+            }
+        }
         return serviceAdminService.createService(
-                name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl
+                name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, subList
         );
     }
 
@@ -49,7 +59,8 @@ public class ServiceAdminController {
                 request.getRewards(),
                 request.getDurationMinutes(),
                 null,
-                request.getImage()
+                request.getImage(),
+                request.getSubServices()
         );
     }
 
@@ -65,10 +76,19 @@ public class ServiceAdminController {
             @RequestParam(required = false) Integer rewards,
             @RequestParam(required = false) Integer durationMinutes,
             @RequestParam(required = false) MultipartFile image,
-            @RequestParam(required = false) String imageUrl
+            @RequestParam(required = false) String imageUrl,
+            @RequestParam(required = false) String subServicesJson
     ) {
+        java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subList = null;
+        if (subServicesJson != null && !subServicesJson.isBlank()) {
+            try {
+                subList = objectMapper.readValue(subServicesJson, new com.fasterxml.jackson.core.type.TypeReference<java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto>>() {});
+            } catch (Exception e) {
+                // ignore parsing error
+            }
+        }
         return serviceAdminService.updateService(
-                id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl
+                id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, subList
         );
     }
 
@@ -85,7 +105,8 @@ public class ServiceAdminController {
                 request.getRewards(),
                 request.getDurationMinutes(),
                 null,
-                request.getImage()
+                request.getImage(),
+                request.getSubServices()
         );
     }
 

@@ -30,6 +30,7 @@ export default function CloudinaryMultiImageUploader({
   maxImages = 6,
   folder = "groomishnow",
   label = "Photos & Gallery",
+  entityName = "",
 }) {
   const images = Array.isArray(value) ? value : value ? [value] : [];
 
@@ -53,13 +54,16 @@ export default function CloudinaryMultiImageUploader({
 
     try {
       const newUrls = [];
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         if (file.size > 25 * 1024 * 1024) {
           setError(`File "${file.name}" exceeds 25MB limit.`);
           continue;
         }
         try {
-          const res = await uploadImageApi(file, folder);
+          const fileIndex = images.length + newUrls.length + 1;
+          const targetPublicId = entityName ? `${entityName}-${fileIndex}` : null;
+          const res = await uploadImageApi(file, folder, targetPublicId);
           if (res?.url) {
             newUrls.push(res.url);
           }

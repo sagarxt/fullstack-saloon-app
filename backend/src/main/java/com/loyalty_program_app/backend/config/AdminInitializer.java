@@ -10,6 +10,8 @@ import com.loyalty_program_app.backend.model.Referral;
 import com.loyalty_program_app.backend.model.User;
 import com.loyalty_program_app.backend.repository.ProductRepository;
 import com.loyalty_program_app.backend.repository.UserRepository;
+import com.loyalty_program_app.backend.util.BookingCodeGenerator;
+import com.loyalty_program_app.backend.util.ReferralCodeGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -210,7 +212,7 @@ public class AdminInitializer implements CommandLineRunner {
 
         if (!bookingsWithoutCode.isEmpty()) {
             for (com.loyalty_program_app.backend.model.Booking b : bookingsWithoutCode) {
-                b.setBookingCode(com.loyalty_program_app.backend.util.BookingCodeGenerator.generateUniqueCode(bookingRepository));
+                b.setBookingCode(BookingCodeGenerator.generateUniqueCode(bookingRepository));
                 bookingRepository.save(b);
             }
             System.out.println("✔ Backfilled unique 10-char Booking IDs for " + bookingsWithoutCode.size() + " existing bookings.");
@@ -223,7 +225,7 @@ public class AdminInitializer implements CommandLineRunner {
 
         if (!customersWithoutReferral.isEmpty()) {
             for (User u : customersWithoutReferral) {
-                u.setReferralCode(com.loyalty_program_app.backend.util.ReferralCodeGenerator.generateUniqueReferralCode(u.getName(), userRepository));
+                u.setReferralCode(ReferralCodeGenerator.generateUniqueReferralCode(u.getName(), userRepository));
                 userRepository.save(u);
             }
             System.out.println("✔ Backfilled unique referral codes for " + customersWithoutReferral.size() + " customers.");

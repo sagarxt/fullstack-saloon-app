@@ -33,7 +33,10 @@ import {
   Mail,
   ShieldCheck,
   Tag,
+  Trash2,
 } from "lucide-react";
+import { showConfirm } from "../../context/ConfirmContext";
+import { forceDeleteBookingApi } from "../../api/maintenance";
 
 const APPOINTMENT_STATUS_OPTIONS = [
   { value: "CONFIRMED", label: "CONFIRMED (Active Confirmed)" },
@@ -138,6 +141,27 @@ export default function AdminBookingDetailPage() {
     } catch (err) {
       setError(err.response?.data?.message || `Failed to update status to ${newStatus}`);
     } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleForceDeleteBooking = async () => {
+    const ok = await showConfirm({
+      title: `Force Delete Appointment ${bookingCode}?`,
+      message:
+        "This will permanently delete this booking, including all associated service line items, retail products, payment ledger records, and timeline audit entries from the database. This action cannot be undone.",
+      confirmText: "Force Delete Booking",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    setActionLoading(true);
+    try {
+      await forceDeleteBookingApi(id);
+      navigate("/admin/bookings");
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || "Failed to force delete booking");
       setActionLoading(false);
     }
   };
@@ -281,6 +305,16 @@ export default function AdminBookingDetailPage() {
               <span>Cancel Appointment</span>
             </button>
           )}
+
+          <button
+            disabled={actionLoading}
+            onClick={handleForceDeleteBooking}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 active:scale-95 transition text-xs font-bold shadow-soft"
+            title="Permanently remove this booking from database"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Force Delete</span>
+          </button>
 
           <button
             onClick={loadBooking}

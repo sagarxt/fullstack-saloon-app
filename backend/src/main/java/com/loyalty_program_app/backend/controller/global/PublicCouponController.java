@@ -23,7 +23,7 @@ public class PublicCouponController {
         List<Coupon> activeCoupons = couponRepository.findAllByActiveTrue();
 
         return activeCoupons.stream()
-                .filter(c -> c.getExpiryDate() == null || !c.getExpiryDate().isBefore(now))
+                .filter(c -> (c.getStartDate() == null || !c.getStartDate().isAfter(now)) && (c.getExpiryDate() == null || !c.getExpiryDate().isBefore(now)))
                 .map(c -> {
                     CouponResponse dto = new CouponResponse();
                     dto.setId(c.getId());
@@ -32,9 +32,11 @@ public class PublicCouponController {
                     dto.setMinAmount(c.getMinAmount());
                     dto.setMaxDiscount(c.getMaxDiscount());
                     dto.setDiscount(c.getDiscount());
+                    dto.setStartDate(c.getStartDate() != null ? c.getStartDate().toString() : null);
                     dto.setExpiryDate(c.getExpiryDate() != null ? c.getExpiryDate().toString() : null);
                     dto.setActive(c.isActive());
                     dto.setEligibleCategories(c.getEligibleCategories() != null ? new java.util.ArrayList<>(c.getEligibleCategories()) : new java.util.ArrayList<>());
+                    dto.setApplicableUserGroups(c.getApplicableUserGroups() != null ? new java.util.ArrayList<>(c.getApplicableUserGroups()) : new java.util.ArrayList<>());
                     return dto;
                 })
                 .collect(Collectors.toList());

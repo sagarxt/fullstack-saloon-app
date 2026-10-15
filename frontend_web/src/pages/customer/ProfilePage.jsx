@@ -148,7 +148,7 @@ export default function ProfilePage() {
   };
 
   const shareText = encodeURIComponent(
-    `Use my Groomish Now invite code ${referralCode} to sign up and get bonus reward points on your first luxury salon visit! https://groomishnow.com`
+    `Use my Groomish Now invite code ${referralCode} to sign up and get bonus Groom Coins on your first luxury salon visit! https://groomishnow.com`
   );
 
   return (
@@ -408,10 +408,10 @@ export default function ProfilePage() {
               </div>
 
               <h3 className="font-heading font-bold text-lg leading-snug">
-                Invite Friends, Earn 10 Points!
+                Invite Friends, Earn 10 Groom Coins!
               </h3>
               <p className="text-xs text-white/80 mt-1 leading-relaxed">
-                Share your unique code. Whenever a friend signs up using your code, you will receive 10 VIP reward points credited directly to your account.
+                Share your unique code. Whenever a friend signs up using your code, you will receive 10 bonus Groom Coins credited directly to your account.
               </p>
 
               {/* Code Box */}

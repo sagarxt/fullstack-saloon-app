@@ -11,4 +11,5 @@ public class UserUpdateRequest {
     private String gender;
     private java.util.UUID storeId;
     private Boolean active;
+    private java.util.Set<String> userGroups;
 }

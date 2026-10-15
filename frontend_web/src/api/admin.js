@@ -55,10 +55,37 @@ export const getDashboardMetrics = () =>
   axiosClient.get("/admin/dashboard");
 
 /* USERS & STAFF */
-export const getUsersApi = (role, page = 0, size = 50) => {
-  const normRole = role && !role.startsWith("ROLE_") && role !== "ALL" ? `ROLE_${role}` : role;
-  return axiosClient.get(`/admin/users${normRole ? `?role=${normRole}&` : "?"}page=${page}&size=${size}`);
+export const getUsersApi = (roleOrParams, page = 0, size = 50, userGroup = null, search = null) => {
+  const params = new URLSearchParams();
+  if (typeof roleOrParams === "object" && roleOrParams !== null) {
+    if (roleOrParams.role && roleOrParams.role !== "ALL") {
+      const normRole = !roleOrParams.role.startsWith("ROLE_") ? `ROLE_${roleOrParams.role}` : roleOrParams.role;
+      params.append("role", normRole);
+    }
+    if (roleOrParams.page !== undefined) params.append("page", roleOrParams.page);
+    if (roleOrParams.size !== undefined) params.append("size", roleOrParams.size);
+    if (roleOrParams.userGroup && roleOrParams.userGroup !== "ALL") params.append("userGroup", roleOrParams.userGroup);
+    if (roleOrParams.search) params.append("search", roleOrParams.search);
+    if (roleOrParams.active !== undefined && roleOrParams.active !== null) params.append("active", roleOrParams.active);
+  } else {
+    const normRole = roleOrParams && !roleOrParams.startsWith("ROLE_") && roleOrParams !== "ALL" ? `ROLE_${roleOrParams}` : roleOrParams;
+    if (normRole) params.append("role", normRole);
+    params.append("page", page);
+    params.append("size", size);
+    if (userGroup && userGroup !== "ALL") params.append("userGroup", userGroup);
+    if (search) params.append("search", search);
+  }
+  return axiosClient.get(`/admin/users?${params.toString()}`);
 };
+
+export const getUserGroupsCatalogApi = () =>
+  axiosClient.get("/admin/users/groups");
+
+export const updateUserGroupsApi = (id, groups) =>
+  axiosClient.put(`/admin/users/${id}/groups`, groups);
+
+export const sendEmailToUserGroupApi = (data) =>
+  axiosClient.post("/admin/users/email-group", data);
 
 export const createStaffApi = (data) =>
   axiosClient.post("/admin/users/staff", data);

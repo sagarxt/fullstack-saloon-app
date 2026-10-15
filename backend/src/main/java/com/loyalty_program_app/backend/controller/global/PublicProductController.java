@@ -39,4 +39,9 @@ public class PublicProductController {
     public List<String> getCategories() {
         return productService.getProductCategories();
     }
+
+    @GetMapping("/brands")
+    public List<String> getBrands() {
+        return productService.getProductBrands();
+    }
 }

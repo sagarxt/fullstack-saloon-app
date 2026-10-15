@@ -1,15 +1,18 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import AuthModal from "../../components/modals/AuthModal";
 import CustomSelect from "../../components/common/CustomSelect";
 import Pagination from "../../components/common/Pagination";
-import { getPublicProducts, getProductCategories } from "../../api/products";
+import BrandShowcaseSection from "../../components/shop/BrandShowcaseSection";
+import { getPublicProducts, getProductCategories, getProductBrands } from "../../api/products";
 import { getPublicCoupons } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
 import { extractList } from "../../utils/dataHelper";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
+import { extractBrandsFromProducts, getBrandInfo } from "../../utils/brandHelper";
 import {
   ShoppingBag,
   ShoppingCart,
@@ -27,21 +30,26 @@ import {
   Clock,
   Info,
   Copy,
+  Award,
 } from "lucide-react";
 
 export default function ProductsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { addItem } = useCart();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [serverBrands, setServerBrands] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [copiedCode, setCopiedCode] = useState("");
   const [addingToCartId, setAddingToCartId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Filters & Search
+  const brandFromUrl = searchParams.get("brand") || "ALL";
+  const [selectedBrand, setSelectedBrand] = useState(brandFromUrl);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("DEFAULT"); // DEFAULT | PRICE_LOW | PRICE_HIGH
@@ -50,8 +58,25 @@ export default function ProductsPage() {
   const PAGE_SIZE = 20;
 
   useEffect(() => {
+    const brandParam = searchParams.get("brand") || "ALL";
+    setSelectedBrand(brandParam);
+  }, [searchParams]);
+
+  useEffect(() => {
     setPage(1);
-  }, [selectedCategory, search, sortBy]);
+  }, [selectedBrand, selectedCategory, search, sortBy]);
+
+  const handleSelectBrand = (brandName) => {
+    setSelectedBrand(brandName);
+    setPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    if (!brandName || brandName === "ALL") {
+      newParams.delete("brand");
+    } else {
+      newParams.set("brand", brandName);
+    }
+    setSearchParams(newParams, { replace: true });
+  };
 
   // Modals
   const [authOpen, setAuthOpen] = useState(false);
@@ -72,16 +97,18 @@ export default function ProductsPage() {
   const loadProductsData = async () => {
     setLoading(true);
     try {
-      const [prodsRes, catsRes, coupRes] = await Promise.all([
+      const [prodsRes, catsRes, coupRes, brandsRes] = await Promise.all([
         getPublicProducts(),
         getProductCategories().catch(() => ({ data: [] })),
         getPublicCoupons().catch(() => ({ data: [] })),
+        getProductBrands().catch(() => ({ data: [] })),
       ]);
       const rawProducts = extractList(prodsRes.data);
       // Strictly show only active products in shop
       const activeProducts = rawProducts.filter((p) => p && p.active !== false);
       setProducts(activeProducts);
       setCoupons(extractList(coupRes.data));
+      setServerBrands(extractList(brandsRes?.data));
 
       // Dynamically load categories strictly from active products or backend
       const serverCats = extractList(catsRes.data).filter(Boolean);
@@ -95,6 +122,7 @@ export default function ProductsPage() {
       console.error("Failed to load products from backend", err);
       setProducts([]);
       setCategories([]);
+      setServerBrands([]);
     } finally {
       setLoading(false);
     }
@@ -124,8 +152,19 @@ export default function ProductsPage() {
   const productList = extractList(products);
   const categoryList = extractList(categories);
 
+  const brandList = useMemo(() => {
+    return extractBrandsFromProducts(productList, serverBrands);
+  }, [productList, serverBrands]);
+
   const filteredProducts = useMemo(() => {
     return productList.filter((p) => {
+      // Brand filter
+      if (selectedBrand !== "ALL") {
+        const pBrand = p.brand || "Groomish Pro";
+        if (pBrand.toLowerCase() !== selectedBrand.toLowerCase()) {
+          return false;
+        }
+      }
       // Category filter
       if (selectedCategory !== "ALL" && p.category?.toLowerCase() !== selectedCategory.toLowerCase()) {
         return false;
@@ -140,7 +179,7 @@ export default function ProductsPage() {
       }
       return true;
     });
-  }, [products, selectedCategory, search]);
+  }, [productList, selectedBrand, selectedCategory, search]);
 
   const sortedProducts = useMemo(() => {
     const list = [...filteredProducts];
@@ -254,8 +293,16 @@ export default function ProductsPage() {
           </div>
         </section>
 
-        {/* PRODUCTS GRID */}
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* PRODUCTS & BRANDS SECTION */}
+        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          {/* BRAND HIERARCHY & LOGOS SHOWCASE WITH PAGINATION */}
+          <BrandShowcaseSection
+            brands={brandList}
+            selectedBrand={selectedBrand}
+            onSelectBrand={handleSelectBrand}
+            totalProductsCount={productList.length}
+          />
+
           {/* PROMOTIONAL OFFERS STRIP */}
           {coupons.length > 0 && (
             <div className="bg-gradient-to-r from-groomish-slateDark via-groomish-slate to-groomish-slateDark text-white p-5 sm:p-6 rounded-3xl shadow-soft">
@@ -335,16 +382,19 @@ export default function ProductsPage() {
                     No Matching Products Found
                   </h3>
                   <p className="text-xs text-groomish-slate/50 mt-1 mb-4">
-                    We couldn't find any active products matching your selected category or search keyword.
+                    {selectedBrand !== "ALL"
+                      ? `We couldn't find any products under brand "${selectedBrand}".`
+                      : "We couldn't find any active products matching your selected filters or search keyword."}
                   </p>
                   <button
                     onClick={() => {
+                      handleSelectBrand("ALL");
                       setSelectedCategory("ALL");
                       setSearch("");
                     }}
                     className="btn-secondary text-xs px-4 py-2"
                   >
-                    Reset Filters
+                    Reset All Filters
                   </button>
                 </>
               )}
@@ -373,18 +423,30 @@ export default function ProductsPage() {
                         className="relative h-52 overflow-hidden bg-white flex items-center justify-center p-4 cursor-pointer"
                       >
                         <img
-                          src={
+                          src={getOptimizedImageUrl(
                             product.image ||
-                            "https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=600&q=80"
-                          }
+                            "https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=600&q=80",
+                            { width: 500 }
+                          )}
                           alt={product.name}
+                          loading="lazy"
+                          decoding="async"
                           className="max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-105"
                         />
 
-                        {/* Brand Badge */}
-                        <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/95 text-groomish-slate shadow-sm border border-groomish-slate/10">
-                          {product.brand || "Groomish Pro"}
-                        </span>
+                        {/* Interactive Brand Badge */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectBrand(product.brand || "Groomish Pro");
+                          }}
+                          className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/95 text-groomish-slate shadow-sm border border-groomish-slate/10 hover:border-groomish-orange hover:text-groomish-orange transition-all flex items-center gap-1 z-10"
+                          title={`Filter by ${product.brand || "Groomish Pro"}`}
+                        >
+                          <ShieldCheck className="w-3 h-3 text-groomish-green shrink-0" />
+                          <span>{product.brand || "Groomish Pro"}</span>
+                        </button>
 
                         {/* Multi-image photo count badge */}
                         {product.images && product.images.length > 1 && (

@@ -13,6 +13,8 @@ import {
 } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
+import { useGroomCoin } from "../../context/GroomCoinContext";
+import GroomCoinIcon from "../../components/common/GroomCoinIcon";
 import { extractList } from "../../utils/dataHelper";
 import {
   Scissors,
@@ -49,8 +51,10 @@ export default function ServiceDetailPage() {
   const [copiedCode, setCopiedCode] = useState("");
   const [addingToCart, setAddingToCart] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedSubService, setSelectedSubService] = useState(null);
 
   const { addItem, items } = useCart();
+  const { calculateCoins } = useGroomCoin();
 
   // Modals
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -85,6 +89,11 @@ export default function ServiceDetailPage() {
       const current = allServices.find((s) => String(s.id) === String(serviceId));
 
       setService(current || null);
+      if (current && Array.isArray(current.subServices) && current.subServices.length > 0) {
+        setSelectedSubService(current.subServices[0]);
+      } else {
+        setSelectedSubService(null);
+      }
       setCategories(extractList(catListRes.data));
       setReviews(extractList(revRes.data));
       setRatingSummary(sumRes.data || null);
@@ -114,6 +123,9 @@ export default function ServiceDetailPage() {
       itemType: "SERVICE",
       serviceId: service.id,
       name: service.name,
+      subServiceName: selectedSubService ? selectedSubService.name : null,
+      subServicePrice: selectedSubService ? selectedSubService.price : null,
+      subServiceDuration: selectedSubService ? selectedSubService.durationMinutes : null,
       quantity: 1,
     });
     setAddingToCart(false);
@@ -125,7 +137,9 @@ export default function ServiceDetailPage() {
     setTimeout(() => setCopiedCode(""), 2500);
   };
 
-  const isAlreadyInCart = items.some((i) => i.serviceId === service?.id);
+  const isAlreadyInCart = items.some(
+    (i) => i.serviceId === service?.id && (!selectedSubService || i.subServiceName === selectedSubService.name)
+  );
 
   const defaultServiceImages = {
     MALE: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1000&q=80",
@@ -179,7 +193,9 @@ export default function ServiceDetailPage() {
     defaultServiceImages[service.gender] ||
     defaultServiceImages.UNISEX;
 
-  const pointsEarned = Math.floor(service.price / 100);
+  const activePrice = selectedSubService ? selectedSubService.price : service.price;
+  const activeDuration = selectedSubService ? selectedSubService.durationMinutes : service.durationMinutes;
+  const coinsEarned = calculateCoins(activePrice, service.rewards);
   const averageRating = ratingSummary?.averageRating ? ratingSummary.averageRating.toFixed(1) : "4.9";
   const totalReviewsCount = ratingSummary?.totalReviews ?? reviews.length;
 
@@ -244,7 +260,7 @@ export default function ServiceDetailPage() {
                 <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white">
                   <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-semibold">
                     <Clock className="w-3.5 h-3.5 text-groomish-gold" />
-                    <span>Duration: {service.durationMinutes} Minutes</span>
+                    <span>Duration: {activeDuration} Minutes</span>
                   </div>
 
                   <div className="flex items-center gap-1 bg-white/90 text-groomish-slate px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md">
@@ -270,6 +286,33 @@ export default function ServiceDetailPage() {
                   </p>
                 </div>
 
+                {/* HIGHLIGHTED EXTRA GROOM COINS PROMOTION */}
+                {service.rewards > 0 && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-amber-400/25 to-amber-500/15 border-2 border-amber-300/80 text-amber-950 flex items-center justify-between gap-3 shadow-md">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/30 text-amber-800 flex items-center justify-center shrink-0 border border-amber-400/40">
+                        <GroomCoinIcon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black uppercase tracking-wider text-amber-800">
+                          Exclusive Loyalty Privilege
+                        </div>
+                        <div className="text-sm font-extrabold text-amber-950">
+                          Receive +{service.rewards} Extra Groom Coins with this treatment!
+                        </div>
+                        <p className="text-[11px] text-amber-900/70 mt-0.5">
+                          Credited directly to your Groom Coin wallet upon appointment completion.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 hidden sm:block">
+                      <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-400 text-amber-950 shadow-xs uppercase tracking-wide">
+                        +{service.rewards} Extra Coins
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Description */}
                 <div>
                   <h3 className="font-heading font-bold text-sm text-groomish-slate uppercase tracking-wider mb-2">
@@ -280,6 +323,62 @@ export default function ServiceDetailPage() {
                       "Experience premium salon care tailored to your specific styling needs. Delivered by certified salon specialists using professional, skin-safe products and stringent hygiene protocols."}
                   </p>
                 </div>
+
+                {/* SUB-SERVICES / TREATMENT OPTIONS */}
+                {Array.isArray(service.subServices) && service.subServices.length > 0 && (
+                  <div className="pt-4 border-t border-groomish-slate/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-heading font-bold text-sm text-groomish-slate uppercase tracking-wider flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-groomish-orange" />
+                        Choose Option / Variation
+                      </h3>
+                      <span className="text-[11px] font-semibold text-groomish-slate/60 bg-groomish-cream px-2 py-0.5 rounded-full">
+                        {service.subServices.length} Options Available
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {service.subServices.map((sub, idx) => {
+                        const isSelected = selectedSubService?.name === sub.name;
+                        return (
+                          <button
+                            key={sub.id || idx}
+                            type="button"
+                            onClick={() => setSelectedSubService(sub)}
+                            className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
+                              isSelected
+                                ? "bg-amber-50/80 border-groomish-orange shadow-sm ring-2 ring-groomish-orange/20"
+                                : "bg-white border-groomish-slate/15 hover:border-groomish-orange/40 hover:bg-groomish-cream/40"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <span className={`text-xs font-bold leading-tight ${isSelected ? "text-groomish-orange" : "text-groomish-slate"}`}>
+                                {sub.name}
+                              </span>
+                              <div
+                                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition ${
+                                  isSelected
+                                    ? "border-groomish-orange bg-groomish-orange text-white"
+                                    : "border-groomish-slate/30 bg-white"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mt-3 text-xs">
+                              <span className="font-extrabold text-groomish-slate text-sm">
+                                ₹{sub.price}
+                              </span>
+                              <span className="text-[11px] text-groomish-slate/60 flex items-center gap-1 font-medium">
+                                <Clock className="w-3 h-3 text-groomish-gold" />
+                                {sub.durationMinutes} mins
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* What's Included / Highlights */}
                 <div className="pt-4 border-t border-groomish-slate/10">
@@ -314,8 +413,8 @@ export default function ServiceDetailPage() {
                     <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-groomish-cream/70">
                       <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold block">Instant Loyalty Accrual</span>
-                        <span className="text-groomish-slate/60 text-[11px]">Earn reward points credited directly to your profile.</span>
+                        <span className="font-bold block">Instant Groom Coin Accrual</span>
+                        <span className="text-groomish-slate/60 text-[11px]">Earn Groom Coins credited directly to your profile.</span>
                       </div>
                     </div>
                   </div>
@@ -488,35 +587,47 @@ export default function ServiceDetailPage() {
 
                   <div className="flex items-baseline gap-3">
                     <span className="text-4xl font-heading font-extrabold text-groomish-slate">
-                      ₹{service.price}
+                      ₹{activePrice}
                     </span>
-                    {service.mrp > service.price && (
+                    {service.mrp > activePrice && (
                       <>
                         <span className="text-sm font-semibold text-groomish-slate/40 line-through">
                           ₹{service.mrp}
                         </span>
                         <span className="text-xs font-bold text-groomish-green bg-groomish-greenLight px-2.5 py-0.5 rounded-full">
-                          {Math.round(((service.mrp - service.price) / service.mrp) * 100)}% OFF
+                          {Math.round(((service.mrp - activePrice) / service.mrp) * 100)}% OFF
                         </span>
                       </>
                     )}
                   </div>
+                  {selectedSubService && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 text-groomish-orange border border-amber-200/60 text-xs font-bold">
+                      <span>Option: {selectedSubService.name}</span>
+                      <span className="text-groomish-slate/40">•</span>
+                      <span>{activeDuration}m</span>
+                    </div>
+                  )}
                   <p className="text-[11px] text-groomish-slate/50 mt-1">
                     Inclusive of all taxes & professional salon hygiene sanitation.
                   </p>
                 </div>
 
-                {/* Loyalty Bonus Banner */}
-                <div className="p-4 rounded-2xl bg-groomish-goldLight border border-groomish-gold/30 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-groomish-gold text-groomish-slate flex items-center justify-center shrink-0">
-                    <Sparkles className="w-5 h-5 text-groomish-slate fill-current" />
+                {/* Groom Coins Bonus Banner */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-200/80 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0 border border-amber-300/40">
+                    <GroomCoinIcon className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-groomish-slate block">
-                      Earn +{pointsEarned} Loyalty Points
+                    <span className="text-xs font-extrabold text-groomish-slate block flex items-center gap-1.5 flex-wrap">
+                      <span>Earn +{coinsEarned} Groom Coins</span>
+                      {service.rewards > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 font-black">
+                          Includes +{service.rewards} Bonus
+                        </span>
+                      )}
                     </span>
                     <span className="text-[11px] text-groomish-slate/70">
-                      Redeem points for discounts & complimentary upgrades.
+                      Redeem Groom Coins for treatment vouchers & salon perks.
                     </span>
                   </div>
                 </div>

@@ -17,6 +17,8 @@ import { storeApi } from "../../api/store";
 import { extractList } from "../../utils/dataHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import { showConfirm, showAlert } from "../../context/ConfirmContext";
+import { useGroomCoin } from "../../context/GroomCoinContext";
+import GroomCoinIcon from "../../components/common/GroomCoinIcon";
 import { getBranchNavigationUrl } from "../../utils/mapHelper";
 import {
   Calendar,
@@ -52,6 +54,7 @@ export default function BookingDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const reviewsRef = useRef(null);
+  const { calculateCoins, config } = useGroomCoin();
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1128,26 +1131,26 @@ export default function BookingDetailPage() {
                   </div>
                 )}
 
-              {/* Loyalty Points Section */}
+              {/* Groom Coins Section */}
               {booking.status === "CANCELLED" ? (
                 <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 flex items-center gap-2 text-xs text-rose-800">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                   <span>
-                    <strong>Reward Points Cancelled:</strong> 0 VIP points credited (appointment was cancelled).
+                    <strong>Groom Coins Cancelled:</strong> 0 Groom Coins credited (appointment was cancelled).
                   </span>
                 </div>
               ) : booking.status === "COMPLETED" ? (
-                <div className="p-3 bg-groomish-greenLight/60 rounded-xl border border-groomish-green/30 flex items-center gap-2 text-xs text-groomish-slate">
-                  <Sparkles className="w-4 h-4 text-groomish-green shrink-0" />
+                <div className="p-3 bg-groomish-greenLight/60 rounded-xl border border-groomish-green/30 flex items-center gap-2.5 text-xs text-groomish-slate">
+                  <GroomCoinIcon className="w-4 h-4 shrink-0" />
                   <span>
-                    ✓ <strong>Confirmed:</strong> You earned <strong className="font-bold text-groomish-green">{booking.expectedRewardPoints || Math.floor(booking.pricePaid / 100)} VIP points</strong> on this completed appointment!
+                    ✓ <strong>Confirmed:</strong> You earned <strong className="font-bold text-groomish-green">+{booking.expectedRewardPoints ?? calculateCoins(booking.pricePaid)} Groom Coins</strong> on this completed appointment!
                   </span>
                 </div>
               ) : (
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-300/60 flex items-center gap-2 text-xs text-amber-900">
-                  <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-300/60 flex items-center gap-2.5 text-xs text-amber-900">
+                  <GroomCoinIcon className="w-4 h-4 shrink-0" />
                   <span>
-                    ⏳ <strong>Pending Reward:</strong> <strong className="font-bold text-amber-700">+{booking.expectedRewardPoints || Math.floor(booking.pricePaid / 100)} VIP points</strong> will be confirmed and added to your wallet once your appointment is completed at the salon.
+                    ⏳ <strong>Pending Groom Coins:</strong> <strong className="font-bold text-amber-700">+{booking.expectedRewardPoints ?? calculateCoins(booking.pricePaid)} Groom Coins</strong> will be confirmed and added to your wallet once your appointment is completed at the salon.
                   </span>
                 </div>
               )}
@@ -1482,7 +1485,7 @@ export default function BookingDetailPage() {
               <span>Complete Payment Online</span>
             </h3>
             <p className="text-xs text-groomish-slate/60 mt-0.5">
-              Pay now securely to skip counter payment and collect loyalty points immediately.
+              Pay now securely to skip counter payment and collect Groom Coins immediately.
             </p>
           </div>
 
@@ -1516,10 +1519,10 @@ export default function BookingDetailPage() {
                   </span>
                 </div>
                 <div className="text-right text-xs">
-                  <span className="text-groomish-slate/50 block">VIP Loyalty Points</span>
-                  <span className="font-bold text-groomish-green flex items-center gap-1 justify-end">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    +{Math.floor((booking?.pricePaid || 0) / 100)} Points
+                  <span className="text-groomish-slate/50 block">Groom Coins Earned</span>
+                  <span className="font-bold text-amber-700 flex items-center gap-1 justify-end">
+                    <GroomCoinIcon className="w-3.5 h-3.5" />
+                    +{calculateCoins(booking?.pricePaid || 0)} Coins
                   </span>
                 </div>
               </div>

@@ -108,6 +108,7 @@ export default function AddCategoryModal({ open, onClose, refresh }) {
             onChange={handleImageChange}
             folder="groomishnow/category"
             label="Category Cover Photo"
+            entityName={form.name}
           />
 
           {/* Form Actions */}

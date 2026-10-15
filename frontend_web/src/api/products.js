@@ -16,6 +16,9 @@ export const searchProducts = (q) =>
 export const getProductCategories = () =>
   axiosClient.get("/public/products/categories");
 
+export const getProductBrands = () =>
+  axiosClient.get("/public/products/brands");
+
 /* ADMIN PRODUCT APIS */
 export const getAdminProducts = (page = 0, size = 20) =>
   axiosClient.get(`/admin/products?page=${page}&size=${size}`);

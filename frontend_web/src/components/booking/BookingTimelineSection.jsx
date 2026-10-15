@@ -164,7 +164,7 @@ export default function BookingTimelineSection({ timeline = [] }) {
       case "SYSTEM":
       default:
         return {
-          label: "System Scheduler",
+          label: "System",
           className: "bg-slate-100 text-slate-700 border-slate-200",
           icon: <Clock className="w-3 h-3 inline mr-1" />,
         };

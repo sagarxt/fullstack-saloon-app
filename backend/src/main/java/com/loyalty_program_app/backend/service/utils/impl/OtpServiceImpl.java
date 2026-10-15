@@ -12,11 +12,16 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.beans.factory.annotation.Value;
+
 @Service
 @RequiredArgsConstructor
 public class OtpServiceImpl implements OtpService {
 
     private final EmailService emailService;
+
+    @Value("${app.branding.logo-url:https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png}")
+    private String logoUrl;
 
     // memory storage: email => [otp, expiry time]
     private final Map<String, OtpData> otpStore = new ConcurrentHashMap<>();
@@ -39,13 +44,17 @@ public class OtpServiceImpl implements OtpService {
             try (java.io.InputStream is = resource.getInputStream()) {
                 html = org.springframework.util.StreamUtils.copyToString(is, StandardCharsets.UTF_8);
             } catch (Exception ex) {
-                html = "<div style='font-family:sans-serif;padding:20px;text-align:center;'>"
+                html = "<div style='font-family:sans-serif;padding:20px;text-align:center;background:#FAF6ED;'>"
+                        + "<div style='background:#111;padding:12px;border-radius:8px;display:inline-block;margin-bottom:15px;'>"
+                        + "<img src='" + logoUrl + "' alt='Groomish Now' style='max-height:45px;' />"
+                        + "</div>"
                         + "<h2>Your OTP Verification Code</h2>"
-                        + "<h1 style='color:#5b4bdb;letter-spacing:5px;'>" + otp + "</h1>"
+                        + "<h1 style='color:#FC6957;letter-spacing:5px;'>" + otp + "</h1>"
                         + "<p>This code is valid for 10 minutes.</p>"
                         + "</div>";
             }
 
+            html = html.replace("{{logoUrl}}", logoUrl != null ? logoUrl : "https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png");
             html = html.replace("{{otp}}", otp);
             emailService.sendHtmlEmail(cleanEmail, subject, html);
             otp_send = true;

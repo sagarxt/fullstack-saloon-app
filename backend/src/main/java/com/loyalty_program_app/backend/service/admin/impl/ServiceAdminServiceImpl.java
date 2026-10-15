@@ -37,17 +37,25 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
     public ServiceResponse createService(String name, UUID categoryId, String description, String gender,
                                          Double mrp, Double price, Integer rewards, Integer durationMinutes,
                                          MultipartFile image, String imageUrl) {
+        return createService(name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, null);
+    }
+
+    @Override
+    public ServiceResponse createService(String name, UUID categoryId, String description, String gender,
+                                         Double mrp, Double price, Integer rewards, Integer durationMinutes,
+                                         MultipartFile image, String imageUrl,
+                                         java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices) {
 
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         String finalImageUrl = null;
         if (image != null && !image.isEmpty()) {
-            finalImageUrl = cloudinaryService.uploadImage(image, "groomishnow/service");
+            finalImageUrl = cloudinaryService.uploadImage(image, "groomishnow/service", name);
         } else if (imageUrl != null && !imageUrl.isBlank()) {
             String trimmedUrl = imageUrl.trim();
             if (!trimmedUrl.contains("cloudinary.com")) {
-                finalImageUrl = cloudinaryService.upload(trimmedUrl, "groomishnow/service");
+                finalImageUrl = cloudinaryService.upload(trimmedUrl, "groomishnow/service", name);
             } else {
                 finalImageUrl = trimmedUrl;
             }
@@ -60,10 +68,25 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
         s.setGender(gender != null ? ServiceGender.valueOf(gender.toUpperCase()) : ServiceGender.UNISEX);
         s.setMrp(mrp != null ? mrp : price);
         s.setPrice(price);
-        s.setRewards(rewards != null ? rewards : (int) Math.round(price / 10.0));
+        s.setRewards(rewards != null ? rewards : 0);
         s.setDurationMinutes(durationMinutes != null ? durationMinutes : 30);
         s.setImage(finalImageUrl);
         s.setActive(true);
+
+        if (subServices != null && !subServices.isEmpty()) {
+            for (com.loyalty_program_app.backend.dto.service.SubServiceDto subDto : subServices) {
+                if (subDto.getName() != null && !subDto.getName().isBlank()) {
+                    com.loyalty_program_app.backend.model.SubService sub = com.loyalty_program_app.backend.model.SubService.builder()
+                            .service(s)
+                            .name(subDto.getName().trim())
+                            .price(subDto.getPrice() != null ? subDto.getPrice() : price)
+                            .durationMinutes(subDto.getDurationMinutes() != null ? subDto.getDurationMinutes() : (durationMinutes != null ? durationMinutes : 30))
+                            .active(subDto.getActive() != null ? subDto.getActive() : true)
+                            .build();
+                    s.getSubServices().add(sub);
+                }
+            }
+        }
 
         serviceRepository.save(s);
         return toDto(s);
@@ -80,6 +103,14 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
     public ServiceResponse updateService(UUID id, String name, UUID categoryId, String description,
                                          String gender, Double mrp, Double price, Integer rewards,
                                          Integer durationMinutes, MultipartFile image, String imageUrl) {
+        return updateService(id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, null);
+    }
+
+    @Override
+    public ServiceResponse updateService(UUID id, String name, UUID categoryId, String description,
+                                         String gender, Double mrp, Double price, Integer rewards,
+                                         Integer durationMinutes, MultipartFile image, String imageUrl,
+                                         java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices) {
 
         ServiceEntity s = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
@@ -98,15 +129,32 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
             s.setCategory(category);
         }
 
+        String targetName = (name != null && !name.isBlank()) ? name : s.getName();
         if (image != null && !image.isEmpty()) {
-            String url = cloudinaryService.uploadImage(image, "groomishnow/service");
+            String url = cloudinaryService.uploadImage(image, "groomishnow/service", targetName);
             s.setImage(url);
         } else if (imageUrl != null && !imageUrl.isBlank()) {
             String trimmedUrl = imageUrl.trim();
             if (!trimmedUrl.contains("cloudinary.com")) {
-                s.setImage(cloudinaryService.upload(trimmedUrl, "groomishnow/service"));
+                s.setImage(cloudinaryService.upload(trimmedUrl, "groomishnow/service", targetName));
             } else {
                 s.setImage(trimmedUrl);
+            }
+        }
+
+        if (subServices != null) {
+            s.getSubServices().clear();
+            for (com.loyalty_program_app.backend.dto.service.SubServiceDto subDto : subServices) {
+                if (subDto.getName() != null && !subDto.getName().isBlank()) {
+                    com.loyalty_program_app.backend.model.SubService sub = com.loyalty_program_app.backend.model.SubService.builder()
+                            .service(s)
+                            .name(subDto.getName().trim())
+                            .price(subDto.getPrice() != null ? subDto.getPrice() : s.getPrice())
+                            .durationMinutes(subDto.getDurationMinutes() != null ? subDto.getDurationMinutes() : s.getDurationMinutes())
+                            .active(subDto.getActive() != null ? subDto.getActive() : true)
+                            .build();
+                    s.getSubServices().add(sub);
+                }
             }
         }
 
@@ -178,6 +226,18 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
         dto.setCategoryId(s.getCategory().getId());
         dto.setCategoryName(s.getCategory().getName());
         dto.setActive(s.isActive());
+
+        if (s.getSubServices() != null) {
+            dto.setSubServices(s.getSubServices().stream()
+                    .map(sub -> com.loyalty_program_app.backend.dto.service.SubServiceDto.builder()
+                            .id(sub.getId())
+                            .name(sub.getName())
+                            .price(sub.getPrice())
+                            .durationMinutes(sub.getDurationMinutes())
+                            .active(sub.isActive())
+                            .build())
+                    .toList());
+        }
         return dto;
     }
 }

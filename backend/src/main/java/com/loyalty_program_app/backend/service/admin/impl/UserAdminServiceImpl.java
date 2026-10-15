@@ -8,6 +8,8 @@ import com.loyalty_program_app.backend.enums.Tier;
 import com.loyalty_program_app.backend.model.User;
 import com.loyalty_program_app.backend.repository.UserRepository;
 import com.loyalty_program_app.backend.service.admin.UserAdminService;
+import com.loyalty_program_app.backend.service.utils.EmailService;
+import com.loyalty_program_app.backend.service.utils.EmailTemplateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,12 +26,19 @@ public class UserAdminServiceImpl implements UserAdminService {
     private final UserRepository userRepository;
     private final com.loyalty_program_app.backend.repository.StoreRepository storeRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final EmailService emailService;
+    private final EmailTemplateService templateService;
 
     // ------------------------------------------
     // LIST USERS WITH SEARCH + FILTERS
     // ------------------------------------------
     @Override
     public Page<UserResponse> listUsers(String search, String role, Boolean active, Pageable pageable) {
+        return listUsers(search, role, active, null, pageable);
+    }
+
+    @Override
+    public Page<UserResponse> listUsers(String search, String role, Boolean active, String userGroup, Pageable pageable) {
 
         List<User> all = userRepository.findAll();
 
@@ -47,6 +56,10 @@ public class UserAdminServiceImpl implements UserAdminService {
                            r.replace("ROLE_", "").equalsIgnoreCase(role.replace("ROLE_", ""));
                 })
                 .filter(u -> active == null || u.isActive() == active)
+                .filter(u -> {
+                    if (userGroup == null || userGroup.isBlank() || userGroup.equalsIgnoreCase("ALL")) return true;
+                    return u.getAllEffectiveGroups().contains(userGroup.toUpperCase().trim());
+                })
                 .map(this::toDto)
                 .collect(Collectors.toList());
 
@@ -93,8 +106,83 @@ public class UserAdminServiceImpl implements UserAdminService {
             user.setActive(request.getActive());
         }
 
+        if (request.getUserGroups() != null) {
+            user.setUserGroups(new java.util.HashSet<>(request.getUserGroups()));
+        }
+
         userRepository.save(user);
         return toDto(user);
+    }
+
+    @Override
+    public UserResponse updateUserGroups(UUID id, java.util.Set<String> groups) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (groups != null) {
+            user.setUserGroups(new java.util.HashSet<>(groups));
+        } else {
+            user.getUserGroups().clear();
+        }
+        userRepository.save(user);
+        return toDto(user);
+    }
+
+    @Override
+    public java.util.Map<String, Object> sendEmailToUserGroup(String userGroup, String subject, String message, String couponCode) {
+        List<User> customers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.ROLE_CUSTOMER && u.isActive())
+                .filter(u -> userGroup == null || userGroup.isBlank() || userGroup.equalsIgnoreCase("ALL") || u.getAllEffectiveGroups().contains(userGroup.toUpperCase().trim()))
+                .toList();
+
+        int sent = 0;
+        List<String> recipients = new java.util.ArrayList<>();
+        String groupLabel = (userGroup == null || userGroup.isBlank() || userGroup.equalsIgnoreCase("ALL"))
+                ? "Valued Members"
+                : userGroup.replace("_", " ") + " Members";
+
+        for (User u : customers) {
+            if (u.getEmail() != null && !u.getEmail().isBlank()) {
+                try {
+                    String content = "<div style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #373A43; line-height: 1.6;'>"
+                            + "<div style='background: linear-gradient(135deg, #FC6957, #FD7F48); padding: 28px 20px; border-radius: 18px; color: white; text-align: center; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(252, 105, 87, 0.25);'>"
+                            + "<h1 style='margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;'>✨ Exclusive Groomish Now Offer</h1>"
+                            + "<p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.95; font-weight: 600;'>Special Perks for " + groupLabel + "</p>"
+                            + "</div>"
+                            + "<p style='font-size: 15px;'>Hello <strong>" + (u.getName() != null ? u.getName() : "there") + "</strong>,</p>"
+                            + "<div style='background: #FFFBF9; border: 1px solid rgba(252, 105, 87, 0.2); padding: 20px; border-radius: 16px; margin: 18px 0;'>"
+                            + "<p style='margin: 0; font-size: 14px; color: #373A43; white-space: pre-wrap;'>" + (message != null ? message : "") + "</p>"
+                            + "</div>";
+
+                    if (couponCode != null && !couponCode.isBlank()) {
+                        content += "<div style='text-align: center; margin: 26px 0; padding: 20px; background: #FFF6EE; border-radius: 16px; border: 1.5px dashed #FC6957;'>"
+                                + "<span style='font-size: 11px; font-weight: 700; text-transform: uppercase; color: #FC6957; letter-spacing: 1px; display: block; margin-bottom: 6px;'>Your Exclusive Coupon Code</span>"
+                                + "<span style='display: inline-block; font-family: monospace; font-size: 24px; font-weight: 900; color: #FC6957; letter-spacing: 2px;'>"
+                                + couponCode.trim().toUpperCase()
+                                + "</span>"
+                                + "<p style='font-size: 11px; color: #8F94A3; margin: 8px 0 0 0;'>Apply this code at checkout on the Groomish Now web app or mobile booking.</p>"
+                                + "</div>";
+                    }
+
+                    content += "<p style='font-size: 12px; color: #8F94A3; text-align: center; margin-top: 24px;'>Thank you for being part of the Groomish salon community!</p></div>";
+
+                    String finalHtml = templateService != null ? templateService.buildTemplate(subject, content) : content;
+                    emailService.sendHtmlEmail(u.getEmail(), subject, finalHtml);
+                    sent++;
+                    recipients.add(u.getEmail());
+                } catch (Exception e) {
+                    // Log error and continue
+                }
+            }
+        }
+
+        java.util.Map<String, Object> res = new java.util.HashMap<>();
+        res.put("success", true);
+        res.put("targetGroup", userGroup != null ? userGroup : "ALL");
+        res.put("sentCount", sent);
+        res.put("recipients", recipients);
+        res.put("message", "Email successfully dispatched to " + sent + " customers in group " + groupLabel);
+        return res;
     }
 
     // ------------------------------------------
@@ -196,8 +284,12 @@ public class UserAdminServiceImpl implements UserAdminService {
         dto.setRole(user.getRole().name());
         dto.setTier(user.getTier().name());
         dto.setPoints(user.getPoints());
+        dto.setLifetimePoints(user.getLifetimePoints() != null ? user.getLifetimePoints() : (user.getPoints() != null ? user.getPoints() : 0));
         dto.setReferralCode(user.getReferralCode());
         dto.setActive(user.isActive());
+        dto.setCreatedAt(user.getCreatedAt());
+        dto.setUserGroups(user.getUserGroups() != null ? new java.util.HashSet<>(user.getUserGroups()) : new java.util.HashSet<>());
+        dto.setEffectiveGroups(user.getAllEffectiveGroups());
         if (user.getStore() != null) {
             dto.setStoreId(user.getStore().getId());
             dto.setStoreName(user.getStore().getName());
