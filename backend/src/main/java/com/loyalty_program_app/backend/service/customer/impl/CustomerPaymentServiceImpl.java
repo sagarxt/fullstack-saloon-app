@@ -28,6 +28,7 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
     private final NotificationRepository notificationRepository;
     private final EmailService emailService;
     private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
+    private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
 
     @Override
     public Page<PaymentResponse> getMyPayments(UUID userId, Pageable pageable) {
@@ -116,23 +117,28 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
                 user.getEmail()
         );
 
-        // Calculate expected points (kept PENDING until appointment completion)
-        int pendingPoints = Math.max(1, (int) (savedPayment.getAmount() / 100));
+        // Calculate expected Groom Coins (kept PENDING until appointment completion)
+        double spendPerCoin = 100.0;
+        try {
+            spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+            if (spendPerCoin <= 0) spendPerCoin = 100.0;
+        } catch (Exception ignored) {}
+
+        int baseCoins = Math.max(1, (int) Math.round(savedPayment.getAmount() / spendPerCoin));
+        int bonusCoins = 0;
         if (booking.getBookingItems() != null && !booking.getBookingItems().isEmpty()) {
-            int calculated = booking.getBookingItems().stream()
-                    .filter(i -> i.getService() != null && i.getService().getRewards() != null)
+            bonusCoins = booking.getBookingItems().stream()
+                    .filter(i -> i.getService() != null && i.getService().getRewards() != null && i.getService().getRewards() > 0)
                     .mapToInt(i -> i.getService().getRewards())
                     .sum();
-            if (calculated > 0) {
-                pendingPoints = calculated;
-            }
         }
+        int pendingPoints = baseCoins + bonusCoins;
 
         // In-app Notification
         Notification notif = Notification.builder()
                 .user(user)
                 .title("Payment Received Online")
-                .message("Online payment of ₹" + savedPayment.getAmount() + " received! +" + pendingPoints + " VIP loyalty points are pending and will be confirmed upon appointment completion at the salon.")
+                .message("Online payment of ₹" + savedPayment.getAmount() + " received! +" + pendingPoints + " Groom Coins are pending and will be credited upon appointment completion at the salon.")
                 .type(NotificationType.PAYMENT)
                 .build();
         notificationRepository.save(notif);

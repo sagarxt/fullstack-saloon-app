@@ -47,6 +47,15 @@ public class CartItem {
     @Column(length = 1000)
     private String customNotes;
 
+    @Column(name = "sub_service_name")
+    private String subServiceName;
+
+    @Column(name = "sub_service_price")
+    private Double subServicePrice;
+
+    @Column(name = "sub_service_duration")
+    private Integer subServiceDuration;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

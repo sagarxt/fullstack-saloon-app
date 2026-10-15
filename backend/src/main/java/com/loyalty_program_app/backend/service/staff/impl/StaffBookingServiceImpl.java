@@ -110,10 +110,24 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             Coupon coupon = couponRepository.findByCodeIgnoreCase(request.getCouponCode())
                     .orElseThrow(() -> new RuntimeException("Invalid coupon code"));
 
-            if (!coupon.isActive() || coupon.getExpiryDate().isBefore(LocalDateTime.now())) {
-                throw new RuntimeException("Coupon inactive or expired");
+            if (!coupon.isActive()) {
+                throw new RuntimeException("Coupon inactive");
             }
-            if (totalAmount < coupon.getMinAmount()) {
+            if (coupon.getExpiryDate() != null && coupon.getExpiryDate().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Coupon expired");
+            }
+            if (coupon.getStartDate() != null && coupon.getStartDate().isAfter(LocalDateTime.now())) {
+                throw new RuntimeException("Coupon is not active yet (starts on " + coupon.getStartDate().toLocalDate() + ")");
+            }
+            if (customer != null && coupon.getApplicableUserGroups() != null && !coupon.getApplicableUserGroups().isEmpty() && !coupon.getApplicableUserGroups().contains("ALL")) {
+                java.util.Set<String> effectiveGroups = customer.getAllEffectiveGroups();
+                boolean matches = coupon.getApplicableUserGroups().stream()
+                        .anyMatch(grp -> grp.equalsIgnoreCase("ALL") || effectiveGroups.contains(grp.toUpperCase().trim()));
+                if (!matches) {
+                    throw new RuntimeException("Coupon '" + coupon.getCode() + "' is exclusively reserved for members of: " + String.join(", ", coupon.getApplicableUserGroups()));
+                }
+            }
+            if (totalAmount < (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
                 throw new RuntimeException("Minimum amount for coupon is: " + coupon.getMinAmount());
             }
 

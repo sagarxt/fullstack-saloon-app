@@ -25,20 +25,32 @@ public class CouponAdminServiceImpl implements CouponAdminService {
     @Override
     public CouponResponse createCoupon(CouponRequest req) {
 
-        if (couponRepository.findByCodeIgnoreCase(req.getCode()).isPresent()) {
+        if (req.getCode() == null || req.getCode().trim().isEmpty()) {
+            throw new RuntimeException("Coupon code is required");
+        }
+        String cleanCode = req.getCode().trim().toUpperCase();
+        if (cleanCode.length() > 25) {
+            throw new RuntimeException("Coupon code cannot exceed 25 characters");
+        }
+
+        if (couponRepository.findByCodeIgnoreCase(cleanCode).isPresent()) {
             throw new RuntimeException("Coupon code already exists");
         }
 
         Coupon c = new Coupon();
-        c.setCode(req.getCode());
+        c.setCode(cleanCode);
         c.setDescription(req.getDescription());
         c.setMinAmount(req.getMinAmount());
         c.setMaxDiscount(req.getMaxDiscount());
         c.setDiscount(req.getDiscount());
+        c.setStartDate(parseDate(req.getStartDate()));
         c.setExpiryDate(parseExpiryDate(req.getExpiryDate()));
         c.setActive(req.getActive() != null ? req.getActive() : true);
         if (req.getEligibleCategories() != null) {
             c.setEligibleCategories(new java.util.ArrayList<>(req.getEligibleCategories()));
+        }
+        if (req.getApplicableUserGroups() != null) {
+            c.setApplicableUserGroups(new java.util.ArrayList<>(req.getApplicableUserGroups()));
         }
 
         couponRepository.save(c);
@@ -53,17 +65,28 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         Coupon c = couponRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Coupon not found"));
 
-        if (req.getCode() != null) c.setCode(req.getCode());
+        if (req.getCode() != null) {
+            String cleanCode = req.getCode().trim().toUpperCase();
+            if (cleanCode.length() > 25) {
+                throw new RuntimeException("Coupon code cannot exceed 25 characters");
+            }
+            c.setCode(cleanCode);
+        }
         if (req.getDescription() != null) c.setDescription(req.getDescription());
         if (req.getMinAmount() != null) c.setMinAmount(req.getMinAmount());
         if (req.getMaxDiscount() != null) c.setMaxDiscount(req.getMaxDiscount());
         if (req.getDiscount() != null) c.setDiscount(req.getDiscount());
+        if (req.getStartDate() != null)
+            c.setStartDate(parseDate(req.getStartDate()));
         if (req.getExpiryDate() != null)
             c.setExpiryDate(parseExpiryDate(req.getExpiryDate()));
 
         if (req.getActive() != null) c.setActive(req.getActive());
         if (req.getEligibleCategories() != null) {
             c.setEligibleCategories(new java.util.ArrayList<>(req.getEligibleCategories()));
+        }
+        if (req.getApplicableUserGroups() != null) {
+            c.setApplicableUserGroups(new java.util.ArrayList<>(req.getApplicableUserGroups()));
         }
 
         couponRepository.save(c);
@@ -126,8 +149,12 @@ public class CouponAdminServiceImpl implements CouponAdminService {
             throw new RuntimeException("Coupon is inactive");
         }
 
-        if (c.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Coupon expired");
+        if (c.getStartDate() != null && c.getStartDate().isAfter(LocalDateTime.now())) {
+            throw new RuntimeException("Coupon not yet active. Valid from: " + c.getStartDate().toLocalDate());
+        }
+
+        if (c.getExpiryDate() != null && c.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Coupon expired on: " + c.getExpiryDate().toLocalDate());
         }
 
         if (cartAmount < c.getMinAmount()) {
@@ -137,9 +164,31 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         return toDto(c);
     }
 
+    private LocalDateTime parseDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) return null;
+        try {
+            if (dateStr.length() == 10) {
+                return java.time.LocalDate.parse(dateStr).atStartOfDay();
+            }
+            if (dateStr.endsWith("Z") || dateStr.contains("+")) {
+                return java.time.OffsetDateTime.parse(dateStr).toLocalDateTime();
+            }
+            return LocalDateTime.parse(dateStr);
+        } catch (Exception e) {
+            try {
+                return java.time.Instant.parse(dateStr).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            } catch (Exception ex) {
+                return LocalDateTime.parse(dateStr.substring(0, 19));
+            }
+        }
+    }
+
     private LocalDateTime parseExpiryDate(String dateStr) {
         if (dateStr == null || dateStr.isBlank()) return LocalDateTime.now().plusDays(90);
         try {
+            if (dateStr.length() == 10) {
+                return java.time.LocalDate.parse(dateStr).atTime(23, 59, 59);
+            }
             if (dateStr.endsWith("Z") || dateStr.contains("+")) {
                 return java.time.OffsetDateTime.parse(dateStr).toLocalDateTime();
             }
@@ -164,9 +213,11 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         dto.setMinAmount(c.getMinAmount());
         dto.setMaxDiscount(c.getMaxDiscount());
         dto.setDiscount(c.getDiscount());
-        dto.setExpiryDate(c.getExpiryDate().toString());
+        dto.setStartDate(c.getStartDate() != null ? c.getStartDate().toString() : null);
+        dto.setExpiryDate(c.getExpiryDate() != null ? c.getExpiryDate().toString() : null);
         dto.setActive(c.isActive());
         dto.setEligibleCategories(c.getEligibleCategories() != null ? new java.util.ArrayList<>(c.getEligibleCategories()) : new java.util.ArrayList<>());
+        dto.setApplicableUserGroups(c.getApplicableUserGroups() != null ? new java.util.ArrayList<>(c.getApplicableUserGroups()) : new java.util.ArrayList<>());
         return dto;
     }
 }

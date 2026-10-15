@@ -5,6 +5,7 @@ import { getCategories, getServices } from "../../api/public";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { extractList } from "../../utils/dataHelper";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import { Layers, ArrowRight, Scissors, Sparkles, Search } from "lucide-react";
 
 export default function PublicCategoriesPage() {
@@ -111,7 +112,9 @@ export default function PublicCategoriesPage() {
                 No Categories Found
               </h3>
               <p className="text-xs text-groomish-slate/50 mt-1">
-                No categories matched your search term "{search}".
+                {search
+                  ? `No categories matched your search term "${search}".`
+                  : "No salon categories are currently available in the catalog."}
               </p>
             </div>
           ) : (
@@ -129,31 +132,35 @@ export default function PublicCategoriesPage() {
                     className="group bg-white rounded-3xl border border-groomish-slate/10 overflow-hidden shadow-soft hover:shadow-card transition-all duration-300 flex flex-col justify-between"
                   >
                     <div>
-                      {/* Image Thumbnail */}
+                      {/* Circular Image Showcase */}
                       <div
                         onClick={() => navigate(`/category/${category.id}`)}
-                        className="relative h-56 overflow-hidden bg-groomish-slate/10 cursor-pointer"
+                        className="relative pt-8 pb-4 px-6 bg-gradient-to-b from-groomish-cream/80 to-white flex flex-col items-center justify-center cursor-pointer border-b border-groomish-slate/5"
                       >
-                        <img
-                          src={imgSrc}
-                          alt={category.name}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-groomish-slateDark/80 via-transparent to-transparent" />
+                        {/* Service count badge */}
+                        <span className="absolute top-4 right-4 text-[11px] font-bold px-3 py-1 rounded-full bg-white text-groomish-orange border border-groomish-orange/30 shadow-xs">
+                          {serviceCount > 0 ? `${serviceCount} Services` : "Curated Care"}
+                        </span>
 
-                        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white">
-                          <span className="font-heading font-extrabold text-xl group-hover:text-groomish-orangeLight transition-colors">
-                            {category.name}
-                          </span>
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20">
-                            {serviceCount > 0 ? `${serviceCount} Services` : "Curated Care"}
-                          </span>
+                        {/* Circular Avatar */}
+                        <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-full overflow-hidden bg-white border-4 border-groomish-orange/25 shadow-md p-1 group-hover:border-groomish-orange group-hover:scale-105 group-hover:shadow-card transition-all duration-300 flex items-center justify-center">
+                          <img
+                            src={getOptimizedImageUrl(imgSrc, { width: 400 })}
+                            alt={category.name}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover rounded-full"
+                          />
                         </div>
+
+                        <h3 className="font-heading font-extrabold text-xl text-groomish-slate text-center mt-4 group-hover:text-groomish-orange transition-colors">
+                          {category.name}
+                        </h3>
                       </div>
 
                       {/* Content */}
                       <div className="p-6 space-y-3">
-                        <p className="text-xs text-groomish-slate/70 leading-relaxed line-clamp-3">
+                        <p className="text-xs text-groomish-slate/70 leading-relaxed line-clamp-3 text-center sm:text-left">
                           {category.description || "Indulge in our signature salon therapies delivered by master stylists using premium products."}
                         </p>
 

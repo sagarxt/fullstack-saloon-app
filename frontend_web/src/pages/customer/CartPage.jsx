@@ -3,6 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import CustomSelect from "../../components/common/CustomSelect";
+import GroomCoinIcon from "../../components/common/GroomCoinIcon";
+import { useGroomCoin } from "../../context/GroomCoinContext";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/useAuth";
 import { useStore } from "../../context/StoreContext";
@@ -11,6 +13,7 @@ import { useConfirm } from "../../context/ConfirmContext";
 import { storeApi } from "../../api/store";
 import { getPublicServicesApi } from "../../api/service";
 import { extractList } from "../../utils/dataHelper";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import {
   ShoppingCart,
@@ -55,6 +58,7 @@ export default function CartPage() {
     clearCart,
     updateStore,
   } = useCart();
+  const { calculateCoins } = useGroomCoin();
 
   const [notesState, setNotesState] = useState({});
   const [checkingBranch, setCheckingBranch] = useState(false);
@@ -67,6 +71,7 @@ export default function CartPage() {
   const [serviceSearchQuery, setServiceSearchQuery] = useState("");
   const [selectedServiceCategory, setSelectedServiceCategory] = useState("ALL");
   const [addingServiceId, setAddingServiceId] = useState(null);
+  const [selectedSubServiceByServiceId, setSelectedSubServiceByServiceId] = useState({});
 
   const loadAvailableServices = async () => {
     setServiceLoading(true);
@@ -104,14 +109,24 @@ export default function CartPage() {
   const handleAddServiceToCart = async (srv) => {
     setAddingServiceId(srv.id);
     try {
+      const activeSub =
+        selectedSubServiceByServiceId[srv.id] ||
+        (srv.subServices && srv.subServices.length > 0 ? srv.subServices[0] : null);
+
       const ok = await addItem({
         itemType: "SERVICE",
         serviceId: srv.id,
         quantity: 1,
         name: srv.name,
+        subServiceName: activeSub ? activeSub.name : null,
+        subServicePrice: activeSub ? activeSub.price : null,
+        subServiceDuration: activeSub ? activeSub.durationMinutes : null,
       });
       if (ok !== false) {
-        showToast(`Added ${srv.name} to cart!`, "success");
+        showToast(
+          `Added ${srv.name}${activeSub ? ` (${activeSub.name})` : ""} to cart!`,
+          "success"
+        );
       }
     } catch (e) {
       console.error(e);
@@ -151,7 +166,7 @@ export default function CartPage() {
     0
   );
 
-  const estimatedPoints = Math.floor(totalAmount / 100);
+  const estimatedPoints = calculateCoins(totalAmount);
 
   const handleStoreChange = async (targetStoreId) => {
     if (!targetStoreId || targetStoreId === cart?.storeId) return;
@@ -433,8 +448,13 @@ export default function CartPage() {
                               <div className="flex items-start gap-3.5 min-w-0">
                                 <div className="w-16 h-16 rounded-2xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
                                   <img
-                                    src={item.serviceImage || "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&q=80"}
+                                    src={getOptimizedImageUrl(
+                                      item.serviceImage || "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&q=80",
+                                      { width: 200 }
+                                    )}
                                     alt={item.serviceName}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -457,9 +477,17 @@ export default function CartPage() {
                                   <h3 className={`font-heading font-bold text-sm text-groomish-slate mt-1 truncate ${unavailableInfo ? "line-through text-groomish-crimson" : ""}`}>
                                     {item.serviceName}
                                   </h3>
+                                  {item.subServiceName && (
+                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-0.5 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold border border-amber-200/60">
+                                      <span>Option: {item.subServiceName}</span>
+                                      {item.subServiceDuration && (
+                                        <span className="text-[10px] text-amber-600/80">• {item.subServiceDuration}m</span>
+                                      )}
+                                    </div>
+                                  )}
                                   <div className="flex items-center gap-2 text-[11px] text-groomish-slate/60 mt-0.5">
                                     <Clock className="w-3 h-3 text-groomish-gold" />
-                                    <span>{item.serviceDurationMinutes || 30} mins per treatment</span>
+                                    <span>{item.subServiceDuration || item.serviceDurationMinutes || 30} mins per treatment</span>
                                   </div>
                                 </div>
                               </div>
@@ -585,8 +613,13 @@ export default function CartPage() {
                               <div className="flex items-start gap-3.5 min-w-0">
                                 <div className="w-16 h-16 rounded-2xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 p-1 flex items-center justify-center shrink-0">
                                   <img
-                                    src={item.productImage || "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=300&q=80"}
+                                    src={getOptimizedImageUrl(
+                                      item.productImage || "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=300&q=80",
+                                      { width: 200 }
+                                    )}
                                     alt={item.productName}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="max-h-full max-w-full object-contain"
                                   />
                                 </div>
@@ -669,8 +702,9 @@ export default function CartPage() {
                                 </button>
                               </div>
 
-                            <span className="text-[11px] font-bold text-groomish-orange">
-                              +{Math.floor(item.totalPrice / 100)} loyalty pts
+                            <span className="text-[11px] font-bold text-groomish-slate flex items-center gap-1">
+                              <GroomCoinIcon className="w-3.5 h-3.5" />
+                              <span>+{calculateCoins(item.totalPrice)} Groom Coins</span>
                             </span>
                           </div>
                         </div>
@@ -746,14 +780,14 @@ export default function CartPage() {
                   </div>
 
                   {/* Loyalty Points Pill */}
-                  <div className="p-3.5 rounded-2xl bg-groomish-goldLight border border-groomish-gold/30 flex items-center gap-2.5">
-                    <Sparkles className="w-5 h-5 text-groomish-gold fill-groomish-gold shrink-0" />
+                  <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center gap-2.5">
+                    <GroomCoinIcon className="w-5 h-5 shrink-0" />
                     <div>
                       <span className="text-xs font-bold text-groomish-slate block">
-                        Earn +{estimatedPoints} Groomish Points
+                        Earn +{estimatedPoints} Groom Coins
                       </span>
                       <span className="text-[10px] text-groomish-slate/70">
-                        Credited directly to wallet upon appointment completion.
+                        Credited directly to Groom Coin wallet upon appointment completion.
                       </span>
                     </div>
                   </div>
@@ -877,16 +911,23 @@ export default function CartPage() {
               </div>
             ) : filteredServices.length > 0 ? (
               filteredServices.map((srv) => {
-                const inCartItem = serviceItems.find((i) => i.serviceId === srv.id);
+                const activeSub =
+                  selectedSubServiceByServiceId[srv.id] ||
+                  (srv.subServices && srv.subServices.length > 0 ? srv.subServices[0] : null);
+                const displayPrice = activeSub ? activeSub.price : srv.price;
+                const displayDuration = activeSub ? activeSub.durationMinutes : (srv.durationMinutes || 30);
+                const inCartItem = serviceItems.find(
+                  (i) => i.serviceId === srv.id && (!activeSub || i.subServiceName === activeSub.name)
+                );
                 const isAdding = addingServiceId === srv.id;
 
                 return (
                   <div
                     key={srv.id}
-                    className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
+                    className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0 mt-0.5">
                         <img
                           src={
                             srv.image ||
@@ -896,7 +937,7 @@ export default function CartPage() {
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h4 className="text-xs font-bold text-groomish-slate truncate">
                             {srv.name}
@@ -908,16 +949,44 @@ export default function CartPage() {
                           )}
                         </div>
                         <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                          {srv.durationMinutes || 30} mins • {srv.categoryName || "Salon Care"}
+                          {displayDuration} mins • {srv.categoryName || "Salon Care"}
                         </p>
+
+                        {/* Sub-Service Option Selector */}
+                        {srv.subServices && srv.subServices.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {srv.subServices.map((sub) => {
+                              const isSelected = (activeSub?.name || srv.subServices[0]?.name) === sub.name;
+                              return (
+                                <button
+                                  key={sub.id || sub.name}
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedSubServiceByServiceId((prev) => ({
+                                      ...prev,
+                                      [srv.id]: sub,
+                                    }))
+                                  }
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition ${
+                                    isSelected
+                                      ? "bg-groomish-orange text-white"
+                                      : "bg-groomish-cream text-groomish-slate hover:bg-groomish-orangeLight hover:text-groomish-orange"
+                                  }`}
+                                >
+                                  {sub.name} (₹{sub.price})
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-groomish-slate/10">
                       <div className="text-right">
                         <span className="text-xs font-extrabold text-groomish-slate block">
-                          ₹{srv.price}
+                          ₹{displayPrice}
                         </span>
-                        {srv.mrp && srv.mrp > srv.price && (
+                        {srv.mrp && srv.mrp > displayPrice && (
                           <span className="text-[10px] text-groomish-slate/40 line-through">
                             ₹{srv.mrp}
                           </span>

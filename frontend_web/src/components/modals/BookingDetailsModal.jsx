@@ -22,6 +22,7 @@ import {
   Tag,
   ExternalLink,
 } from "lucide-react";
+import GroomCoinIcon from "../common/GroomCoinIcon";
 
 export default function BookingDetailsModal({
   open,
@@ -306,7 +307,7 @@ export default function BookingDetailsModal({
                       type="button"
                       onClick={() => setCustomerProfileOpen(true)}
                       className="hover:text-groomish-orange hover:underline underline-offset-2 transition text-groomish-slate font-bold text-left"
-                      title="Click to view client profile, orders and reward points"
+                      title="Click to view client profile, orders and Groom Coins"
                     >
                       {booking.userName || "Salon Customer"}
                     </button>
@@ -511,12 +512,12 @@ export default function BookingDetailsModal({
                   <span className="font-bold text-groomish-slate">₹{booking.totalAmount}</span>
                 </div>
                 {booking.expectedRewardPoints !== undefined && (
-                  <div className="text-[11px] text-groomish-orange font-bold flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
+                  <div className="text-[11px] text-amber-600 font-bold flex items-center gap-1.5">
+                    <GroomCoinIcon className="w-3.5 h-3.5" />
                     <span>
                       {booking.pointsConfirmed
-                        ? `VIP Points Credited: ${booking.expectedRewardPoints} pts`
-                        : `Pending Reward Points: ~${booking.expectedRewardPoints} pts`}
+                        ? `Groom Coins Credited: +${booking.expectedRewardPoints} coins`
+                        : `Pending Groom Coins: ~${booking.expectedRewardPoints} coins`}
                     </span>
                   </div>
                 )}

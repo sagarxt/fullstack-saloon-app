@@ -26,6 +26,7 @@ public class Coupon {
     private Double minAmount;
     private Double maxDiscount;
     private Double discount;
+    private LocalDateTime startDate;
     private LocalDateTime expiryDate;
 
     @Builder.Default
@@ -36,6 +37,12 @@ public class Coupon {
     @Column(name = "category_name")
     @Builder.Default
     private java.util.List<String> eligibleCategories = new java.util.ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "coupon_applicable_user_groups", joinColumns = @JoinColumn(name = "coupon_id"))
+    @Column(name = "group_name")
+    @Builder.Default
+    private java.util.List<String> applicableUserGroups = new java.util.ArrayList<>();
 
     @CreationTimestamp
     private LocalDateTime createdAt;

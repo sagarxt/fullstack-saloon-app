@@ -12,6 +12,8 @@ import { extractList } from "../../utils/dataHelper";
 import { generateSlots, isPastSlot, getTodayDateString } from "../../utils/slots";
 import { useAuth } from "../../context/useAuth";
 import { useStore } from "../../context/StoreContext";
+import { useGroomCoin } from "../../context/GroomCoinContext";
+import GroomCoinIcon from "../common/GroomCoinIcon";
 import { useNavigate } from "react-router-dom";
 import { getBranchNavigationUrl } from "../../utils/mapHelper";
 import {
@@ -40,6 +42,7 @@ const PLATFORM_FEE = 15;
 export default function BookingFlowModal({ open, onClose, service }) {
   const { user } = useAuth();
   const { selectedStore } = useStore();
+  const { calculateCoins, config } = useGroomCoin();
   const navigate = useNavigate();
 
   const [date, setDate] = useState("");
@@ -180,7 +183,8 @@ export default function BookingFlowModal({ open, onClose, service }) {
   const totalDuration = selectedServices.reduce((sum, s) => sum + (Number(s.durationMinutes) || 0), 0);
   const discount = couponData ? Number(couponData.discountAmount || (price * (couponData.discountPercentage || 0)) / 100) : 0;
   const totalPayable = Math.max(0, price - discount + PLATFORM_FEE);
-  const pointsToEarn = Math.floor(totalPayable / 100);
+  const totalBonusCoins = selectedServices.reduce((sum, s) => sum + (Number(s.rewards) || 0), 0);
+  const coinsToEarn = calculateCoins(totalPayable, totalBonusCoins);
 
   // Quick Date Shortcut buttons
   const todayStr = getTodayDateString(0);
@@ -544,9 +548,14 @@ export default function BookingFlowModal({ open, onClose, service }) {
                 ₹{totalPayable}
               </span>
             </div>
-            <div className="flex items-center gap-1 text-groomish-orange font-bold">
-              <Sparkles className="w-3.5 h-3.5" />
-              Earn +{pointsToEarn} Loyalty Points
+            <div className="flex items-center gap-1.5 text-amber-600 font-bold">
+              <GroomCoinIcon className="w-4 h-4" />
+              <span>Earn +{coinsToEarn} Groom Coins</span>
+              {totalBonusCoins > 0 && (
+                <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  +{totalBonusCoins} Extra Bonus!
+                </span>
+              )}
             </div>
           </div>
 
@@ -672,10 +681,15 @@ export default function BookingFlowModal({ open, onClose, service }) {
           </div>
 
           {/* Loyalty Banner */}
-          <div className="flex items-center gap-2 p-3 bg-groomish-goldLight border border-groomish-gold/30 rounded-xl text-xs text-groomish-slate">
-            <Sparkles className="w-4 h-4 text-groomish-orange shrink-0" />
+          <div className="flex items-center gap-2.5 p-3 bg-groomish-goldLight border border-groomish-gold/30 rounded-xl text-xs text-groomish-slate">
+            <GroomCoinIcon className="w-5 h-5 shrink-0" />
             <span>
-              You will automatically earn <b>+{pointsToEarn} Groomish Loyalty Points</b> on this booking!
+              You will automatically earn <b>+{coinsToEarn} Groom Coins</b> on this booking!
+              {totalBonusCoins > 0 && (
+                <span className="text-amber-800 font-semibold ml-1">
+                  (Includes +{totalBonusCoins} extra bonus coins for your selected services)
+                </span>
+              )}
             </span>
           </div>
 

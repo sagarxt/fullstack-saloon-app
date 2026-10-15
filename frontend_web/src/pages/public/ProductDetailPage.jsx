@@ -7,7 +7,11 @@ import { getPublicProduct, getPublicProducts } from "../../api/products";
 import { getPublicCoupons } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
+import { useGroomCoin } from "../../context/GroomCoinContext";
+import GroomCoinIcon from "../../components/common/GroomCoinIcon";
 import { extractList } from "../../utils/dataHelper";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
+import { getBrandInfo } from "../../utils/brandHelper";
 import {
   ShoppingCart,
   Sparkles,
@@ -25,6 +29,7 @@ import {
   Star,
   Info,
   PhoneCall,
+  Award,
 } from "lucide-react";
 
 export default function ProductDetailPage() {
@@ -32,6 +37,7 @@ export default function ProductDetailPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addItem, items } = useCart();
+  const { calculateCoins, config } = useGroomCoin();
 
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
@@ -157,7 +163,9 @@ export default function ProductDetailPage() {
     product.mrp && product.mrp > product.price
       ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
       : 0;
-  const pointsEarned = Math.floor(product.price / 100);
+  const coinsEarned = calculateCoins(product.price);
+  const brandName = product.brand || "Groomish Pro";
+  const brandInfo = getBrandInfo(brandName);
 
   return (
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
@@ -174,6 +182,13 @@ export default function ProductDetailPage() {
             <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
             <Link to="/products" className="hover:text-groomish-orange">
               Retail Products
+            </Link>
+            <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
+            <Link
+              to={`/products?brand=${encodeURIComponent(brandName)}`}
+              className="hover:text-groomish-orange font-medium"
+            >
+              {brandName}
             </Link>
             {product.category && (
               <>
@@ -198,16 +213,23 @@ export default function ProductDetailPage() {
               {/* Image Preview Card */}
               <div className="relative rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft p-6 sm:p-10 flex flex-col items-center justify-center min-h-[340px] sm:min-h-[460px]">
                 <img
-                  src={mainImageUrl}
+                  src={getOptimizedImageUrl(mainImageUrl, { width: 900 })}
                   alt={product.name}
+                  loading="eager"
+                  decoding="async"
                   className="max-h-[360px] max-w-full object-contain transition-transform duration-500 hover:scale-105"
                 />
 
                 {/* Floating Chips */}
                 <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/95 text-groomish-slate backdrop-blur-md shadow-sm border border-groomish-slate/10">
-                    {product.brand || "Groomish Pro"}
-                  </span>
+                  <Link
+                    to={`/products?brand=${encodeURIComponent(brandName)}`}
+                    className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/95 text-groomish-slate backdrop-blur-md shadow-sm border border-groomish-slate/10 hover:border-groomish-orange hover:text-groomish-orange transition flex items-center gap-1.5"
+                    title={`Browse all ${brandName} products`}
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-groomish-green" />
+                    <span>{brandName}</span>
+                  </Link>
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-groomish-orange text-white shadow-sm">
                     {product.category || "Professional Care"}
                   </span>
@@ -240,8 +262,10 @@ export default function ProductDetailPage() {
                       }`}
                     >
                       <img
-                        src={img}
+                        src={getOptimizedImageUrl(img, { width: 160 })}
                         alt={`${product.name} ${idx + 1}`}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-contain rounded-xl"
                       />
                     </button>
@@ -256,7 +280,7 @@ export default function ProductDetailPage() {
                     {product.name}
                   </h1>
                   <p className="text-xs sm:text-sm text-groomish-slate/60 mt-1 flex items-center gap-2">
-                    <span>By <strong className="text-groomish-slate">{product.brand || "Groomish Pro"}</strong></span>
+                    <span>By <strong className="text-groomish-slate">{brandName}</strong></span>
                     <span>•</span>
                     <span>{product.category || "Hair & Skin Care"}</span>
                     {product.volumeOrSize && (
@@ -266,6 +290,52 @@ export default function ProductDetailPage() {
                       </>
                     )}
                   </p>
+                </div>
+
+                {/* Authentic Brand Card & Quick Link */}
+                <div className="p-4 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl bg-white border border-groomish-slate/15 p-1.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                      {brandInfo.logo ? (
+                        <img
+                          src={getOptimizedImageUrl(brandInfo.logo, { width: 96 })}
+                          alt={`${brandName} Logo`}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : (
+                        <div
+                          className="w-full h-full rounded-lg flex items-center justify-center font-heading font-extrabold text-sm text-white"
+                          style={{
+                            background: `linear-gradient(135deg, ${brandInfo.accentColor || "#F36A22"}, #1E293B)`,
+                          }}
+                        >
+                          {brandInfo.initials}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-heading font-extrabold text-sm text-groomish-slate">
+                          {brandName}
+                        </h4>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-green/10 text-groomish-green border border-groomish-green/20">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Authorized Brand</span>
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-groomish-slate/60 mt-0.5">
+                        {brandInfo.tagline || "Authentic salon formulations backed by manufacturer guarantee."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link
+                    to={`/products?brand=${encodeURIComponent(brandName)}`}
+                    className="btn-secondary text-xs px-3.5 py-2 inline-flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-center hover:bg-groomish-orange hover:text-white hover:border-groomish-orange transition"
+                  >
+                    <span>View all {brandName}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </div>
 
                 {/* Description */}
@@ -312,8 +382,8 @@ export default function ProductDetailPage() {
                     <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-groomish-cream/70">
                       <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold block">Instant Loyalty Points Accrual</span>
-                        <span className="text-groomish-slate/60 text-[11px]">Earn +1 VIP Point on every ₹100 spent automatically.</span>
+                        <span className="font-bold block">Instant Groom Coin Accrual</span>
+                        <span className="text-groomish-slate/60 text-[11px]">Earn Groom Coins automatically on every ₹{config?.spendAmountPerCoin || 100} spent.</span>
                       </div>
                     </div>
                   </div>
@@ -421,17 +491,17 @@ export default function ProductDetailPage() {
                   </p>
                 </div>
 
-                {/* Loyalty Bonus Banner */}
+                {/* Groom Coin Bonus Banner */}
                 <div className="p-4 rounded-2xl bg-groomish-goldLight border border-groomish-gold/30 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-groomish-gold text-groomish-slate flex items-center justify-center shrink-0">
-                    <Sparkles className="w-5 h-5 text-groomish-slate fill-current" />
+                  <div className="w-9 h-9 rounded-xl bg-groomish-gold/20 flex items-center justify-center shrink-0">
+                    <GroomCoinIcon className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-groomish-slate block">
-                      Earn +{pointsEarned * quantity} Loyalty Points
+                    <span className="text-xs font-bold text-groomish-slate block flex items-center gap-1.5">
+                      Earn +{coinsEarned * quantity} Groom Coins
                     </span>
                     <span className="text-[11px] text-groomish-slate/70">
-                      Redeem points for discounts & complimentary treatments.
+                      Redeem Groom Coins for discounts & complimentary salon treatments.
                     </span>
                   </div>
                 </div>
@@ -499,7 +569,7 @@ export default function ProductDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Store className="w-4 h-4 text-groomish-orange shrink-0" />
-                    <span>Pickup available across all Bangalore salon branches</span>
+                    <span>Pickup available across all salon branches</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-groomish-blue shrink-0" />
@@ -512,7 +582,7 @@ export default function ProductDetailPage() {
                   <span>Questions about this beauty product?</span>
                   <p className="font-bold text-groomish-orange mt-0.5 flex items-center justify-center gap-1.5">
                     <PhoneCall className="w-3.5 h-3.5" />
-                    <span>Call Salon Concierge: +91 98765 43210</span>
+                    <span>Call Salon Concierge: +91 90000 80000</span>
                   </p>
                 </div>
               </div>

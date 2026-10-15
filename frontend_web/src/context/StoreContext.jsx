@@ -31,9 +31,14 @@ export const StoreProvider = ({ children }) => {
         // Auto-select nearest store (the first one returned by proximity sorting)
         setSelectedStore(storeList[0]);
         localStorage.setItem("groomish_selected_store_id", storeList[0].id);
+      } else {
+        setSelectedStore(null);
+        localStorage.removeItem("groomish_selected_store_id");
       }
     } catch (err) {
       console.error("Failed to load salon stores:", err);
+      setStores([]);
+      setSelectedStore(null);
     } finally {
       setLoading(false);
     }
@@ -82,6 +87,7 @@ export const StoreProvider = ({ children }) => {
         stores,
         selectedStore,
         selectStore,
+        setSelectedStore: selectStore,
         loading,
         userLocation,
         locationStatus,

@@ -8,12 +8,15 @@ import {
   getCustomerPointsHistoryApi,
   getCustomerBookingsApi,
   toggleUserStatusApi,
+  updateUserGroupsApi,
+  getUserGroupsCatalogApi,
 } from "../../api/admin";
 import { updateCustomerByStaff } from "../../api/staff";
 import { extractList } from "../../utils/dataHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import {
   User,
+  Users,
   Crown,
   Sparkles,
   Calendar,
@@ -38,6 +41,7 @@ import {
   Trash2,
   Package,
 } from "lucide-react";
+import GroomCoinIcon from "../common/GroomCoinIcon";
 import {
   getUserCart,
   updateItemForUser,
@@ -90,6 +94,60 @@ export default function CustomerProfileModal({
   const [userCart, setUserCart] = useState(null);
   const [loadingCart, setLoadingCart] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState(false);
+
+  // Customer Groups State
+  const [assignedGroups, setAssignedGroups] = useState([]);
+  const [userGroupsCatalog, setUserGroupsCatalog] = useState([]);
+  const [savingGroups, setSavingGroups] = useState(false);
+  const [groupSuccessMsg, setGroupSuccessMsg] = useState("");
+  const [customGroupInput, setCustomGroupInput] = useState("");
+
+  const handleToggleGroup = (groupId) => {
+    setGroupSuccessMsg("");
+    setAssignedGroups((prev) => {
+      const upper = groupId.toUpperCase();
+      if (prev.includes(upper)) {
+        return prev.filter((g) => g !== upper);
+      } else {
+        return [...prev, upper];
+      }
+    });
+  };
+
+  const handleAddCustomGroup = (e) => {
+    e.preventDefault();
+    const tag = customGroupInput.trim().toUpperCase().replace(/\s+/g, "_");
+    if (!tag) return;
+    if (!assignedGroups.includes(tag)) {
+      setAssignedGroups((prev) => [...prev, tag]);
+    }
+    setCustomGroupInput("");
+  };
+
+  const handleSaveUserGroups = async () => {
+    if (!customerId || savingGroups) return;
+    setSavingGroups(true);
+    setGroupSuccessMsg("");
+    try {
+      const res = await updateUserGroupsApi(customerId, assignedGroups);
+      const updatedUser = res.data;
+      setProfile((prev) => ({
+        ...prev,
+        userGroups: updatedUser.userGroups,
+        effectiveGroups: updatedUser.effectiveGroups,
+      }));
+      setAssignedGroups(Array.from(updatedUser.userGroups || []));
+      setGroupSuccessMsg("User groups updated successfully!");
+      if (onStatusChange) {
+        onStatusChange();
+      }
+      setTimeout(() => setGroupSuccessMsg(""), 3000);
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update user groups");
+    } finally {
+      setSavingGroups(false);
+    }
+  };
 
   const handleToggleStatus = async () => {
     if (!customerId || togglingStatus) return;
@@ -164,14 +222,20 @@ export default function CustomerProfileModal({
     if (!customerId) return;
     setLoading(true);
     try {
-      const [profileRes, pointsRes, historyRes, bookingsRes] = await Promise.all([
+      const [profileRes, pointsRes, historyRes, bookingsRes, catalogRes] = await Promise.all([
         getCustomerProfileApi(customerId).catch(() => ({ data: initialData })),
         getCustomerPointsApi(customerId).catch(() => ({ data: null })),
         getCustomerPointsHistoryApi(customerId, 0, 50).catch(() => ({ data: [] })),
         getCustomerBookingsApi(customerId, 0, 50).catch(() => ({ data: [] })),
+        getUserGroupsCatalogApi().catch(() => ({ data: [] })),
       ]);
 
-      setProfile(profileRes?.data || initialData);
+      const prof = profileRes?.data || initialData;
+      setProfile(prof);
+      setAssignedGroups(prof?.userGroups ? Array.from(prof.userGroups) : []);
+      if (catalogRes?.data && Array.isArray(catalogRes.data)) {
+        setUserGroupsCatalog(catalogRes.data);
+      }
       setPointsData(pointsRes?.data || null);
       setPointsHistory(extractList(historyRes?.data));
       setBookings(extractList(bookingsRes?.data));
@@ -189,6 +253,7 @@ export default function CustomerProfileModal({
       fetchCustomerDetails();
     } else {
       setProfile(initialData);
+      setAssignedGroups(initialData?.userGroups ? Array.from(initialData.userGroups) : []);
       setPointsData(null);
       setPointsHistory([]);
       setBookings([]);
@@ -246,10 +311,16 @@ export default function CustomerProfileModal({
     }
   };
 
-  const activeTier = pointsData?.tier || profile?.tier || "SILVER";
-  const tierInfo = getTierDetails(activeTier);
   const currentPoints = pointsData?.points ?? profile?.points ?? 0;
-  const lifetimePoints = pointsData?.lifetimePoints ?? currentPoints;
+  const lifetimePoints = pointsData?.lifetimePoints ?? profile?.lifetimePoints ?? currentPoints;
+  const calculateTierFromLifetime = (pts) => {
+    if (pts >= 300) return "DIAMOND";
+    if (pts >= 150) return "PLATINUM";
+    if (pts >= 50) return "GOLD";
+    return "SILVER";
+  };
+  const activeTier = pointsData?.tier || profile?.tier || calculateTierFromLifetime(lifetimePoints);
+  const tierInfo = getTierDetails(activeTier);
 
   const completedBookings = bookings.filter((b) => b.status === "COMPLETED");
   const totalSpend = completedBookings.reduce(
@@ -317,6 +388,21 @@ export default function CustomerProfileModal({
                   </span>
                 )}
               </div>
+
+              {/* Active Groups Chips */}
+              {((profile?.effectiveGroups && profile.effectiveGroups.length > 0) || (assignedGroups.length > 0)) && (
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {(profile?.effectiveGroups || assignedGroups).map((grp) => (
+                    <span
+                      key={grp}
+                      className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-[10px] border border-indigo-200/60 inline-flex items-center gap-1"
+                    >
+                      <Users className="w-2.5 h-2.5" />
+                      {grp.replace(/_/g, " ")}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -368,26 +454,26 @@ export default function CustomerProfileModal({
 
         {/* LUXURY LOYALTY CARD & STATS ROW */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          {/* Card 1: Reward Points Balance */}
+          {/* Card 1: Groom Coins Balance */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-groomish-slate via-groomish-slate to-[#1a2233] text-white shadow-soft relative overflow-hidden flex flex-col justify-between">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-groomish-gold/10 rounded-full blur-xl pointer-events-none" />
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold text-white/50 uppercase tracking-wider">
-                  Available Rewards
+                  Groom Coins
                 </span>
-                <Sparkles className="w-4 h-4 text-groomish-gold" />
+                <GroomCoinIcon className="w-5 h-5" />
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-3xl font-heading font-black text-groomish-gold">
+                <span className="text-3xl font-heading font-black text-amber-400">
                   {currentPoints}
                 </span>
-                <span className="text-xs font-bold text-white/70">points</span>
+                <span className="text-xs font-bold text-white/70">coins</span>
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-[11px] text-white/60">
-              <span>Lifetime: <b className="text-white">{lifetimePoints} pts</b></span>
-              <span className="text-groomish-goldLight font-semibold">{tierInfo.multiplier}</span>
+              <span>Lifetime: <b className="text-white">{lifetimePoints} coins</b></span>
+              <span className="text-amber-300 font-semibold">{tierInfo.multiplier}</span>
             </div>
           </div>
 
@@ -461,12 +547,12 @@ export default function CustomerProfileModal({
             onClick={() => setActiveTab("POINTS")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
               activeTab === "POINTS"
-                ? "bg-groomish-orange text-white shadow-soft"
+                ? "bg-amber-600 text-white shadow-soft"
                 : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Reward Points Ledger ({pointsHistory.length})</span>
+            <GroomCoinIcon className="w-3.5 h-3.5" />
+            <span>Groom Coins Ledger ({pointsHistory.length})</span>
           </button>
 
           <button
@@ -644,12 +730,12 @@ export default function CustomerProfileModal({
           </div>
         )}
 
-        {/* TAB 2: REWARD POINTS LEDGER */}
+        {/* TAB 2: GROOM COINS LEDGER */}
         {activeTab === "POINTS" && (
           <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-groomish-goldLight/50 border border-groomish-gold/20 flex items-center justify-between text-xs">
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                <GroomCoinIcon className="w-4 h-4 shrink-0" />
                 <span className="font-bold text-groomish-slate">
                   Tier Multiplier: <span className="text-groomish-orange">{tierInfo.multiplier}</span>
                 </span>
@@ -657,19 +743,20 @@ export default function CustomerProfileModal({
                   • {tierInfo.perk}
                 </span>
               </div>
-              <span className="font-black text-groomish-slate font-heading">
-                {currentPoints} Points Available
+              <span className="font-black text-groomish-slate font-heading flex items-center gap-1.5">
+                <GroomCoinIcon className="w-4 h-4" />
+                {currentPoints} Coins Available
               </span>
             </div>
 
             {loading ? (
               <div className="py-12 text-center text-xs text-groomish-slate/50">
                 <div className="w-6 h-6 border-2 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                Loading loyalty points activity...
+                Loading Groom Coins activity...
               </div>
             ) : pointsHistory.length === 0 ? (
               <div className="py-12 text-center text-xs text-groomish-slate/40 border border-dashed border-groomish-slate/20 rounded-2xl">
-                No loyalty reward point transactions recorded yet.
+                No Groom Coin transactions recorded yet.
               </div>
             ) : (
               <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
@@ -711,7 +798,7 @@ export default function CustomerProfileModal({
                             isPositive ? "text-groomish-green" : "text-groomish-crimson"
                           }`}
                         >
-                          {isPositive ? `+${item.changeAmount}` : item.changeAmount} pts
+                          {isPositive ? `+${item.changeAmount}` : item.changeAmount} Coins
                         </span>
                       </div>
                     </div>
@@ -759,6 +846,146 @@ export default function CustomerProfileModal({
                 <span className="text-[10px] font-bold uppercase text-groomish-slate/50 block">Assigned / Home Salon</span>
                 <span className="font-semibold text-groomish-slate text-sm mt-0.5 block">{profile?.storeName || "All Locations"}</span>
               </div>
+            </div>
+
+            {/* Customer Groups & Cohorts Management */}
+            <div className="mt-4 pt-4 border-t border-groomish-slate/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-heading font-extrabold text-xs text-groomish-slate flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Customer Groups & Targeted Cohorts</span>
+                  </h5>
+                  <p className="text-[11px] text-groomish-slate/60 mt-0.5">
+                    Linked groups determine promotional coupon eligibility and targeted email broadcasts.
+                  </p>
+                </div>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={handleSaveUserGroups}
+                    disabled={savingGroups}
+                    className="btn-primary text-[11px] px-3 py-1.5 flex items-center gap-1 shadow-xs"
+                  >
+                    {savingGroups ? (
+                      <>
+                        <RefreshCw className="w-3 h-3 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3 h-3" />
+                        <span>Save Groups</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+
+              {groupSuccessMsg && (
+                <div className="p-2.5 bg-emerald-50 text-emerald-700 text-xs rounded-xl flex items-center gap-1.5 border border-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{groupSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* Effective Groups Overview */}
+              <div>
+                <span className="text-[10px] uppercase font-bold text-groomish-slate/50 block mb-1">
+                  Active Effective Cohorts (Dynamic + Assigned)
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {(profile?.effectiveGroups && profile.effectiveGroups.length > 0) ? (
+                    profile.effectiveGroups.map((g) => (
+                      <span
+                        key={g}
+                        className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-[11px] border border-indigo-200/70 inline-flex items-center gap-1 shadow-2xs"
+                      >
+                        <Users className="w-3 h-3 text-indigo-500" />
+                        {g.replace(/_/g, " ")}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[11px] text-groomish-slate/40 italic">
+                      No active customer cohorts.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Assigned Groups Editor (for Admins) */}
+              {isAdmin && (
+                <div className="p-3 rounded-xl bg-groomish-cream/40 border border-groomish-slate/10 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-groomish-slate/60 block">
+                    Manage Assigned Groups (Click to Toggle)
+                  </span>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      "NEW_USER",
+                      "SILVER",
+                      "GOLD",
+                      "PLATINUM",
+                      "1_YEAR_PLUS",
+                      "2_YEAR_PLUS",
+                      "VIP",
+                      "FREQUENT_VISITOR",
+                      "STUDENT",
+                      "BIRTHDAY_SPECIAL",
+                      "CHURN_RISK",
+                      ...assignedGroups.filter(
+                        (g) =>
+                          ![
+                            "NEW_USER",
+                            "SILVER",
+                            "GOLD",
+                            "PLATINUM",
+                            "1_YEAR_PLUS",
+                            "2_YEAR_PLUS",
+                            "VIP",
+                            "FREQUENT_VISITOR",
+                            "STUDENT",
+                            "BIRTHDAY_SPECIAL",
+                            "CHURN_RISK",
+                          ].includes(g)
+                      ),
+                    ].map((grp) => {
+                      const active = assignedGroups.includes(grp);
+                      return (
+                        <button
+                          key={grp}
+                          type="button"
+                          onClick={() => handleToggleGroup(grp)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 border ${
+                            active
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                              : "bg-white text-groomish-slate/70 border-groomish-slate/15 hover:border-indigo-400"
+                          }`}
+                        >
+                          {active ? <Check className="w-3 h-3 text-white" /> : <Plus className="w-3 h-3 text-groomish-slate/40" />}
+                          <span>{grp.replace(/_/g, " ")}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Custom Tag */}
+                  <form onSubmit={handleAddCustomGroup} className="flex items-center gap-2 pt-1">
+                    <input
+                      value={customGroupInput}
+                      onChange={(e) => setCustomGroupInput(e.target.value)}
+                      placeholder="Add custom cohort tag (e.g. INFLUENCER, BRIDAL)..."
+                      className="input-groomish text-xs py-1.5 font-semibold"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 rounded-xl bg-groomish-slate text-white text-xs font-bold hover:bg-groomish-slate/90 transition shrink-0"
+                    >
+                      + Add Cohort
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
 
             <div className="pt-2 border-t border-groomish-slate/10 flex items-center justify-between text-xs text-groomish-slate/50">

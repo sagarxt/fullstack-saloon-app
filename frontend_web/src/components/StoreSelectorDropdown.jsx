@@ -79,7 +79,7 @@ export default function StoreSelectorDropdown({ compact = false }) {
               )}
           </div>
           <span className="text-[11px] sm:text-xs font-bold text-groomish-slate truncate leading-tight">
-            {selectedStore ? selectedStore.name : loading ? "Locating..." : "Select Branch"}
+            {selectedStore ? selectedStore.name : loading ? "Locating..." : stores.length === 0 ? "No Branches" : "Select Branch"}
           </span>
         </div>
 
@@ -156,7 +156,11 @@ export default function StoreSelectorDropdown({ compact = false }) {
 
           {/* Store List */}
           <div className="max-h-72 overflow-y-auto divide-y divide-groomish-slate/5 p-1">
-            {filteredStores.length === 0 ? (
+            {stores.length === 0 ? (
+              <div className="p-6 text-center text-xs text-groomish-slate/50">
+                No salon branches configured yet.
+              </div>
+            ) : filteredStores.length === 0 ? (
               <div className="p-6 text-center text-xs text-groomish-slate/50">
                 No salon branches match your search.
               </div>

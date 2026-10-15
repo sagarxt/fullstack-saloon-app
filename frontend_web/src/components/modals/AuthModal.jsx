@@ -13,7 +13,7 @@ import { useAuth } from "../../context/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, User, Phone, Gift, Eye, EyeOff, Sparkles, CheckCircle2, AlertCircle, Loader2, RotateCcw, KeyRound } from "lucide-react";
 
-export default function AuthModal({ open, onClose }) {
+export default function AuthModal({ open, onClose, onSuccess }) {
   const [mode, setMode] = useState("login"); // "login" | "register" | "forgot"
   const [step, setStep] = useState("form"); // "form" | "otp"
   const [showPassword, setShowPassword] = useState(false);
@@ -150,6 +150,7 @@ export default function AuthModal({ open, onClose }) {
       }
       // CUSTOMER remains on current page (e.g. products, services)
       onClose();
+      onSuccess?.();
     } catch (err) {
       const msg = err.response?.data?.message || "Invalid credentials. Please try again.";
       setError(msg);
@@ -325,6 +326,7 @@ export default function AuthModal({ open, onClose }) {
       }
       // CUSTOMER remains on the page they were browsing!
       onClose();
+      onSuccess?.();
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || err.message || "Registration failed. Please check your details.";
       if (msg.toLowerCase().includes("referral")) {

@@ -23,6 +23,7 @@ import {
   Ticket,
   ShoppingCart,
 } from "lucide-react";
+import GroomCoinIcon from "./common/GroomCoinIcon";
 import { useCart } from "../context/CartContext";
 
 export default function Navbar() {
@@ -250,7 +251,7 @@ export default function Navbar() {
                       <span>My Profile</span>
                     </button>
 
-                    {/* Loyalty Rewards below My Profile */}
+                    {/* Groom Coins & Rewards below My Profile */}
                     {isCustomer && (
                       <>
                         <button
@@ -258,10 +259,17 @@ export default function Navbar() {
                             setUserDropdown(false);
                             navigate("/customer/rewards");
                           }}
-                          className="w-full px-4 py-2 text-left text-xs font-semibold text-groomish-slate hover:bg-groomish-cream flex items-center gap-2.5 transition"
+                          className="w-full px-4 py-2 text-left text-xs font-semibold text-groomish-slate hover:bg-groomish-cream flex items-center justify-between transition"
                         >
-                          <Gift className="w-4 h-4 text-groomish-orange" />
-                          <span>Loyalty Rewards</span>
+                          <div className="flex items-center gap-2.5">
+                            <GroomCoinIcon className="w-4 h-4" />
+                            <span>Groom Coins</span>
+                          </div>
+                          {points !== null && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">
+                              {points} GC
+                            </span>
+                          )}
                         </button>
 
                         <button
@@ -437,10 +445,17 @@ export default function Navbar() {
                     setMobileMenuOpen(false);
                     navigate("/customer/rewards");
                   }}
-                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2 flex items-center gap-2"
+                  className="w-full text-left font-semibold text-xs uppercase tracking-wider text-groomish-slate py-2 flex items-center justify-between"
                 >
-                  <Gift className="w-4 h-4 text-groomish-orange" />
-                  <span>Loyalty Rewards</span>
+                  <div className="flex items-center gap-2">
+                    <GroomCoinIcon className="w-4 h-4" />
+                    <span>Groom Coins</span>
+                  </div>
+                  {points !== null && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">
+                      {points} GC
+                    </span>
+                  )}
                 </button>
 
                 <button

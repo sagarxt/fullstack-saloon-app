@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getAllReviewsApi, deleteReviewByAdminApi } from "../../api/admin";
+import { getAllReviewsApi } from "../../api/admin";
+import { forceDeleteReviewApi } from "../../api/maintenance";
 import { extractList } from "../../utils/dataHelper";
 import { showConfirm } from "../../context/ConfirmContext";
 import { Star, Trash2, RefreshCw, MessageSquare } from "lucide-react";
@@ -29,14 +30,14 @@ export default function ReviewsPage() {
 
   const handleDelete = async (id) => {
     const ok = await showConfirm({
-      title: "Delete Customer Review",
-      message: "Are you sure you want to permanently delete this customer review?",
-      confirmText: "Delete Review",
+      title: "Force Delete Customer Review?",
+      message: "Are you sure you want to permanently delete this customer review? This cannot be undone.",
+      confirmText: "Force Delete",
       variant: "danger",
     });
     if (!ok) return;
     try {
-      await deleteReviewByAdminApi(id);
+      await forceDeleteReviewApi(id);
       loadReviews();
     } catch (err) {
       console.error(err);
@@ -105,8 +106,8 @@ export default function ReviewsPage() {
 
                   <button
                     onClick={() => handleDelete(r.id)}
-                    className="p-1.5 text-groomish-slate/30 hover:text-groomish-crimson transition"
-                    title="Delete review"
+                    className="p-1.5 rounded-lg text-groomish-slate/40 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition"
+                    title="Force Delete review"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

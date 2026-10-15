@@ -14,4 +14,5 @@ public class ServiceRequest {
     private Double price;
     private Integer rewards;
     private Integer durationMinutes;
+    private java.util.List<SubServiceDto> subServices;
 }

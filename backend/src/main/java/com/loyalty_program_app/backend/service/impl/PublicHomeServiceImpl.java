@@ -90,6 +90,18 @@ public class PublicHomeServiceImpl implements PublicHomeService {
         dto.setDurationMinutes(s.getDurationMinutes());
         dto.setActive(s.isActive());
 
+        if (s.getSubServices() != null) {
+            dto.setSubServices(s.getSubServices().stream()
+                    .map(sub -> com.loyalty_program_app.backend.dto.service.SubServiceDto.builder()
+                            .id(sub.getId())
+                            .name(sub.getName())
+                            .price(sub.getPrice())
+                            .durationMinutes(sub.getDurationMinutes())
+                            .active(sub.isActive())
+                            .build())
+                    .toList());
+        }
+
         return dto;
     }
 

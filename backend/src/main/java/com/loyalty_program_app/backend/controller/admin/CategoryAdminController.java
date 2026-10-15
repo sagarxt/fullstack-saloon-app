@@ -40,14 +40,15 @@ public class CategoryAdminController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) MultipartFile image,
-            @RequestParam(required = false) String imageUrl
+            @RequestParam(required = false) String imageUrl,
+            @RequestParam(required = false) Boolean active
     ) {
-        return categoryAdminService.updateCategory(id, name, description, image, imageUrl);
+        return categoryAdminService.updateCategory(id, name, description, image, imageUrl, active);
     }
 
     @PutMapping(value = "/{id}", consumes = {"application/json"})
     public CategoryResponse updateCategoryJson(@PathVariable UUID id, @RequestBody CategoryRequest request) {
-        return categoryAdminService.updateCategory(id, request.getName(), request.getDescription(), null, request.getImage());
+        return categoryAdminService.updateCategory(id, request.getName(), request.getDescription(), null, request.getImage(), request.getActive());
     }
 
     @DeleteMapping("/{id}")

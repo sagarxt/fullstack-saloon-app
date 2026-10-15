@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { updateBookingStatus } from "../../api/admin";
 import CustomerProfileModal from "../modals/CustomerProfileModal";
-import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, MapPin, User } from "lucide-react";
+import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, MapPin, User, Trash2 } from "lucide-react";
+import { forceDeleteBookingApi } from "../../api/maintenance";
 
 export default function BookingCard({ booking, refresh }) {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -67,7 +68,7 @@ export default function BookingCard({ booking, refresh }) {
                     type="button"
                     onClick={() => setProfileModalOpen(true)}
                     className="hover:text-groomish-orange hover:underline underline-offset-2 transition text-groomish-slate font-bold inline-flex items-center gap-1"
-                    title="Click to view customer profile, orders and reward points"
+                    title="Click to view customer profile, orders and Groom Coins"
                   >
                     <User className="w-3 h-3 text-groomish-slate/40" />
                     <span>{booking.userName || booking.bookedBy}</span>
@@ -140,6 +141,28 @@ export default function BookingCard({ booking, refresh }) {
             <span>Details</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </Link>
+
+          <button
+            disabled={loading}
+            onClick={async () => {
+              if (window.confirm(`FORCE DELETE booking ${booking.bookingCode || ""}? This permanently deletes the appointment from the database.`)) {
+                try {
+                  setLoading(true);
+                  await forceDeleteBookingApi(booking.id);
+                  if (refresh) refresh();
+                } catch (err) {
+                  alert(err.response?.data?.message || "Failed to force delete booking.");
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition shadow-2xs"
+            title="Permanently remove booking from database"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Force Delete</span>
+          </button>
         </div>
       </div>
 

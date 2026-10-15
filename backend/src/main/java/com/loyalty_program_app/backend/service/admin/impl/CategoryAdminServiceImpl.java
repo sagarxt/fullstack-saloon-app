@@ -29,11 +29,11 @@ public class CategoryAdminServiceImpl implements CategoryAdminService {
     public CategoryResponse createCategory(String name, String description, MultipartFile image, String imageUrl) {
         String finalImageUrl = null;
         if (image != null && !image.isEmpty()) {
-            finalImageUrl = cloudinaryService.uploadImage(image, "groomishnow/category");
+            finalImageUrl = cloudinaryService.uploadImage(image, "groomishnow/category", name);
         } else if (imageUrl != null && !imageUrl.isBlank()) {
             String trimmedUrl = imageUrl.trim();
             if (!trimmedUrl.contains("cloudinary.com")) {
-                finalImageUrl = cloudinaryService.upload(trimmedUrl, "groomishnow/category");
+                finalImageUrl = cloudinaryService.upload(trimmedUrl, "groomishnow/category", name);
             } else {
                 finalImageUrl = trimmedUrl;
             }
@@ -51,24 +51,32 @@ public class CategoryAdminServiceImpl implements CategoryAdminService {
 
     @Override
     public CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image) {
-        return updateCategory(id, name, description, image, null);
+        return updateCategory(id, name, description, image, null, null);
     }
 
     @Override
     public CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image, String imageUrl) {
+        return updateCategory(id, name, description, image, imageUrl, null);
+    }
+
+    @Override
+    public CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image, String imageUrl, Boolean active) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
         if (name != null) category.setName(name);
         if (description != null) category.setDescription(description);
+        if (active != null) category.setActive(active);
+
+        String targetName = (name != null && !name.isBlank()) ? name : category.getName();
 
         if (image != null && !image.isEmpty()) {
-            String uploadedUrl = cloudinaryService.uploadImage(image, "groomishnow/category");
+            String uploadedUrl = cloudinaryService.uploadImage(image, "groomishnow/category", targetName);
             category.setImage(uploadedUrl);
         } else if (imageUrl != null && !imageUrl.isBlank()) {
             String trimmedUrl = imageUrl.trim();
             if (!trimmedUrl.contains("cloudinary.com")) {
-                category.setImage(cloudinaryService.upload(trimmedUrl, "groomishnow/category"));
+                category.setImage(cloudinaryService.upload(trimmedUrl, "groomishnow/category", targetName));
             } else {
                 category.setImage(trimmedUrl);
             }

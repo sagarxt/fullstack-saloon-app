@@ -9,7 +9,9 @@ public class CouponRequest {
     private Double minAmount;
     private Double maxDiscount;
     private Double discount;
+    private String startDate; // ISO: 2026-10-15T00:00:00
     private String expiryDate; // ISO: 2025-01-25T00:00:00
     private Boolean active;
     private java.util.List<String> eligibleCategories;
+    private java.util.List<String> applicableUserGroups;
 }

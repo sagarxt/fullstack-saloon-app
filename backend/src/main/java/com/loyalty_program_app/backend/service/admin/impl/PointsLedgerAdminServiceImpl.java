@@ -71,8 +71,14 @@ public class PointsLedgerAdminServiceImpl implements PointsLedgerAdminService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         int amount = request.getChangeAmount();
-        user.setPoints(user.getPoints() + amount); // update total points
-
+        user.setPoints((user.getPoints() != null ? user.getPoints() : 0) + amount);
+        if (amount > 0) {
+            int currentLifetime = (user.getLifetimePoints() != null && user.getLifetimePoints() > 0)
+                    ? user.getLifetimePoints()
+                    : ((user.getPoints() != null ? user.getPoints() : 0) - amount);
+            user.setLifetimePoints(currentLifetime + amount);
+        }
+        user.setTier(user.calculateTierFromLifetimePoints());
         userRepository.save(user);
 
         // create ledger entry

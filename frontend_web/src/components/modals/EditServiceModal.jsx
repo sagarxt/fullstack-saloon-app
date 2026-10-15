@@ -3,7 +3,8 @@ import ModalWrapper from "./ModalWrapper";
 import { updateServiceApi } from "../../api/service";
 import CloudinaryImageUploader from "../common/CloudinaryImageUploader";
 import CustomSelect from "../common/CustomSelect";
-import { Scissors, AlertCircle, Save } from "lucide-react";
+import GroomCoinIcon from "../common/GroomCoinIcon";
+import { Scissors, AlertCircle, Save, Plus, Trash2, Layers } from "lucide-react";
 
 export default function EditServiceModal({
   open,
@@ -13,6 +14,8 @@ export default function EditServiceModal({
   refresh,
 }) {
   const [form, setForm] = useState({});
+  const [enableSubServices, setEnableSubServices] = useState(false);
+  const [subServices, setSubServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,13 +25,53 @@ export default function EditServiceModal({
         ...service,
         categoryId: service.categoryId || service.category?.id || "",
         gender: service.gender || "UNISEX",
+        rewards: service.rewards ?? 0,
+        active: service.active ?? true,
       });
+      const subs = service.subServices || [];
+      setSubServices(
+        subs.map((s) => ({
+          id: s.id,
+          name: s.name,
+          price: s.price,
+          durationMinutes: s.durationMinutes,
+        }))
+      );
+      setEnableSubServices(subs.length > 0);
       setError("");
     }
   }, [service]);
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const addSubServiceRow = () => {
+    setSubServices((prev) => [
+      ...prev,
+      {
+        name: "",
+        price: form.price || "",
+        durationMinutes: form.durationMinutes || "30",
+      },
+    ]);
+  };
+
+  const updateSubService = (index, field, value) => {
+    setSubServices((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const removeSubService = (index) => {
+    setSubServices((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleUpdate = async (e) => {
     if (e) e.preventDefault();
@@ -41,11 +84,28 @@ export default function EditServiceModal({
     setError("");
 
     try {
+      const validSubServices = enableSubServices
+        ? subServices
+          .filter((s) => s.name && s.name.trim())
+          .map((s) => ({
+            id: s.id || null,
+            name: s.name.trim(),
+            price: parseFloat(s.price || form.price || 0),
+            durationMinutes: s.durationMinutes
+              ? parseInt(s.durationMinutes, 10)
+              : parseInt(form.durationMinutes || "30", 10),
+            active: true,
+          }))
+        : [];
+
       const payload = {
         ...form,
+        active: form.active !== undefined ? Boolean(form.active) : true,
         mrp: form.mrp ? parseFloat(form.mrp) : parseFloat(form.price),
         price: parseFloat(form.price),
         durationMinutes: parseInt(form.durationMinutes || "30", 10),
+        rewards: form.rewards ? parseInt(form.rewards, 10) : 0,
+        subServices: validSubServices,
       };
       await updateServiceApi(service.id, payload);
       refresh();
@@ -73,7 +133,7 @@ export default function EditServiceModal({
               Edit Salon Service
             </h2>
           </div>
-          <p className="text-[11px] text-groomish-slate/60 hidden sm:block max-w-[260px] text-right">
+          <p className="text-[11px] text-groomish-slate/60 hidden sm:block max-w-[350px] text-right">
             Update pricing, duration, gender target, or photography.
           </p>
         </div>
@@ -176,7 +236,55 @@ export default function EditServiceModal({
             </div>
           </div>
 
-          {/* Row 3: Description & Image Uploader side by side */}
+          {/* Row 3: Groom Coins & Active Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            <div>
+              <label className="block text-xs font-bold text-groomish-slate mb-1 flex items-center gap-1.5">
+                <GroomCoinIcon className="w-3.5 h-3.5" />
+                <span>Extra Groom Coins</span>
+                <span className="text-[10px] font-normal text-groomish-slate/50">(Optional)</span>
+              </label>
+              <input
+                type="number"
+                name="rewards"
+                value={form.rewards ?? ""}
+                onChange={handleChange}
+                placeholder="0"
+                min="0"
+                className="w-full px-3 py-2 rounded-xl border border-amber-300/60 bg-amber-50/40 text-xs text-groomish-slate focus:outline-none focus:ring-2 focus:ring-groomish-gold/40"
+              />
+            </div>
+            {/* active status toggle based on */}
+            <div>
+              <label className="block text-xs font-bold text-groomish-slate mb-1">
+                Active Status
+              </label>
+              <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 hover:border-groomish-slate/30 transition">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-block w-2.5 h-2.5 rounded-full ${
+                      form.active ? "bg-emerald-500 animate-pulse" : "bg-rose-400"
+                    }`}
+                  />
+                  <span className="text-xs font-semibold text-groomish-slate">
+                    {form.active ? "Active" : "Deactive"}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="active"
+                    checked={Boolean(form.active)}
+                    onChange={handleChange}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-groomish-slate/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-groomish-green"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 4: Description & Image Uploader side by side */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             <div className="flex flex-col h-full">
               <label className="block text-xs font-bold text-groomish-slate mb-1">
@@ -197,7 +305,116 @@ export default function EditServiceModal({
               folder="groomishnow/service"
               label="Service Photo"
               compact={true}
+              entityName={form.name || service?.name}
             />
+          </div>
+
+          {/* Row 4: Sub-Services / Service Variations (Optional) */}
+          <div className="pt-2.5 border-t border-groomish-slate/10 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-xs font-bold text-groomish-slate flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableSubServices}
+                    onChange={(e) => {
+                      setEnableSubServices(e.target.checked);
+                      if (e.target.checked && subServices.length === 0) {
+                        addSubServiceRow();
+                      }
+                    }}
+                    className="rounded text-groomish-orange focus:ring-groomish-orange w-4 h-4"
+                  />
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-groomish-orange" />
+                    <span>Enable Sub-Service Options / Variations (Optional)</span>
+                  </span>
+                </label>
+                <p className="text-[11px] text-groomish-slate/50 ml-6">
+                  For example Hair Color: Faded color, Full color, Dual color, Highlight — each with custom price & duration.
+                </p>
+              </div>
+
+              {enableSubServices && (
+                <button
+                  type="button"
+                  onClick={addSubServiceRow}
+                  className="text-[11px] font-bold text-groomish-orange hover:text-groomish-orangeDark px-2.5 py-1 rounded-lg bg-groomish-orangeLight flex items-center gap-1 transition shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Option</span>
+                </button>
+              )}
+            </div>
+
+            {enableSubServices && (
+              <div className="space-y-2 bg-groomish-cream/50 p-3 rounded-2xl border border-groomish-slate/10 max-h-56 overflow-y-auto">
+                <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-groomish-slate/50 uppercase px-1">
+                  <span className="col-span-1 text-center">#</span>
+                  <span className="col-span-5">Sub-Service Name</span>
+                  <span className="col-span-3">Price (₹)</span>
+                  <span className="col-span-2">Time (m)</span>
+                  <span className="col-span-1 text-center">Del</span>
+                </div>
+
+                {subServices.length === 0 ? (
+                  <p className="text-xs text-groomish-slate/50 text-center py-2">
+                    No options added yet. Click "+ Add Option" to create variations.
+                  </p>
+                ) : (
+                  subServices.map((sub, idx) => (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-groomish-slate/10 shadow-2xs"
+                    >
+                      <span className="col-span-1 text-center text-xs font-bold text-groomish-slate/40">
+                        {idx + 1}
+                      </span>
+                      <div className="col-span-5">
+                        <input
+                          type="text"
+                          value={sub.name}
+                          onChange={(e) => updateSubService(idx, "name", e.target.value)}
+                          placeholder="e.g. Full color, Highlight"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
+                        />
+                      </div>
+                      <div className="col-span-3">
+                        <input
+                          type="number"
+                          value={sub.price}
+                          onChange={(e) => updateSubService(idx, "price", e.target.value)}
+                          placeholder="Price ₹"
+                          min="0"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <input
+                          type="number"
+                          value={sub.durationMinutes}
+                          onChange={(e) => updateSubService(idx, "durationMinutes", e.target.value)}
+                          placeholder="Mins"
+                          min="5"
+                          step="5"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
+                        />
+                      </div>
+                      <div className="col-span-1 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => removeSubService(idx)}
+                          className="p-1 rounded-lg text-groomish-slate/40 hover:text-groomish-crimson hover:bg-groomish-crimson/10 transition"
+                          title="Remove option"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* Form Actions */}
@@ -229,7 +446,7 @@ export default function EditServiceModal({
             </button>
           </div>
         </form>
-      </div>
-    </ModalWrapper>
+      </div >
+    </ModalWrapper >
   );
 }

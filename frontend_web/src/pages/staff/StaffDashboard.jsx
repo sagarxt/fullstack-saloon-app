@@ -1340,7 +1340,7 @@ export default function StaffDashboard() {
               Register Walk-In Client
             </h2>
             <p className="text-xs text-groomish-slate/60 mt-0.5">
-              Instantly create a customer loyalty profile to award them reward points.
+              Instantly create a customer loyalty profile to award them Groom Coins.
             </p>
           </div>
 

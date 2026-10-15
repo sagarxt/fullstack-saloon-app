@@ -1,6 +1,7 @@
 import { Sparkles, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { extractList } from "../../utils/dataHelper";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
 
 export default function CategoriesSection({
   categories = [],
@@ -36,49 +37,63 @@ export default function CategoriesSection({
         </button>
       </div>
 
-      {/* Grid: Exactly 2 rows */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-        {/* All option */}
-        <div
-          onClick={() => navigate("/services")}
-          className="cursor-pointer p-4 rounded-2xl text-center border border-groomish-slate/10 bg-white text-groomish-slate hover:border-groomish-orange/40 hover:shadow-soft transition-all duration-300 flex flex-col items-center justify-center group"
-        >
-          <div className="w-14 h-14 rounded-2xl mb-3 flex items-center justify-center bg-groomish-cream text-groomish-orange transition-transform duration-300 group-hover:scale-110">
-            <Sparkles className="w-7 h-7" />
-          </div>
-          <p className="font-bold text-sm">All Services</p>
-          <span className="text-[11px] text-groomish-slate/50 mt-0.5">Explore full menu →</span>
+      {/* Grid or Empty State */}
+      {displayedCategories.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-groomish-slate/10 p-10 text-center max-w-md mx-auto shadow-soft">
+          <Sparkles className="w-10 h-10 text-groomish-slate/30 mx-auto mb-3" />
+          <h3 className="font-heading font-bold text-base text-groomish-slate">
+            No Categories Available
+          </h3>
+          <p className="text-xs text-groomish-slate/50 mt-1">
+            Salon treatment collections will appear here once published by salon administration.
+          </p>
         </div>
-
-        {displayedCategories.map((cat) => {
-          return (
-            <div
-              key={cat.id}
-              onClick={() => navigate(`/category/${cat.id}`)}
-              className="cursor-pointer p-4 rounded-2xl text-center border border-groomish-slate/10 bg-white text-groomish-slate hover:border-groomish-orange hover:shadow-card transition-all duration-300 flex flex-col items-center justify-center group hover:-translate-y-1"
-            >
-              <div className="w-14 h-14 rounded-2xl mb-3 flex items-center justify-center overflow-hidden bg-groomish-cream transition-transform duration-300 group-hover:scale-110">
-                {cat.image ? (
-                  <img
-                    src={cat.image}
-                    alt={cat.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Sparkles className="w-6 h-6 text-groomish-orange" />
-                )}
-              </div>
-              <p className="font-bold text-sm leading-snug line-clamp-1 group-hover:text-groomish-orange transition-colors">
-                {cat.name}
-              </p>
-              <span className="text-[11px] text-groomish-slate/50 mt-0.5 group-hover:text-groomish-orange flex items-center gap-0.5">
-                <span>View Page</span>
-                <ArrowRight className="w-2.5 h-2.5" />
-              </span>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          {/* All option */}
+          <div
+            onClick={() => navigate("/services")}
+            className="cursor-pointer p-4 rounded-3xl text-center border border-groomish-slate/10 bg-white text-groomish-slate hover:border-groomish-orange/40 hover:shadow-soft transition-all duration-300 flex flex-col items-center justify-center group"
+          >
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full mb-3 flex items-center justify-center bg-groomish-cream text-groomish-orange border-2 border-groomish-orange/20 shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:border-groomish-orange group-hover:shadow-soft">
+              <Sparkles className="w-8 h-8" />
             </div>
-          );
-        })}
-      </div>
+            <p className="font-bold text-sm">All Services</p>
+            <span className="text-[11px] text-groomish-slate/50 mt-0.5">Explore full menu →</span>
+          </div>
+
+          {displayedCategories.map((cat) => {
+            return (
+              <div
+                key={cat.id}
+                onClick={() => navigate(`/category/${cat.id}`)}
+                className="cursor-pointer p-4 rounded-3xl text-center border border-groomish-slate/10 bg-white text-groomish-slate hover:border-groomish-orange hover:shadow-card transition-all duration-300 flex flex-col items-center justify-center group hover:-translate-y-1"
+              >
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full mb-3 flex items-center justify-center overflow-hidden bg-groomish-cream border-2 border-groomish-orange/20 shadow-xs transition-all duration-300 group-hover:scale-105 group-hover:border-groomish-orange group-hover:shadow-soft p-0.5">
+                  {cat.image ? (
+                    <img
+                      src={getOptimizedImageUrl(cat.image, { width: 300 })}
+                      alt={cat.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  ) : (
+                    <Sparkles className="w-8 h-8 text-groomish-orange" />
+                  )}
+                </div>
+                <p className="font-bold text-sm leading-snug line-clamp-1 group-hover:text-groomish-orange transition-colors">
+                  {cat.name}
+                </p>
+                <span className="text-[11px] text-groomish-slate/50 mt-0.5 group-hover:text-groomish-orange flex items-center gap-0.5">
+                  <span>View Page</span>
+                  <ArrowRight className="w-2.5 h-2.5" />
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

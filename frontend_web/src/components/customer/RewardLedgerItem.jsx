@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowDownLeft, ArrowUpRight, Gift, Sparkles, ExternalLink, Ticket, Scissors } from "lucide-react";
+import GroomCoinIcon from "../common/GroomCoinIcon";
 
 export default function RewardLedgerItem({ item }) {
   const amount = Number(item.changeAmount) || 0;
@@ -109,8 +110,9 @@ export default function RewardLedgerItem({ item }) {
           {isCredit ? "+" : ""}
           {amount}
         </span>
+        <GroomCoinIcon className="w-3.5 h-3.5" />
         <span className="text-[11px] font-semibold text-groomish-slate/60">
-          pts
+          Coins
         </span>
       </div>
     </div>

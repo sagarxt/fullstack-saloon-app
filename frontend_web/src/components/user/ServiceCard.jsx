@@ -1,9 +1,17 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
+import GroomCoinIcon from "../common/GroomCoinIcon";
+import AuthModal from "../modals/AuthModal";
+import { useAuth } from "../../context/useAuth";
+import { useCart } from "../../context/CartContext";
+import { ShoppingCart } from "lucide-react";
 
 export default function ServiceCard({ service }) {
   const navigate = useNavigate();
-
-  console.log("Rendering ServiceCard for service:", service);
+  const { user } = useAuth();
+  const { addItem } = useCart();
+  const [authOpen, setAuthOpen] = useState(false);
 
   const genderColor = {
     MALE: "bg-blue-600",
@@ -17,13 +25,15 @@ export default function ServiceCard({ service }) {
       {/* IMAGE + GENDER BADGE */}
       <div className="relative">
         <img
-          src={
+          src={getOptimizedImageUrl(
             service.image ||
-            "https://res.cloudinary.com/dfdnljcyt/image/upload/v1767424595/salon_app/qjd0qo8qshkncwie1e9u.png"
-          }
+            "https://res.cloudinary.com/dfdnljcyt/image/upload/v1767424595/salon_app/qjd0qo8qshkncwie1e9u.png",
+            { width: 600 }
+          )}
           alt={service.name}
           className="h-40 w-full object-cover"
           loading="lazy"
+          decoding="async"
         />
 
         {service.mrp && (
@@ -73,9 +83,9 @@ export default function ServiceCard({ service }) {
                 ⏱ {service.durationMinutes}m
               </span>
             )}
-            {service.rewards && (
-              <span className="flex items-center gap-1">
-                ⭐ {service.rewards} pts
+            {service.rewards > 0 && (
+              <span className="flex items-center gap-1 font-bold text-amber-700">
+                <GroomCoinIcon className="w-3.5 h-3.5" /> +{service.rewards} Coins
               </span>
             )}
           </div>
@@ -83,12 +93,44 @@ export default function ServiceCard({ service }) {
 
         {/* CTA */}
         <button
-          onClick={() => navigate(`/customer/book/${service.id}`)}
-          className="mt-3 w-full bg-indigo-600 text-white py-2 rounded-md text-sm hover:bg-indigo-700 transition"
+          onClick={async () => {
+            if (!user) {
+              setAuthOpen(true);
+              return;
+            }
+            const added = await addItem({
+              itemType: "SERVICE",
+              serviceId: service.id,
+              name: service.name,
+              quantity: 1,
+            });
+            if (added) {
+              navigate("/cart");
+            }
+          }}
+          className="mt-3 w-full bg-groomish-orange hover:bg-groomish-coral text-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
         >
-          Book Now
+          <ShoppingCart className="w-3.5 h-3.5" />
+          <span>Add Service</span>
         </button>
       </div>
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onSuccess={async () => {
+          setAuthOpen(false);
+          const added = await addItem({
+            itemType: "SERVICE",
+            serviceId: service.id,
+            name: service.name,
+            quantity: 1,
+          });
+          if (added) {
+            navigate("/cart");
+          }
+        }}
+      />
     </div>
   );
 }

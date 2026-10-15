@@ -24,6 +24,8 @@ public interface ProductService {
 
     List<String> getProductCategories();
 
+    List<String> getProductBrands();
+
     ProductResponse createProduct(ProductRequest request);
 
     ProductResponse updateProduct(UUID id, ProductRequest request);

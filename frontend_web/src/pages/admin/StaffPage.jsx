@@ -19,7 +19,10 @@ import {
   Edit2,
   Eye,
   EyeOff,
+  Trash2,
+  Power,
 } from "lucide-react";
+import { forceDeleteStaffApi } from "../../api/maintenance";
 
 const PAGE_SIZE = 20;
 
@@ -294,24 +297,45 @@ export default function StaffPage() {
                         {s.active !== false ? "Active" : "Disabled"}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-right space-x-2">
-                      <button
-                        onClick={() => handleOpenEdit(s)}
-                        className="p-1.5 text-groomish-slate hover:bg-groomish-slate/10 rounded-lg transition inline-flex items-center"
-                        title="Edit / reassign branch"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(s.id)}
-                        className={`text-xs font-bold ${
-                          s.active !== false
-                            ? "text-groomish-crimson hover:underline"
-                            : "text-groomish-green hover:underline"
-                        }`}
-                      >
-                        {s.active !== false ? "Deactivate" : "Activate"}
-                      </button>
+                    <td className="py-4 px-6 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenEdit(s)}
+                          className="p-2 rounded-xl text-groomish-slate bg-white hover:bg-groomish-orangeLight hover:text-groomish-orange border border-groomish-slate/15 hover:border-groomish-orange/40 transition shadow-2xs cursor-pointer active:scale-95"
+                          title="Edit Staff Member"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          onClick={() => handleToggleActive(s.id)}
+                          className={`p-2 rounded-xl border transition shadow-2xs cursor-pointer active:scale-95 ${
+                            s.active !== false
+                              ? "bg-white text-groomish-crimson border-groomish-crimson/20 hover:bg-groomish-crimson/10"
+                              : "bg-white text-groomish-green border-groomish-green/20 hover:bg-groomish-green/10"
+                          }`}
+                          title={s.active !== false ? "Deactivate Staff" : "Activate Staff"}
+                        >
+                          <Power className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`FORCE DELETE staff member "${s.name}"?\nThis permanently removes their staff profile.`)) {
+                              try {
+                                await forceDeleteStaffApi(s.id);
+                                loadStaff();
+                              } catch (err) {
+                                alert(err.response?.data?.message || "Failed to force delete staff.");
+                              }
+                            }
+                          }}
+                          className="p-2 rounded-xl border border-red-200 text-red-600 bg-white hover:bg-red-50 hover:border-red-300 transition shadow-2xs cursor-pointer active:scale-95"
+                          title="Force Delete Staff Member Permanently"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

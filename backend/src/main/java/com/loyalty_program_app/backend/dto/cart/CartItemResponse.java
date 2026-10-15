@@ -23,6 +23,9 @@ public class CartItemResponse {
     private String serviceGender;
     private String serviceCategoryName;
     private String serviceImage;
+    private String subServiceName;
+    private Double subServicePrice;
+    private Integer subServiceDuration;
 
     // Product specifics
     private UUID productId;

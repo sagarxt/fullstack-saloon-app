@@ -13,6 +13,7 @@ import { extractList } from "../../utils/dataHelper";
 import { storeApi } from "../../api/store";
 import StaffBranchInventoryTab from "../../components/staff/StaffBranchInventoryTab";
 import { showConfirm } from "../../context/ConfirmContext";
+import { forceDeleteProductApi } from "../../api/maintenance";
 import {
   Package,
   Plus,
@@ -43,13 +44,14 @@ export default function ProductsPage() {
 
   const [form, setForm] = useState({
     name: "",
-    brand: "Groomish Pro",
+    brand: "",
     category: "Hair Care",
     price: "",
     mrp: "",
-    volumeOrSize: "100ml",
-    stockQuantity: 50,
+    volumeOrSize: "",
+    stockQuantity: "",
     image: "",
+    images: [],
     description: "",
     inStorePickupOnly: true,
     active: true,
@@ -87,17 +89,16 @@ export default function ProductsPage() {
 
   const handleOpenCreate = () => {
     setEditingProduct(null);
-    const defaultImgs = ["https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=600&q=80"];
     setForm({
       name: "",
-      brand: "Groomish Pro",
+      brand: "",
       category: "Hair Care",
       price: "",
       mrp: "",
-      volumeOrSize: "100ml",
-      stockQuantity: 50,
-      image: defaultImgs[0],
-      images: defaultImgs,
+      volumeOrSize: "",
+      stockQuantity: "",
+      image: "",
+      images: [],
       description: "",
       inStorePickupOnly: true,
       active: true,
@@ -115,12 +116,12 @@ export default function ProductsPage() {
 
     setForm({
       name: p.name || "",
-      brand: p.brand || "Groomish Pro",
+      brand: p.brand || "",
       category: p.category || "Hair Care",
       price: p.price ?? "",
       mrp: p.mrp ?? "",
       volumeOrSize: p.volumeOrSize || "",
-      stockQuantity: p.stockQuantity ?? 50,
+      stockQuantity: p.stockQuantity ?? "",
       image: prodImages[0] || p.image || "",
       images: prodImages,
       description: p.description || "",
@@ -217,6 +218,23 @@ export default function ProductsPage() {
       return true;
     });
   }, [products, categoryFilter, search]);
+
+  const handleForceDelete = async (product) => {
+    const ok = await showConfirm({
+      title: "Force Delete Product",
+      message: `Are you sure you want to FORCE DELETE product "${product.name}"?\nThis permanently removes the product from master catalog and branch inventories.`,
+      confirmText: "Force Delete Product",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    try {
+      await forceDeleteProductApi(product.id);
+      loadProducts();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to force delete product.");
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -333,8 +351,15 @@ export default function ProductsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-groomish-slate/50">
-            <Package className="w-10 h-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm font-bold text-groomish-slate">No products found</p>
+            <Package className="w-10 h-10 mx-auto mb-2 opacity-40 text-groomish-slate" />
+            <p className="text-sm font-bold text-groomish-slate">
+              {products.length === 0 ? "No retail products created yet in the catalog." : "No products found matching your search."}
+            </p>
+            {products.length === 0 && (
+              <p className="text-xs text-groomish-slate/40 mt-1">
+                Click "Add Product" to add retail items available for in-store pickup.
+              </p>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -358,11 +383,17 @@ export default function ProductsPage() {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
-                          <img
-                            src={p.image || "https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=100&q=80"}
-                            alt={p.name}
-                            className="w-10 h-10 rounded-xl object-contain bg-white border border-groomish-slate/10 p-1"
-                          />
+                          {p.image ? (
+                            <img
+                              src={p.image}
+                              alt={p.name}
+                              className="w-10 h-10 rounded-xl object-contain bg-white border border-groomish-slate/10 p-1"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-groomish-slate/10 flex items-center justify-center text-groomish-slate/40 border border-groomish-slate/10">
+                              <Package className="w-5 h-5" />
+                            </div>
+                          )}
                           {p.images && p.images.length > 1 && (
                             <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded-full bg-groomish-slate text-white text-[8px] font-bold shadow-sm">
                               {p.images.length}
@@ -421,7 +452,7 @@ export default function ProductsPage() {
                     </td>
 
                     <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleOpenEdit(p)}
                           className="p-1.5 text-groomish-slate hover:bg-groomish-cream rounded-lg transition"
@@ -432,9 +463,17 @@ export default function ProductsPage() {
                         <button
                           onClick={() => handleDelete(p.id)}
                           className="p-1.5 text-groomish-crimson hover:bg-groomish-crimson/10 rounded-lg transition"
-                          title="Deactivate"
+                          title="Deactivate product"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleForceDelete(p)}
+                          className="px-2 py-1 text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition flex items-center gap-1 shadow-2xs"
+                          title="Force Delete product permanently"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Force Delete</span>
                         </button>
                       </div>
                     </td>
@@ -604,6 +643,7 @@ export default function ProductsPage() {
               maxImages={6}
               folder="groomishnow/product"
               label="Product Photos & Gallery Angles (Up to 6)"
+              entityName={form.name || form.brand || "product"}
             />
 
             <div>

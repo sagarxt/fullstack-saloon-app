@@ -1,7 +1,10 @@
 import { useState, useMemo } from "react";
-import { Clock, Sparkles, Search, Scissors, ArrowRight, Star } from "lucide-react";
+import { Clock, Sparkles, Search, Scissors, ArrowRight, Star, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { extractList } from "../../utils/dataHelper";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
+import { useGroomCoin } from "../../context/GroomCoinContext";
+import GroomCoinIcon from "../common/GroomCoinIcon";
 
 export default function ServicesSection({
   services = [],
@@ -9,6 +12,7 @@ export default function ServicesSection({
   onBook,
 }) {
   const navigate = useNavigate();
+  const { calculateCoins } = useGroomCoin();
   const [searchTerm, setSearchTerm] = useState("");
   const [genderFilter, setGenderFilter] = useState("ALL");
 
@@ -119,19 +123,25 @@ export default function ServicesSection({
         {displayedServices.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-3xl border border-groomish-slate/10 max-w-md mx-auto p-8 shadow-soft">
             <Scissors className="w-10 h-10 text-groomish-slateLight mx-auto mb-3" />
-            <h3 className="font-heading font-bold text-lg text-groomish-slate">No services found</h3>
+            <h3 className="font-heading font-bold text-lg text-groomish-slate">
+              {serviceList.length === 0 ? "No Salon Services Available" : "No Services Found"}
+            </h3>
             <p className="text-xs text-groomish-slateLight mt-1 mb-4">
-              Try adjusting your search query or gender filter.
+              {serviceList.length === 0
+                ? "Salon treatments and therapies will appear here once published by salon administration."
+                : "Try adjusting your search query or gender filter."}
             </p>
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setGenderFilter("ALL");
-              }}
-              className="btn-secondary text-xs px-4 py-2"
-            >
-              Reset Filters
-            </button>
+            {serviceList.length > 0 && (
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setGenderFilter("ALL");
+                }}
+                className="btn-secondary text-xs px-4 py-2"
+              >
+                Reset Filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -141,7 +151,7 @@ export default function ServicesSection({
                 service.image ||
                 defaultServiceImages[service.gender] ||
                 defaultServiceImages.UNISEX;
-              const pointsEarned = Math.floor(service.price / 100);
+              const coinsEarned = calculateCoins(service.price, service.rewards);
 
               return (
                 <div
@@ -155,8 +165,10 @@ export default function ServicesSection({
                       className="relative h-44 overflow-hidden bg-groomish-slate/10 cursor-pointer"
                     >
                       <img
-                        src={imgSrc}
+                        src={getOptimizedImageUrl(imgSrc, { width: 600 })}
                         alt={service.name}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-groomish-slateDark/60 via-transparent to-transparent" />
@@ -190,10 +202,15 @@ export default function ServicesSection({
                         {service.description || "Signature grooming experience delivered by certified specialists."}
                       </p>
 
-                      {/* Loyalty Points Pill */}
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-groomish-goldLight border border-groomish-gold/30 text-groomish-slate text-[10px] font-bold">
-                        <Sparkles className="w-3 h-3 text-groomish-orange fill-groomish-orange" />
-                        <span>Earn +{pointsEarned} Groomish Points</span>
+                      {/* Groom Coins Pill */}
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-bold">
+                        <GroomCoinIcon className="w-3.5 h-3.5" />
+                        <span>Earn +{coinsEarned} Groom Coins</span>
+                        {service.rewards > 0 && (
+                          <span className="bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-extrabold text-[9px]">
+                            +{service.rewards} Extra!
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -212,10 +229,14 @@ export default function ServicesSection({
                     </div>
 
                     <button
-                      onClick={() => onBook(service)}
-                      className="btn-primary text-xs px-4 py-2 shadow-sm group-hover:shadow-glowOrange"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBook(service);
+                      }}
+                      className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
                     >
-                      Book
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                      <span>Add Service</span>
                     </button>
                   </div>
                 </div>
@@ -225,15 +246,17 @@ export default function ServicesSection({
         )}
 
         {/* Bottom CTA to View All Services */}
-        <div className="mt-12 text-center">
-          <button
-            onClick={() => navigate("/services")}
-            className="btn-primary text-sm px-8 py-3.5 shadow-glowOrange inline-flex items-center gap-2"
-          >
-            <span>Explore All {services.length} Salon Treatments</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+        {serviceList.length > 0 && (
+          <div className="mt-12 text-center">
+            <button
+              onClick={() => navigate("/services")}
+              className="btn-primary text-sm px-8 py-3.5 shadow-glowOrange inline-flex items-center gap-2"
+            >
+              <span>Explore All {serviceList.length} Salon Treatments</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

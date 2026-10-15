@@ -90,19 +90,48 @@ public class CartServiceImpl implements CartService {
             ServiceEntity service = serviceRepository.findById(request.getServiceId())
                     .orElseThrow(() -> new RuntimeException("Service not found with id: " + request.getServiceId()));
 
-            Optional<CartItem> existing = cartItemRepository.findByCartIdAndServiceId(cart.getId(), service.getId());
+            String subName = request.getSubServiceName() != null && !request.getSubServiceName().isBlank()
+                    ? request.getSubServiceName().trim()
+                    : null;
+            Double subPrice = request.getSubServicePrice();
+            Integer subDur = request.getSubServiceDuration();
+
+            if (subName != null && subPrice == null && service.getSubServices() != null) {
+                for (SubService sub : service.getSubServices()) {
+                    if (sub.getName().equalsIgnoreCase(subName)) {
+                        subPrice = sub.getPrice();
+                        subDur = sub.getDurationMinutes();
+                        break;
+                    }
+                }
+            }
+
+            // Find existing matching service and matching subService
+            List<CartItem> cartItems = cartItemRepository.findByCartIdOrderByCreatedAtAsc(cart.getId());
+            Optional<CartItem> existing = cartItems.stream()
+                    .filter(ci -> ci.getItemType() == CartItemType.SERVICE
+                            && ci.getService() != null
+                            && ci.getService().getId().equals(service.getId())
+                            && java.util.Objects.equals(ci.getSubServiceName(), subName))
+                    .findFirst();
+
             if (existing.isPresent()) {
                 CartItem item = existing.get();
                 item.setQuantity(item.getQuantity() + qtyToAdd);
                 if (request.getCustomNotes() != null) {
                     item.setCustomNotes(request.getCustomNotes());
                 }
+                if (subPrice != null) item.setSubServicePrice(subPrice);
+                if (subDur != null) item.setSubServiceDuration(subDur);
                 cartItemRepository.save(item);
             } else {
                 CartItem item = CartItem.builder()
                         .cart(cart)
                         .itemType(CartItemType.SERVICE)
                         .service(service)
+                        .subServiceName(subName)
+                        .subServicePrice(subPrice)
+                        .subServiceDuration(subDur)
                         .quantity(qtyToAdd)
                         .customNotes(request.getCustomNotes())
                         .build();
@@ -356,6 +385,17 @@ public class CartServiceImpl implements CartService {
             if (!c.isActive() || (c.getExpiryDate() != null && c.getExpiryDate().isBefore(LocalDateTime.now()))) {
                 throw new RuntimeException("Coupon '" + c.getCode() + "' has expired or is inactive.");
             }
+            if (c.getStartDate() != null && c.getStartDate().isAfter(LocalDateTime.now())) {
+                throw new RuntimeException("Coupon '" + c.getCode() + "' is not active yet (valid from " + c.getStartDate().toLocalDate() + ").");
+            }
+            if (c.getApplicableUserGroups() != null && !c.getApplicableUserGroups().isEmpty() && !c.getApplicableUserGroups().contains("ALL")) {
+                java.util.Set<String> effectiveGroups = user.getAllEffectiveGroups();
+                boolean matches = c.getApplicableUserGroups().stream()
+                        .anyMatch(grp -> grp.equalsIgnoreCase("ALL") || effectiveGroups.contains(grp.toUpperCase().trim()));
+                if (!matches) {
+                    throw new RuntimeException("Coupon '" + c.getCode() + "' is exclusively reserved for members of: " + String.join(", ", c.getApplicableUserGroups()));
+                }
+            }
             if (c.getMinAmount() != null && grossTotal < c.getMinAmount()) {
                 throw new RuntimeException("Order total ₹" + grossTotal + " does not meet coupon minimum of ₹" + c.getMinAmount());
             }
@@ -481,13 +521,20 @@ public class CartServiceImpl implements CartService {
         for (CartItem ci : serviceItems) {
             ServiceEntity s = ci.getService();
             int qty = ci.getQuantity() != null && ci.getQuantity() > 0 ? ci.getQuantity() : 1;
+            String itemName = s.getName();
+            if (ci.getSubServiceName() != null && !ci.getSubServiceName().isBlank()) {
+                itemName = s.getName() + " (" + ci.getSubServiceName() + ")";
+            }
+            double itemPrice = ci.getSubServicePrice() != null ? ci.getSubServicePrice() : (s.getPrice() != null ? s.getPrice() : 0.0);
+            int itemDur = ci.getSubServiceDuration() != null ? ci.getSubServiceDuration() : (s.getDurationMinutes() != null ? s.getDurationMinutes() : 30);
+
             for (int q = 0; q < qty; q++) {
                 BookingItem bi = new BookingItem();
                 bi.setBooking(savedBooking);
                 bi.setService(s);
-                bi.setServiceNameSnapshot(s.getName());
-                bi.setServicePriceSnapshot(s.getPrice());
-                bi.setServiceDurationSnapshot(s.getDurationMinutes());
+                bi.setServiceNameSnapshot(itemName);
+                bi.setServicePriceSnapshot(itemPrice);
+                bi.setServiceDurationSnapshot(itemDur);
                 bi.setStatus(initialStatus);
                 savedBookingItems.add(bookingItemRepository.save(bi));
             }
@@ -596,16 +643,19 @@ public class CartServiceImpl implements CartService {
             if (item.getItemType() == CartItemType.SERVICE && item.getService() != null) {
                 ServiceEntity s = item.getService();
                 servicesCount += qty;
-                double unitPrice = s.getPrice() != null ? s.getPrice() : 0.0;
+                double unitPrice = item.getSubServicePrice() != null ? item.getSubServicePrice() : (s.getPrice() != null ? s.getPrice() : 0.0);
                 double itemTotal = unitPrice * qty;
                 servicesSubtotal += itemTotal;
-                int dur = s.getDurationMinutes() != null ? s.getDurationMinutes() : 0;
+                int dur = item.getSubServiceDuration() != null ? item.getSubServiceDuration() : (s.getDurationMinutes() != null ? s.getDurationMinutes() : 0);
                 totalDuration += dur * qty;
 
                 builder.serviceId(s.getId())
                         .serviceName(s.getName())
+                        .subServiceName(item.getSubServiceName())
+                        .subServicePrice(item.getSubServicePrice())
+                        .subServiceDuration(item.getSubServiceDuration())
                         .servicePrice(unitPrice)
-                        .serviceDurationMinutes(s.getDurationMinutes())
+                        .serviceDurationMinutes(dur)
                         .serviceGender(s.getGender() != null ? s.getGender().name() : null)
                         .serviceCategoryName(s.getCategory() != null ? s.getCategory().getName() : null)
                         .serviceImage(s.getImage())

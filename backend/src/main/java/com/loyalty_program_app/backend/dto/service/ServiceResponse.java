@@ -17,4 +17,5 @@ public class ServiceResponse {
     private Integer rewards;
     private Integer durationMinutes;
     private Boolean active;
+    private java.util.List<SubServiceDto> subServices;
 }

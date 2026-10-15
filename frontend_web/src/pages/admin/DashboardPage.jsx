@@ -8,6 +8,7 @@ import {
   UserCheck,
   TrendingUp,
   Scissors,
+  RefreshCw,
   Tag,
   Clock,
   ChevronRight,
@@ -19,14 +20,23 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await getDashboardMetrics();
+      setData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    getDashboardMetrics()
-      .then((res) => setData(res.data))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+    loadData();
   }, []);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="py-20 text-center">
         <div className="w-10 h-10 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -57,7 +67,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <button
             onClick={() => navigate("/admin/services")}
             className="btn-secondary text-xs px-4 py-2"
@@ -72,7 +82,16 @@ export default function DashboardPage() {
             <Tag className="w-3.5 h-3.5" />
             <span>Add Coupon</span>
           </button>
-        </div>
+        </div> */}
+        <button
+          onClick={loadData}
+          disabled={loading}
+          className="p-2.5 sm:px-3 sm:py-2.5 rounded-2xl border border-groomish-slate/10 bg-white text-groomish-slate hover:bg-groomish-cream transition text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95"
+          title="Refresh list"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-groomish-orange" : ""}`} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
 
       {/* METRIC CARDS GRID */}
@@ -198,22 +217,21 @@ export default function DashboardPage() {
                     <td className="py-4 px-6 text-groomish-slate/80">
                       {b.scheduledAt
                         ? new Date(b.scheduledAt).toLocaleString(undefined, {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })
                         : "N/A"}
                     </td>
                     <td className="py-4 px-6">
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          b.status === "CONFIRMED"
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${b.status === "CONFIRMED"
                             ? "bg-groomish-greenLight text-groomish-green"
                             : b.status === "COMPLETED"
-                            ? "bg-groomish-blueLight text-groomish-blue"
-                            : b.status === "CANCELLED"
-                            ? "bg-groomish-crimsonLight text-groomish-crimson"
-                            : "bg-groomish-goldLight text-groomish-slate"
-                        }`}
+                              ? "bg-groomish-blueLight text-groomish-blue"
+                              : b.status === "CANCELLED"
+                                ? "bg-groomish-crimsonLight text-groomish-crimson"
+                                : "bg-groomish-goldLight text-groomish-slate"
+                          }`}
                       >
                         {b.status}
                       </span>

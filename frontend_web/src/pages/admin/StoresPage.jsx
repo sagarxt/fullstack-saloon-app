@@ -6,6 +6,8 @@ import CloudinaryMultiImageUploader from "../../components/common/CloudinaryMult
 import BranchCatalogModal from "../../components/modals/BranchCatalogModal";
 import CustomTimePicker from "../../components/common/CustomTimePicker";
 import { showConfirm, showAlert } from "../../context/ConfirmContext";
+import { forceDeleteStoreApi } from "../../api/maintenance";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import {
   MapPin,
   Plus,
@@ -31,16 +33,16 @@ const INITIAL_FORM = {
   name: "",
   code: "",
   address: "",
-  city: "Bengaluru",
-  state: "Karnataka",
+  city: "",
+  state: "",
   pincode: "",
   phone: "",
   email: "",
   logo: "",
   latitude: "",
   longitude: "",
-  openingTime: "09:00",
-  closingTime: "21:30",
+  openingTime: "",
+  closingTime: "",
   image: "",
   images: [],
   active: true,
@@ -243,21 +245,21 @@ export default function StoresPage() {
 
   const handleDelete = async (store) => {
     const ok = await showConfirm({
-      title: "Delete Salon Branch",
-      message: `Are you sure you want to permanently delete branch "${store.name}"? All branch operations will cease.`,
-      confirmText: "Delete Branch",
+      title: "Force Delete Salon Branch",
+      message: `Are you sure you want to FORCE DELETE branch "${store.name}"?\nThis permanently removes the branch and clears branch inventories, catalogs, and assignments.`,
+      confirmText: "Force Delete Branch",
       variant: "danger",
     });
     if (!ok) return;
 
     try {
-      await storeApi.deleteStore(store.id);
-      showNotification(`Store "${store.name}" deleted.`);
+      await forceDeleteStoreApi(store.id);
+      showNotification(`Branch "${store.name}" permanently deleted.`);
       loadStores();
     } catch (err) {
       await showAlert({
         title: "Deletion Failed",
-        message: "Failed to delete store: " + (err.response?.data?.message || err.message),
+        message: "Failed to force delete store: " + (err.response?.data?.message || err.message),
         variant: "danger",
       });
     }
@@ -373,8 +375,10 @@ export default function StoresPage() {
                 <div className="h-44 w-full relative bg-groomish-slate/10 overflow-hidden">
                   {store.image ? (
                     <img
-                      src={store.image}
+                      src={getOptimizedImageUrl(store.image, { width: 600 })}
                       alt={store.name}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -402,8 +406,10 @@ export default function StoresPage() {
                   {store.logo && (
                     <div className="absolute top-3 right-3 w-10 h-10 rounded-2xl bg-white/95 backdrop-blur-md p-1 shadow-md border border-white/60 overflow-hidden flex items-center justify-center">
                       <img
-                        src={store.logo}
+                        src={getOptimizedImageUrl(store.logo, { width: 120 })}
                         alt={`${store.name} Logo`}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-contain rounded-xl"
                       />
                     </div>
@@ -476,43 +482,46 @@ export default function StoresPage() {
 
               {/* Action Buttons */}
               <div className="p-4 bg-groomish-cream/40 border-t border-groomish-slate/10 flex items-center justify-between gap-2 flex-wrap">
-                <button
-                  onClick={() => handleToggle(store)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                    store.active
-                      ? "bg-groomish-slate/10 text-groomish-slate hover:bg-groomish-slate/20"
-                      : "bg-groomish-green/15 text-groomish-green hover:bg-groomish-green/25"
-                  }`}
-                  title={store.active ? "Deactivate store" : "Activate store"}
-                >
-                  <Power className="w-3.5 h-3.5" />
-                  <span>{store.active ? "Pause" : "Activate"}</span>
-                </button>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => handleToggle(store)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                      store.active
+                        ? "bg-groomish-slate/10 text-groomish-slate hover:bg-groomish-slate/20"
+                        : "bg-groomish-green/15 text-groomish-green hover:bg-groomish-green/25"
+                    }`}
+                    title={store.active ? "Deactivate store" : "Activate store"}
+                  >
+                    <Power className="w-3.5 h-3.5" />
+                    <span>{store.active ? "Deactivate" : "Activate"}</span>
+                  </button>
 
-                <button
-                  onClick={() => setCatalogStore(store)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-groomish-orange/15 text-groomish-orange hover:bg-groomish-orange/25 transition shadow-xs"
-                  title="Manage services availability and product inventory for this branch"
-                >
-                  <Package className="w-3.5 h-3.5" />
-                  <span>Services & Stock</span>
-                </button>
+                  <button
+                    onClick={() => handleDelete(store)}
+                    className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-1 shadow-xs"
+                    title="Force Delete branch permanently"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Force Delete</span>
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCatalogStore(store)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-groomish-orange/15 text-groomish-orange hover:bg-groomish-orange/25 transition shadow-xs"
+                    title="Manage services availability and product inventory for this branch"
+                  >
+                    <Package className="w-3.5 h-3.5" />
+                    <span>Services & Stock</span>
+                  </button>
+
                   <button
                     onClick={() => handleOpenEdit(store)}
                     className="p-2 text-groomish-slate hover:bg-groomish-slate/10 rounded-xl transition"
                     title="Edit branch details"
                   >
                     <Edit2 className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(store)}
-                    className="p-2 text-groomish-crimson hover:bg-groomish-crimson/10 rounded-xl transition"
-                    title="Delete branch"
-                  >
-                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -803,6 +812,7 @@ export default function StoresPage() {
               maxImages={10}
               folder="groomishnow/stores"
               label="Branch Photos & Gallery (1 to 10 Photos)"
+              entityName={formData.name || formData.city || "branch"}
             />
 
             {/* Active Toggle */}

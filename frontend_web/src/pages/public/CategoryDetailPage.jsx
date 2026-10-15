@@ -9,6 +9,7 @@ import { getCategories, getServices } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
 import { extractList } from "../../utils/dataHelper";
+import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import {
   Scissors,
   Clock,
@@ -141,11 +142,30 @@ export default function CategoryDetailPage() {
     });
   };
 
-  const categoryName = currentCategory ? currentCategory.name : "Category";
-  const categoryImage =
-    currentCategory?.image ||
-    defaultCategoryImages[categoryName] ||
-    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80";
+  const categoryName = currentCategory ? currentCategory.name : "";
+  const categoryImage = currentCategory?.image || "";
+
+  if (!loading && !currentCategory) {
+    return (
+      <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
+        <Navbar />
+        <div className="flex-1 max-w-lg mx-auto py-24 px-4 text-center">
+          <Layers className="w-12 h-12 text-groomish-slate/30 mx-auto mb-3" />
+          <h2 className="text-xl font-heading font-bold text-groomish-slate">
+            Category Not Found
+          </h2>
+          <p className="text-xs text-groomish-slate/60 mt-1 mb-6">
+            The salon category you requested does not exist or has been removed.
+          </p>
+          <Link to="/categories" className="btn-primary text-xs px-6 py-2.5 inline-flex items-center gap-2">
+            <span>Browse All Categories</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
@@ -169,38 +189,52 @@ export default function CategoryDetailPage() {
         </div>
 
         {/* HERO BANNER */}
-        <section className="relative overflow-hidden bg-groomish-slate text-white py-14 sm:py-20">
-          <div className="absolute inset-0 opacity-25">
-            <img
-              src={categoryImage}
-              alt={categoryName}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-groomish-slate via-groomish-slate/90 to-transparent" />
-          </div>
+        <section className="relative overflow-hidden bg-gradient-to-r from-groomish-slate via-groomish-slateDark to-groomish-slate text-white py-12 sm:py-16 border-b border-white/10">
+          {/* Subtle ambient blur glow in background */}
+          {categoryImage && (
+            <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-groomish-orange/15 blur-3xl pointer-events-none" />
+          )}
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl space-y-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/10 text-groomish-gold backdrop-blur-md border border-white/15">
-                <Layers className="w-3.5 h-3.5" />
-                <span>Dedicated Collection</span>
-              </span>
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+              {/* Prominent Circular Category Artwork */}
+              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden bg-white/10 border-4 border-white/20 shadow-2xl p-1 shrink-0 backdrop-blur-md flex items-center justify-center">
+                {categoryImage ? (
+                  <img
+                    src={getOptimizedImageUrl(categoryImage, { width: 350 })}
+                    alt={categoryName}
+                    loading="eager"
+                    decoding="async"
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <Layers className="w-12 h-12 text-groomish-gold" />
+                )}
+              </div>
 
-              <h1 className="text-3xl sm:text-5xl font-heading font-extrabold tracking-tight">
-                {categoryName} Services
-              </h1>
-
-              <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-                {currentCategory?.description ||
-                  "Indulge in certified salon therapies curated for the highest standard of grooming, styling, and hygiene."}
-              </p>
-
-              <div className="pt-2 flex items-center gap-4 text-xs font-semibold text-white/80">
-                <span className="px-3 py-1 rounded-full bg-groomish-orange text-white font-bold">
-                  {categoryServices.length} Treatments Available
+              {/* Category Info */}
+              <div className="space-y-3 text-center sm:text-left flex-1">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/10 text-groomish-gold backdrop-blur-md border border-white/15">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Dedicated Salon Collection</span>
                 </span>
-                <span>• Certified Stylists</span>
-                <span>• 100% Genuine Products</span>
+
+                <h1 className="text-3xl sm:text-5xl font-heading font-extrabold tracking-tight">
+                  {categoryName} Services
+                </h1>
+
+                <p className="text-sm sm:text-base text-gray-300 leading-relaxed max-w-2xl">
+                  {currentCategory?.description ||
+                    "Indulge in certified salon therapies curated for the highest standard of grooming, styling, and hygiene."}
+                </p>
+
+                <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-semibold text-white/80">
+                  <span className="px-3 py-1 rounded-full bg-groomish-orange text-white font-bold shadow-xs">
+                    {categoryServices.length} Treatments Available
+                  </span>
+                  <span>• Certified Stylists</span>
+                  <span>• 100% Genuine Products</span>
+                </div>
               </div>
             </div>
           </div>
@@ -306,8 +340,10 @@ export default function CategoryDetailPage() {
                         className="relative h-44 overflow-hidden bg-groomish-slate/10 cursor-pointer"
                       >
                         <img
-                          src={imgSrc}
+                          src={getOptimizedImageUrl(imgSrc, { width: 600 })}
                           alt={service.name}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-groomish-slateDark/60 via-transparent to-transparent" />

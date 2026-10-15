@@ -87,7 +87,7 @@ export default function MyBookingsPage() {
               My Bookings
             </h1>
             <p className="text-sm text-groomish-slate/60 mt-1">
-              Track upcoming visits, reschedule appointments, and view your loyalty points receipt.
+              Track upcoming visits, reschedule appointments, and view your Groom Coins receipt.
             </p>
           </div>
 

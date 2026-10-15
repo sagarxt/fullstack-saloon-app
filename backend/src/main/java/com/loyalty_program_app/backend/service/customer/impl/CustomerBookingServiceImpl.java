@@ -31,6 +31,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
     private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
     private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
     private final ServiceReviewRepository reviewRepository;
+    private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
 
     /* =====================================================
        CREATE BOOKING
@@ -108,21 +109,40 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     .findByCodeAndActiveTrue(request.getCouponCode())
                     .orElseThrow(() -> new RuntimeException("Invalid coupon code"));
 
-            if (coupon.isActive() && !coupon.getExpiryDate().isBefore(LocalDateTime.now()) && servicesTotal >= (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
-                final List<String> eligibleCats = coupon.getEligibleCategories();
-                if (eligibleCats != null && !eligibleCats.isEmpty()) {
-                    boolean hasEligibleService = services.stream().anyMatch(s ->
-                        s.getCategory() != null && eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(s.getCategory().getName()))
-                    );
-                    if (!hasEligibleService) {
-                        throw new RuntimeException("Coupon '" + coupon.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
-                    }
+            if (!coupon.isActive()) {
+                throw new RuntimeException("Coupon '" + coupon.getCode() + "' is inactive.");
+            }
+            if (coupon.getExpiryDate() != null && coupon.getExpiryDate().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Coupon '" + coupon.getCode() + "' has expired.");
+            }
+            if (coupon.getStartDate() != null && coupon.getStartDate().isAfter(LocalDateTime.now())) {
+                throw new RuntimeException("Coupon '" + coupon.getCode() + "' is not active yet (valid from " + coupon.getStartDate().toLocalDate() + ").");
+            }
+            if (coupon.getApplicableUserGroups() != null && !coupon.getApplicableUserGroups().isEmpty() && !coupon.getApplicableUserGroups().contains("ALL")) {
+                java.util.Set<String> effectiveGroups = user.getAllEffectiveGroups();
+                boolean matches = coupon.getApplicableUserGroups().stream()
+                        .anyMatch(grp -> grp.equalsIgnoreCase("ALL") || effectiveGroups.contains(grp.toUpperCase().trim()));
+                if (!matches) {
+                    throw new RuntimeException("Coupon '" + coupon.getCode() + "' is exclusively reserved for members of: " + String.join(", ", coupon.getApplicableUserGroups()));
                 }
+            }
+            if (servicesTotal < (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
+                throw new RuntimeException("Minimum amount for coupon is: ₹" + coupon.getMinAmount());
+            }
 
-                discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
-                if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
-                    discount = coupon.getMaxDiscount();
+            final List<String> eligibleCats = coupon.getEligibleCategories();
+            if (eligibleCats != null && !eligibleCats.isEmpty()) {
+                boolean hasEligibleService = services.stream().anyMatch(s ->
+                    s.getCategory() != null && eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(s.getCategory().getName()))
+                );
+                if (!hasEligibleService) {
+                    throw new RuntimeException("Coupon '" + coupon.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
                 }
+            }
+
+            discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
+            if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
+                discount = coupon.getMaxDiscount();
             }
         }
 
@@ -259,9 +279,16 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     .findByCodeIgnoreCase(request.getCouponCode())
                     .orElseThrow(() -> new RuntimeException("Invalid coupon"));
 
+            boolean dateActive = (coupon.getStartDate() == null || !coupon.getStartDate().isAfter(LocalDateTime.now())) &&
+                    (coupon.getExpiryDate() == null || !coupon.getExpiryDate().isBefore(LocalDateTime.now()));
+            boolean groupMatch = coupon.getApplicableUserGroups() == null || coupon.getApplicableUserGroups().isEmpty() ||
+                    coupon.getApplicableUserGroups().contains("ALL") ||
+                    coupon.getApplicableUserGroups().stream().anyMatch(g -> g.equalsIgnoreCase("ALL") || user.getAllEffectiveGroups().contains(g.toUpperCase().trim()));
+
             if (coupon.isActive() &&
-                    !coupon.getExpiryDate().isBefore(LocalDateTime.now()) &&
-                    totalAmount >= coupon.getMinAmount()) {
+                    dateActive &&
+                    groupMatch &&
+                    totalAmount >= (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
 
                 final List<String> eligibleCats = coupon.getEligibleCategories();
                 if (eligibleCats != null && !eligibleCats.isEmpty()) {
@@ -599,7 +626,21 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 case SILVER -> multiplier = 1.0;
             }
         }
-        dto.setExpectedRewardPoints(Math.max(1, (int) Math.round((pAmount / 100.0) * multiplier)));
+        double spendPerCoin = 100.0;
+        try {
+            spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+            if (spendPerCoin <= 0) spendPerCoin = 100.0;
+        } catch (Exception ignored) {}
+
+        int baseCoins = (int) Math.round((pAmount / spendPerCoin) * multiplier);
+        int bonusCoins = 0;
+        if (b.getBookingItems() != null) {
+            bonusCoins = b.getBookingItems().stream()
+                    .filter(i -> i.getService() != null && i.getService().getRewards() != null && i.getService().getRewards() > 0)
+                    .mapToInt(i -> i.getService().getRewards())
+                    .sum();
+        }
+        dto.setExpectedRewardPoints(Math.max(1, baseCoins + bonusCoins));
         dto.setPointsConfirmed(b.getStatus() == BookingStatus.COMPLETED);
 
         dto.setScheduledAt(
@@ -922,7 +963,21 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 case SILVER -> dMultiplier = 1.0;
             }
         }
-        dto.setExpectedRewardPoints(Math.max(1, (int) Math.round((detailsAmount / 100.0) * dMultiplier)));
+        double spendPerCoinD = 100.0;
+        try {
+            spendPerCoinD = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+            if (spendPerCoinD <= 0) spendPerCoinD = 100.0;
+        } catch (Exception ignored) {}
+
+        int baseCoinsD = (int) Math.round((detailsAmount / spendPerCoinD) * dMultiplier);
+        int bonusCoinsD = 0;
+        if (booking.getBookingItems() != null) {
+            bonusCoinsD = booking.getBookingItems().stream()
+                    .filter(i -> i.getService() != null && i.getService().getRewards() != null && i.getService().getRewards() > 0)
+                    .mapToInt(i -> i.getService().getRewards())
+                    .sum();
+        }
+        dto.setExpectedRewardPoints(Math.max(1, baseCoinsD + bonusCoinsD));
         dto.setPointsConfirmed(booking.getStatus() == BookingStatus.COMPLETED);
 
         if (booking.getScheduledAt() != null && booking.getStatus() != BookingStatus.CANCELLED && booking.getStatus() != BookingStatus.COMPLETED) {

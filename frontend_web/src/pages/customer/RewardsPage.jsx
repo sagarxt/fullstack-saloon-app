@@ -29,6 +29,8 @@ import {
   Check,
   Share2,
 } from "lucide-react";
+import GroomCoinIcon from "../../components/common/GroomCoinIcon";
+import { useGroomCoin } from "../../context/GroomCoinContext";
 
 export default function RewardsPage() {
   const [balance, setBalance] = useState(0);
@@ -42,6 +44,7 @@ export default function RewardsPage() {
   const [loading, setLoading] = useState(true);
   const [redeemLoading, setRedeemLoading] = useState(null);
   const [alert, setAlert] = useState({ type: "", message: "" });
+  const { config: groomCoinConfig } = useGroomCoin();
 
   const loadData = async () => {
     setLoading(true);
@@ -87,7 +90,7 @@ export default function RewardsPage() {
     if (balance < cost) {
       setAlert({
         type: "error",
-        message: `You need ${cost} points to redeem this reward. Current balance: ${balance} points.`,
+        message: `You need ${cost} Groom Coins to redeem this reward. Current balance: ${balance} Groom Coins.`,
       });
       return;
     }
@@ -139,14 +142,14 @@ export default function RewardsPage() {
         {/* Page Header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-groomish-orange mb-1">
-            <Gift className="w-4 h-4" />
+            <GroomCoinIcon className="w-4 h-4" />
             <span>Groomish Club Loyalty</span>
           </div>
           <h1 className="text-3xl font-heading font-extrabold text-groomish-slate">
-            Rewards & VIP Status
+            Groom Coins & VIP Status
           </h1>
           <p className="text-sm text-groomish-slate/60 mt-1">
-            Earn 1 point for every ₹100 spent at Groomish Now. Unlock tier privileges and exclusive salon perks.
+            Earn 1 Groom Coin for every ₹{groomCoinConfig?.spendAmountPerCoin || 100} spent at Groomish Now. Unlock tier privileges and exclusive salon perks.
           </p>
         </div>
 
@@ -182,20 +185,23 @@ export default function RewardsPage() {
 
               <div>
                 <p className="text-xs text-white/60 font-medium">Available Redeemable Balance</p>
-                <div className="flex items-baseline gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1">
+                  <GroomCoinIcon className="w-10 h-10 shrink-0" />
                   <span className="text-4xl sm:text-5xl font-extrabold tracking-tight text-groomish-gold">
                     {balance}
                   </span>
-                  <span className="text-base text-white/70 font-semibold">Available Points</span>
+                  <span className="text-base text-white/70 font-semibold">Groom Coins</span>
                 </div>
                 
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-white/70">
-                  <span className="bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
-                    Lifetime Points: <b className="text-white">{lifetimePoints} pts</b>
+                  <span className="bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
+                    <GroomCoinIcon className="w-3.5 h-3.5" />
+                    <span>Lifetime: <b className="text-white">{lifetimePoints} Coins</b></span>
                   </span>
                   {pendingPoints > 0 && (
-                    <span className="bg-amber-400/20 text-amber-200 border border-amber-300/30 px-2.5 py-0.5 rounded-full font-bold">
-                      +{pendingPoints} Pending
+                    <span className="bg-amber-400/20 text-amber-200 border border-amber-300/30 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+                      <GroomCoinIcon className="w-3 h-3" />
+                      <span>+{pendingPoints} Pending</span>
                     </span>
                   )}
                 </div>
@@ -204,8 +210,8 @@ export default function RewardsPage() {
               <p className="text-xs text-white/70 max-w-md leading-relaxed">
                 {nextTier.next !== "MAX" ? (
                   <>
-                    Earn <b>{Math.max(0, nextTier.target - lifetimePoints)} more lifetime points</b> to ascend to{" "}
-                    <span className="text-groomish-gold font-bold">{nextTier.next}</span>. Tiers never downgrade when points are redeemed.
+                    Earn <b>{Math.max(0, nextTier.target - lifetimePoints)} more lifetime Groom Coins</b> to ascend to{" "}
+                    <span className="text-groomish-gold font-bold">{nextTier.next}</span>. Tiers never downgrade when coins are redeemed.
                   </>
                 ) : (
                   "You have achieved Diamond Tier status! Enjoy maximum salon concierge privileges."
@@ -242,31 +248,31 @@ export default function RewardsPage() {
             <span className="text-[10px] font-bold text-groomish-slate/50 uppercase block mb-1">
               Silver
             </span>
-            <p className="text-xs font-bold text-groomish-slate">1 pt per ₹100</p>
+            <p className="text-xs font-bold text-groomish-slate">1 Coin per ₹{groomCoinConfig?.spendAmountPerCoin || 100}</p>
             <p className="text-[11px] text-groomish-slate/50 mt-1">Standard online bookings & OTP receipts.</p>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-groomish-gold/30 shadow-soft bg-gradient-to-b from-groomish-goldLight/50 to-white">
             <span className="text-[10px] font-bold text-groomish-goldDark uppercase block mb-1">
-              Gold (50 pts)
+              Gold (50 Coins)
             </span>
-            <p className="text-xs font-bold text-groomish-slate">1.25x Points</p>
+            <p className="text-xs font-bold text-groomish-slate">1.25x Groom Coins</p>
             <p className="text-[11px] text-groomish-slate/50 mt-1">Complimentary scalp analysis & priority slots.</p>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-groomish-blue/30 shadow-soft bg-gradient-to-b from-groomish-blueLight/50 to-white">
             <span className="text-[10px] font-bold text-groomish-blue uppercase block mb-1">
-              Platinum (150 pts)
+              Platinum (150 Coins)
             </span>
-            <p className="text-xs font-bold text-groomish-slate">1.5x Points</p>
+            <p className="text-xs font-bold text-groomish-slate">1.5x Groom Coins</p>
             <p className="text-[11px] text-groomish-slate/50 mt-1">Senior stylist preference & birthday gift.</p>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-groomish-coral/30 shadow-soft bg-gradient-to-b from-groomish-coralLight/50 to-white">
             <span className="text-[10px] font-bold text-groomish-coral uppercase block mb-1">
-              Diamond (300 pts)
+              Diamond (300 Coins)
             </span>
-            <p className="text-xs font-bold text-groomish-slate">2.0x Points</p>
+            <p className="text-xs font-bold text-groomish-slate">2.0x Groom Coins</p>
             <p className="text-[11px] text-groomish-slate/50 mt-1">Complimentary head massage & concierge.</p>
           </div>
         </div>
@@ -282,10 +288,10 @@ export default function RewardsPage() {
                 <span>Refer & Earn</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-white leading-snug">
-                Invite Friends, Earn 10 Reward Points!
+                Invite Friends, Earn 10 Groom Coins!
               </h2>
               <p className="text-xs sm:text-sm text-white/90 leading-relaxed">
-                Share your unique referral code with friends. Whenever a friend signs up using your code, you will automatically receive <b className="text-groomish-gold">10 VIP Reward Points</b> credited directly to your account.
+                Share your unique referral code with friends. Whenever a friend signs up using your code, you will automatically receive <b className="text-groomish-gold">10 Groom Coins</b> credited directly to your account.
               </p>
             </div>
 
@@ -318,7 +324,7 @@ export default function RewardsPage() {
 
                 <a
                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                    `Use my Groomish Now invite code ${referralCode} to sign up and get bonus reward points on your first luxury salon visit! https://groomishnow.com`
+                    `Use my Groomish Now invite code ${referralCode} to sign up and get bonus Groom Coins on your first luxury salon visit! https://groomishnow.com`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -341,7 +347,7 @@ export default function RewardsPage() {
                 Redeem Rewards
               </h2>
               <p className="text-xs text-groomish-slate/60">
-                Exchange your Groomish loyalty points for vouchers and complimentary services.
+                Exchange your Groom Coins for vouchers and complimentary services.
               </p>
             </div>
 
@@ -372,10 +378,10 @@ export default function RewardsPage() {
                           {r.discountPercent ? `${r.discountPercent}% OFF` : (r.type || "VOUCHER")}
                         </span>
                         
-                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-groomish-goldLight border border-groomish-gold/30 shrink-0">
-                          <Sparkles className="w-3 h-3 text-groomish-goldDark" />
-                          <span className="text-xs font-extrabold text-groomish-goldDark">
-                            {points} pts
+                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200/80 shrink-0">
+                          <GroomCoinIcon className="w-3.5 h-3.5" />
+                          <span className="text-xs font-extrabold text-amber-900">
+                            {points} Coins
                           </span>
                         </div>
                       </div>
@@ -420,69 +426,26 @@ export default function RewardsPage() {
                         </>
                       ) : canAfford ? (
                         <>
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Redeem for {points} pts</span>
+                          <GroomCoinIcon className="w-3.5 h-3.5" />
+                          <span>Redeem for {points} Coins</span>
                         </>
                       ) : (
-                        `Need ${points - balance} more pts`
+                        `Need ${points - balance} more coins`
                       )}
                     </button>
                   </div>
                 );
               })
             ) : (
-              // Default Fallback Reward Offers
-              [
-                { id: "def-1", title: "₹100 Off Any Haircut", cost: 20, desc: "Instant discount voucher applicable on all haircuts." },
-                { id: "def-2", title: "Free Organic Beard Wash", cost: 35, desc: "Add-on complimentary beard conditioning wash." },
-                { id: "def-3", title: "₹250 Luxury Facial Voucher", cost: 50, desc: "Save ₹250 on premium glow & bridal facials." },
-              ].map((def) => {
-                const canAfford = balance >= def.cost;
-
-                return (
-                  <div
-                    key={def.id}
-                    className="card-groomish p-5 flex flex-col justify-between hover:border-groomish-orange/40 transition"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-groomish-goldLight text-groomish-slate uppercase">
-                          VIP VOUCHER
-                        </span>
-                        <span className="text-sm font-extrabold text-groomish-orange">
-                          {def.cost} pts
-                        </span>
-                      </div>
-                      <h3 className="font-heading font-bold text-sm text-groomish-slate">
-                        {def.title}
-                      </h3>
-                      <p className="text-xs text-groomish-slate/60 mt-1">
-                        {def.desc}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={!canAfford}
-                      onClick={() => handleRedeem(def.id, def.cost)}
-                      className={`w-full mt-4 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                        canAfford
-                          ? "bg-groomish-orange text-white hover:bg-groomish-orangeDark shadow-glowOrange"
-                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      }`}
-                    >
-                      {canAfford ? (
-                        <>
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Redeem for {def.cost} pts</span>
-                        </>
-                      ) : (
-                        `Need ${def.cost - balance} more pts`
-                      )}
-                    </button>
-                  </div>
-                );
-              })
+              <div className="col-span-1 md:col-span-3 bg-white rounded-3xl p-10 text-center border border-groomish-slate/10 shadow-soft">
+                <Gift className="w-10 h-10 text-groomish-slate/30 mx-auto mb-3" />
+                <h3 className="font-heading font-bold text-base text-groomish-slate">
+                  No Reward Vouchers Available
+                </h3>
+                <p className="text-xs text-groomish-slate/50 mt-1 max-w-sm mx-auto">
+                  There are currently no active reward vouchers published in the catalog. Keep earning points on your visits — special discounts and free perks will be added here soon!
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -492,10 +455,10 @@ export default function RewardsPage() {
           <div className="p-5 border-b border-groomish-slate/10 flex items-center justify-between">
             <div>
               <h3 className="font-heading font-bold text-base text-groomish-slate">
-                Points Ledger History
+                Groom Coins Ledger History
               </h3>
               <p className="text-xs text-groomish-slate/50">
-                Transparent record of every point earned and redeemed.
+                Transparent record of every Groom Coin earned and redeemed.
               </p>
             </div>
             <Award className="w-5 h-5 text-groomish-orange" />
@@ -504,7 +467,7 @@ export default function RewardsPage() {
           {ledgerList.length === 0 ? (
             <div className="p-8 text-center">
               <p className="text-xs text-groomish-slate/50">
-                No points history recorded yet. Points are automatically credited upon booking checkout!
+                No Groom Coins history recorded yet. Coins are automatically credited upon booking checkout!
               </p>
             </div>
           ) : (

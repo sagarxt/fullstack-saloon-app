@@ -40,6 +40,10 @@ public class ServiceEntity {
     @Builder.Default
     private boolean active = true;
 
+    @OneToMany(mappedBy = "service", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @Builder.Default
+    private java.util.List<SubService> subServices = new java.util.ArrayList<>();
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }
