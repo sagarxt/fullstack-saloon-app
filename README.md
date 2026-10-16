@@ -46,7 +46,7 @@ Groomish Now is designed with a bespoke luxury aesthetic featuring tailored colo
 For optimal responsiveness, fast CDN delivery, and crisp rendering across Groomish Now web and mobile platforms:
 
 | Entity | Recommended Dimension | Aspect Ratio | Resolution Range | Max File Size | Best File Formats | Purpose & Best Practices |
-| :--- | :--- | :---: | :---: | :---: | :--- |
+| :---: | :---: | :---: | :---: | :---: | :---: |
 | **Category** | **600 × 600 px** | **1:1 (Square)** | 400×400 to 800×800 px | < 150 KB | WebP / PNG / JPG | Rendered in circular or rounded square category tiles. Use clean, centered service icons or isolated salon cuts with minimal background noise. |
 | **Services** | **800 × 600 px** (or **1200 × 800 px**) | **4:3** or **3:2** | 600×450 to 1200×900 px | < 250 KB | WebP / JPG | Used in service cards and booking modals. 4:3 provides optimal vertical space to showcase haircuts, beard trims, facials, and styling without cropping heads. |
 | **Products** | **1000 × 1000 px** | **1:1 (Square)** | 800×800 to 1200×1200 px | < 200 KB | WebP / PNG / JPG | Standard e-commerce square ratio. Shows the product bottle/pack centered on a clean white or light-neutral background (`#F9F9FB`), allowing seamless zoom and multi-angle viewing. |
