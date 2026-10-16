@@ -32,6 +32,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
     private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
     private final ServiceReviewRepository reviewRepository;
     private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
+    private final PointsLedgerRepository pointsLedgerRepository;
 
     /* =====================================================
        CREATE BOOKING
@@ -169,7 +170,10 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         com.loyalty_program_app.backend.enums.PaymentStatus paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.PENDING;
         if (request.getPaymentMethod() != null && !request.getPaymentMethod().isBlank()) {
             String pm = request.getPaymentMethod().toUpperCase();
-            if (pm.contains("UPI")) {
+            if (pm.contains("ONLINE") || pm.contains("RAZORPAY")) {
+                method = com.loyalty_program_app.backend.enums.PaymentMethod.ONLINE;
+                paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.PENDING;
+            } else if (pm.contains("UPI")) {
                 method = com.loyalty_program_app.backend.enums.PaymentMethod.UPI;
                 paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.PENDING;
             } else if (pm.contains("CARD")) {
@@ -188,7 +192,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 .user(user)
                 .amount(finalPrice)
                 .paymentMethod(method)
-                .paymentModeDetails(method == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ? "Pay at Salon" : method.name())
+                .paymentModeDetails(method == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ? "Pay at Salon" : "Online Payment (Razorpay)")
                 .status(paymentStatus)
                 .invoiceNumber("INV-GN-" + (System.currentTimeMillis() % 1000000))
                 .paymentGatewayId("PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
@@ -218,10 +222,36 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             item.setServiceNameSnapshot(service.getName());
             item.setServicePriceSnapshot(service.getPrice());
             item.setServiceDurationSnapshot(service.getDurationMinutes());
+            item.setServiceRewardCoinsSnapshot(service.getRewards() != null ? service.getRewards() : 0);
             item.setStatus(initialStatus);
             items.add(bookingItemRepository.save(item));
         }
         booking.setBookingItems(items);
+
+        // Snapshot expected reward points at booking creation
+        double multiplier = 1.0;
+        if (user.getTier() != null) {
+            switch (user.getTier()) {
+                case DIAMOND -> multiplier = 2.0;
+                case PLATINUM -> multiplier = 1.5;
+                case GOLD -> multiplier = 1.25;
+                case SILVER -> multiplier = 1.0;
+            }
+        }
+        double spendPerCoin = 100.0;
+        try {
+            if (loyaltyConfigService != null) {
+                spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+                if (spendPerCoin <= 0) spendPerCoin = 100.0;
+            }
+        } catch (Exception ignored) {}
+
+        int baseCoins = (int) Math.round((finalPrice / spendPerCoin) * multiplier);
+        int bonusCoins = items.stream()
+                .mapToInt(i -> i.getServiceRewardCoinsSnapshot() != null ? i.getServiceRewardCoinsSnapshot() : 0)
+                .sum();
+        booking.setExpectedRewardPoints(Math.max(1, baseCoins + bonusCoins));
+        booking = bookingRepository.save(booking);
 
         String serviceNames = services.stream().map(ServiceEntity::getName).collect(Collectors.joining(", "));
 
@@ -234,18 +264,22 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 .title(initialStatus == BookingStatus.CONFIRMED ? "Appointment Confirmed" : "Appointment Reserved")
                 .message(notifMsg)
                 .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                .referenceId(booking.getId())
+                .link("/customer/bookings/" + booking.getId())
                 .build();
         notificationRepository.save(notification);
 
-        // Real-time Gmail Email
-        emailService.sendBookingConfirmationEmail(
-                user.getEmail(),
-                user.getName(),
-                booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString(),
-                serviceNames,
-                booking.getScheduledAt(),
-                booking.getPricePaid()
-        );
+        // Real-time Gmail Email (Sent only if booking is confirmed, e.g. Pay at Salon)
+        if (initialStatus == BookingStatus.CONFIRMED) {
+            emailService.sendBookingConfirmationEmail(
+                    user.getEmail(),
+                    user.getName(),
+                    booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString(),
+                    serviceNames,
+                    booking.getScheduledAt(),
+                    booking.getPricePaid()
+            );
+        }
 
         BookingResponse response = toBookingResponse(booking);
         ServiceEntity primaryService = services.get(0);
@@ -283,7 +317,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     (coupon.getExpiryDate() == null || !coupon.getExpiryDate().isBefore(LocalDateTime.now()));
             boolean groupMatch = coupon.getApplicableUserGroups() == null || coupon.getApplicableUserGroups().isEmpty() ||
                     coupon.getApplicableUserGroups().contains("ALL") ||
-                    coupon.getApplicableUserGroups().stream().anyMatch(g -> g.equalsIgnoreCase("ALL") || user.getAllEffectiveGroups().contains(g.toUpperCase().trim()));
+                    coupon.getApplicableUserGroups().stream().anyMatch(g -> g.equalsIgnoreCase("ALL"));
 
             if (coupon.isActive() &&
                     dateActive &&
@@ -338,8 +372,9 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             UUID serviceId
     ) {
 
-        ServiceEntity service = serviceRepository.findById(serviceId)
-                .orElseThrow(() -> new RuntimeException("Service not found"));
+        if (serviceId != null) {
+            serviceRepository.findById(serviceId);
+        }
 
         List<Booking> bookings =
                 bookingRepository.findBookingsForDate(date);
@@ -402,11 +437,50 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
        ===================================================== */
     @Override
     public List<BookingResponse> getMyBookings(UUID userId) {
+        LocalDate today = LocalDate.now();
+        LocalDateTime now = LocalDateTime.now();
 
         return bookingRepository.findByUserId(userId)
                 .stream()
+                .sorted((a, b) -> {
+                    int bucketA = getBookingSortBucket(a, today, now);
+                    int bucketB = getBookingSortBucket(b, today, now);
+                    if (bucketA != bucketB) {
+                        return Integer.compare(bucketA, bucketB);
+                    }
+                    LocalDateTime timeA = a.getScheduledAt() != null ? a.getScheduledAt() : (a.getCreatedAt() != null ? a.getCreatedAt() : LocalDateTime.MIN);
+                    LocalDateTime timeB = b.getScheduledAt() != null ? b.getScheduledAt() : (b.getCreatedAt() != null ? b.getCreatedAt() : LocalDateTime.MIN);
+
+                    // Bucket 1 (Today): earliest time today first (chronological ASC)
+                    if (bucketA == 1) {
+                        return timeA.compareTo(timeB);
+                    }
+                    // Bucket 2 (Upcoming): nearest upcoming date first (chronological ASC)
+                    if (bucketA == 2) {
+                        return timeA.compareTo(timeB);
+                    }
+                    // Bucket 3 (Completed / Cancelled / Past): latest to old (DESC)
+                    return timeB.compareTo(timeA);
+                })
                 .map(this::toBookingResponse)
                 .collect(Collectors.toList());
+    }
+
+    private int getBookingSortBucket(Booking b, LocalDate today, LocalDateTime now) {
+        BookingStatus status = b.getStatus();
+        if (status == BookingStatus.COMPLETED || status == BookingStatus.CANCELLED) {
+            return 3;
+        }
+        if (b.getScheduledAt() == null) {
+            return 3;
+        }
+        if (b.getScheduledAt().toLocalDate().isEqual(today)) {
+            return 1;
+        }
+        if (b.getScheduledAt().isAfter(now)) {
+            return 2;
+        }
+        return 3;
     }
 
     /* =====================================================
@@ -484,8 +558,10 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         Notification rescheduleNotif = Notification.builder()
                 .user(booking.getUser())
                 .title("Appointment Rescheduled")
-                .message("Your appointment has been rescheduled to " + newStart + ".")
+                .message("Your appointment has been rescheduled to " + newStart + ". Booking ID: " + (booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString()))
                 .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                .referenceId(booking.getId())
+                .link("/customer/bookings/" + booking.getId())
                 .build();
         notificationRepository.save(rescheduleNotif);
 
@@ -553,6 +629,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 .title("Appointment Cancelled")
                 .message("Your appointment (ID: " + displayCode + ") has been cancelled.")
                 .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                .referenceId(booking.getId())
+                .link("/customer/bookings/" + booking.getId())
                 .build();
         notificationRepository.save(cancelNotif);
 
@@ -616,31 +694,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             }
         }
 
-        double pAmount = b.getPricePaid() != null ? b.getPricePaid() : (b.getTotalAmount() != null ? b.getTotalAmount() : 0.0);
-        double multiplier = 1.0;
-        if (b.getUser() != null && b.getUser().getTier() != null) {
-            switch (b.getUser().getTier()) {
-                case DIAMOND -> multiplier = 2.0;
-                case PLATINUM -> multiplier = 1.5;
-                case GOLD -> multiplier = 1.25;
-                case SILVER -> multiplier = 1.0;
-            }
-        }
-        double spendPerCoin = 100.0;
-        try {
-            spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
-            if (spendPerCoin <= 0) spendPerCoin = 100.0;
-        } catch (Exception ignored) {}
-
-        int baseCoins = (int) Math.round((pAmount / spendPerCoin) * multiplier);
-        int bonusCoins = 0;
-        if (b.getBookingItems() != null) {
-            bonusCoins = b.getBookingItems().stream()
-                    .filter(i -> i.getService() != null && i.getService().getRewards() != null && i.getService().getRewards() > 0)
-                    .mapToInt(i -> i.getService().getRewards())
-                    .sum();
-        }
-        dto.setExpectedRewardPoints(Math.max(1, baseCoins + bonusCoins));
+        dto.setExpectedRewardPoints(resolveBookingPoints(b, dto.getPricePaid()));
         dto.setPointsConfirmed(b.getStatus() == BookingStatus.COMPLETED);
 
         dto.setScheduledAt(
@@ -662,12 +716,20 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             dto.setStoreAddress(b.getStoreAddressSnapshot());
         }
 
-        if (b.getBookingItems() != null) {
+        if (b.getBookingItems() != null && !b.getBookingItems().isEmpty()) {
             dto.setItems(
                     b.getBookingItems().stream()
                             .map(this::mapItem)
                             .collect(Collectors.toList())
             );
+            BookingItem first = b.getBookingItems().get(0);
+            String name = first.getServiceNameSnapshot() != null ? first.getServiceNameSnapshot() : (first.getService() != null ? first.getService().getName() : null);
+            dto.setServiceName(name);
+            if (first.getService() != null) {
+                dto.setServiceId(first.getService().getId());
+            }
+        } else {
+            dto.setItems(new ArrayList<>());
         }
 
         List<BookingProduct> prods = bookingProductRepository.findByBookingId(b.getId());
@@ -712,6 +774,34 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         return mapToDetailsResponse(booking);
     }
 
+    @Override
+    public BookingDetailsResponse getMyBookingByIdOrCode(
+            UUID userId,
+            String identifier
+    ) {
+        Booking booking = null;
+        try {
+            UUID bookingId = UUID.fromString(identifier);
+            booking = bookingRepository.findById(bookingId).orElse(null);
+        } catch (IllegalArgumentException ignored) {
+            // Not a UUID, try by bookingCode
+        }
+
+        if (booking == null) {
+            String trimmed = identifier.trim();
+            booking = bookingRepository.findByBookingCodeIgnoreCase(trimmed)
+                    .or(() -> bookingRepository.findFirstByBookingCodeStartingWithIgnoreCase(trimmed))
+                    .orElseThrow(() -> new RuntimeException("Booking not found: " + identifier));
+        }
+
+        // 🔒 Strict Ownership check: Customers can ONLY view their own bookings
+        if (!isBookingOwner(booking, userId)) {
+            throw new RuntimeException("Access denied: You are only authorized to view your own bookings");
+        }
+
+        return mapToDetailsResponse(booking);
+    }
+
     /* =====================================================
        ADD SERVICE TO EXISTING BOOKING (CUSTOMER)
        ===================================================== */
@@ -745,6 +835,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         item.setServiceNameSnapshot(service.getName());
         item.setServicePriceSnapshot(service.getPrice());
         item.setServiceDurationSnapshot(service.getDurationMinutes());
+        item.setServiceRewardCoinsSnapshot(service.getRewards() != null ? service.getRewards() : 0);
         item.setStatus(booking.getStatus());
         bookingItemRepository.save(item);
 
@@ -775,6 +866,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 .title("Service Added to Booking")
                 .message(service.getName() + " has been added to your appointment (" + displayCode + ").")
                 .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                .referenceId(booking.getId())
+                .link("/customer/bookings/" + booking.getId())
                 .build();
         notificationRepository.save(notif);
 
@@ -836,6 +929,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 .title("Service Removed from Booking")
                 .message(removedServiceName + " has been removed from your appointment (" + displayCode + ").")
                 .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                .referenceId(booking.getId())
+                .link("/customer/bookings/" + booking.getId())
                 .build();
         notificationRepository.save(notif);
 
@@ -882,6 +977,33 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         booking.setTotalAmount(totalAmount);
         booking.setPricePaid(pricePaid);
         booking.setTotalDurationMinutes(totalDuration);
+
+        // Recalculate snapshot expected reward points based on item snapshots (never live catalog)
+        double multiplier = 1.0;
+        if (booking.getUser() != null && booking.getUser().getTier() != null) {
+            switch (booking.getUser().getTier()) {
+                case DIAMOND -> multiplier = 2.0;
+                case PLATINUM -> multiplier = 1.5;
+                case GOLD -> multiplier = 1.25;
+                case SILVER -> multiplier = 1.0;
+            }
+        }
+        double spendPerCoin = 100.0;
+        try {
+            if (loyaltyConfigService != null) {
+                spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+                if (spendPerCoin <= 0) spendPerCoin = 100.0;
+            }
+        } catch (Exception ignored) {}
+
+        int baseCoins = (int) Math.round((pricePaid / spendPerCoin) * multiplier);
+        int bonusCoins = 0;
+        if (booking.getBookingItems() != null) {
+            bonusCoins = booking.getBookingItems().stream()
+                    .mapToInt(i -> i.getServiceRewardCoinsSnapshot() != null ? i.getServiceRewardCoinsSnapshot() : 0)
+                    .sum();
+        }
+        booking.setExpectedRewardPoints(Math.max(1, baseCoins + bonusCoins));
     }
 
     /* ===============================
@@ -953,31 +1075,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             }
         }
 
-        double detailsAmount = booking.getPricePaid() != null ? booking.getPricePaid() : (booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0);
-        double dMultiplier = 1.0;
-        if (booking.getUser() != null && booking.getUser().getTier() != null) {
-            switch (booking.getUser().getTier()) {
-                case DIAMOND -> dMultiplier = 2.0;
-                case PLATINUM -> dMultiplier = 1.5;
-                case GOLD -> dMultiplier = 1.25;
-                case SILVER -> dMultiplier = 1.0;
-            }
-        }
-        double spendPerCoinD = 100.0;
-        try {
-            spendPerCoinD = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
-            if (spendPerCoinD <= 0) spendPerCoinD = 100.0;
-        } catch (Exception ignored) {}
-
-        int baseCoinsD = (int) Math.round((detailsAmount / spendPerCoinD) * dMultiplier);
-        int bonusCoinsD = 0;
-        if (booking.getBookingItems() != null) {
-            bonusCoinsD = booking.getBookingItems().stream()
-                    .filter(i -> i.getService() != null && i.getService().getRewards() != null && i.getService().getRewards() > 0)
-                    .mapToInt(i -> i.getService().getRewards())
-                    .sum();
-        }
-        dto.setExpectedRewardPoints(Math.max(1, baseCoinsD + bonusCoinsD));
+        dto.setExpectedRewardPoints(resolveBookingPoints(booking, dto.getPricePaid()));
         dto.setPointsConfirmed(booking.getStatus() == BookingStatus.COMPLETED);
 
         if (booking.getScheduledAt() != null && booking.getStatus() != BookingStatus.CANCELLED && booking.getStatus() != BookingStatus.COMPLETED) {
@@ -1052,10 +1150,58 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         BookingItemDetailsResponse dto = new BookingItemDetailsResponse();
         dto.setId(item.getId());
         dto.setServiceId(item.getService() != null ? item.getService().getId() : null);
-        dto.setServiceName(item.getServiceNameSnapshot());
+        String name = item.getServiceNameSnapshot() != null ? item.getServiceNameSnapshot() : (item.getService() != null ? item.getService().getName() : "Salon Service");
+        dto.setServiceName(name);
         dto.setPrice(item.getServicePriceSnapshot());
         dto.setDurationMinutes(item.getServiceDurationSnapshot());
+        dto.setRewardCoins(item.getServiceRewardCoinsSnapshot() != null ? item.getServiceRewardCoinsSnapshot() : 0);
         dto.setStatus(item.getStatus() != null ? item.getStatus().name() : null);
         return dto;
+    }
+
+    private int resolveBookingPoints(Booking b, Double pricePaid) {
+        int resolvedPoints = 0;
+        if (b.getStatus() == BookingStatus.COMPLETED) {
+            List<PointsLedger> ledgers = pointsLedgerRepository.findByRelatedId(b.getId());
+            if (ledgers != null && !ledgers.isEmpty()) {
+                resolvedPoints = ledgers.stream()
+                        .mapToInt(l -> l.getChangeAmount() != null ? l.getChangeAmount() : 0)
+                        .sum();
+            }
+        }
+        if (resolvedPoints <= 0 && b.getExpectedRewardPoints() != null && b.getExpectedRewardPoints() > 0) {
+            resolvedPoints = b.getExpectedRewardPoints();
+        }
+        if (resolvedPoints <= 0) {
+            double pAmount = pricePaid != null ? pricePaid : (b.getPricePaid() != null ? b.getPricePaid() : 0.0);
+            double multiplier = 1.0;
+            if (b.getUser() != null && b.getUser().getTier() != null) {
+                switch (b.getUser().getTier()) {
+                    case DIAMOND -> multiplier = 2.0;
+                    case PLATINUM -> multiplier = 1.5;
+                    case GOLD -> multiplier = 1.25;
+                    case SILVER -> multiplier = 1.0;
+                }
+            }
+            double spendPerCoin = 100.0;
+            try {
+                if (loyaltyConfigService != null) {
+                    spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+                    if (spendPerCoin <= 0) spendPerCoin = 100.0;
+                }
+            } catch (Exception ignored) {}
+
+            int baseCoins = (int) Math.round((pAmount / spendPerCoin) * multiplier);
+            int bonusCoins = 0;
+            if (b.getBookingItems() != null) {
+                bonusCoins = b.getBookingItems().stream()
+                        .mapToInt(i -> i.getServiceRewardCoinsSnapshot() != null ? i.getServiceRewardCoinsSnapshot() : 0)
+                        .sum();
+            }
+            resolvedPoints = Math.max(1, baseCoins + bonusCoins);
+            b.setExpectedRewardPoints(resolvedPoints);
+            bookingRepository.save(b);
+        }
+        return resolvedPoints;
     }
 }

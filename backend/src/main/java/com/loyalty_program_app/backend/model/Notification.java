@@ -30,6 +30,10 @@ public class Notification {
     @Enumerated(EnumType.STRING)
     private NotificationType type;
 
+    private String link;
+
+    private UUID referenceId;
+
     @Builder.Default
     private boolean seen = false;
 

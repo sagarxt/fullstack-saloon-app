@@ -41,6 +41,73 @@ export default function MyBookingsPage() {
 
   const bookingList = extractList(bookings);
 
+  // Sorting function adhering strictly to:
+  // 1. Today's confirmed / modified / pending bookings (earliest time first)
+  // 2. Upcoming bookings (nearest future date first)
+  // 3. Completed / Cancelled bookings from latest to old (most recent date first)
+  const sortBookingsByBusinessRules = (list) => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayEnd = todayStart + 24 * 60 * 60 * 1000;
+
+    const getBucket = (b) => {
+      const status = (b.status || "").toUpperCase();
+      const isCompletedOrCancelled =
+        status === "COMPLETED" ||
+        status === "CANCELLED" ||
+        status === "CANCELED" ||
+        status === "AUTO_CANCELLED";
+
+      if (isCompletedOrCancelled) {
+        return 3;
+      }
+
+      if (!b.scheduledAt) {
+        return 3;
+      }
+
+      const bookingTime = new Date(b.scheduledAt).getTime();
+
+      // 1. Today's confirmed/modified/pending bookings
+      if (bookingTime >= todayStart && bookingTime < todayEnd) {
+        return 1;
+      }
+
+      // 2. Upcoming future bookings (after today)
+      if (bookingTime >= todayEnd) {
+        return 2;
+      }
+
+      // Past uncompleted appointments
+      return 3;
+    };
+
+    return [...list].sort((a, b) => {
+      const bucketA = getBucket(a);
+      const bucketB = getBucket(b);
+
+      if (bucketA !== bucketB) {
+        return bucketA - bucketB; // 1 (Today) -> 2 (Upcoming) -> 3 (Completed / Cancelled)
+      }
+
+      const timeA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const timeB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+
+      // Bucket 1 (Today): chronological ASC (earliest appointment time today first)
+      if (bucketA === 1) {
+        return timeA - timeB;
+      }
+
+      // Bucket 2 (Upcoming): chronological ASC (nearest upcoming first)
+      if (bucketA === 2) {
+        return timeA - timeB;
+      }
+
+      // Bucket 3 (Completed / Cancelled): latest to old (DESC)
+      return timeB - timeA;
+    });
+  };
+
   const filteredBookings = bookingList.filter((b) => {
     if (filter === "UPCOMING" && b.status !== "PENDING" && b.status !== "CONFIRMED" && b.status !== "MODIFIED") return false;
     if (filter === "COMPLETED" && b.status !== "COMPLETED") return false;
@@ -53,7 +120,7 @@ export default function MyBookingsPage() {
       const bookingCode = (b.bookingCode || "").toLowerCase();
       const cleanCode = bookingCode.replace(/[^a-z0-9]/g, "");
       const idStr = (b.id || "").toLowerCase();
-      const serviceName = (b.items?.[0]?.serviceNameSnapshot || b.serviceName || "").toLowerCase();
+      const serviceName = (b.items?.[0]?.serviceName || b.items?.[0]?.serviceNameSnapshot || b.items?.[0]?.service?.name || b.serviceName || "").toLowerCase();
       const bookedBy = (b.bookedBy || "").toLowerCase();
 
       const matchesId = bookingCode.includes(rawQ) || (cleanQ && cleanCode.includes(cleanQ)) || idStr.includes(rawQ);
@@ -67,6 +134,8 @@ export default function MyBookingsPage() {
 
     return true;
   });
+
+  const sortedBookings = sortBookingsByBusinessRules(filteredBookings);
 
   const upcomingCount = bookingList.filter((b) => b.status === "PENDING" || b.status === "CONFIRMED" || b.status === "MODIFIED").length;
   const completedCount = bookingList.filter((b) => b.status === "COMPLETED").length;
@@ -183,7 +252,7 @@ export default function MyBookingsPage() {
             <div className="w-10 h-10 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             <p className="text-xs text-groomish-slate/60 font-medium">Loading your bookings...</p>
           </div>
-        ) : filteredBookings.length === 0 ? (
+        ) : sortedBookings.length === 0 ? (
           <div className="bg-white rounded-3xl border border-groomish-slate/10 p-12 text-center max-w-lg mx-auto shadow-soft my-8">
             <div className="w-16 h-16 bg-groomish-cream rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-8 h-8 text-groomish-slate/40" />
@@ -217,7 +286,7 @@ export default function MyBookingsPage() {
         ) : (
           <div className="space-y-4">
             <div className="space-y-4">
-              {filteredBookings
+              {sortedBookings
                 .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                 .map((booking) => (
                   <BookingCard
@@ -228,11 +297,11 @@ export default function MyBookingsPage() {
                 ))}
             </div>
 
-            {filteredBookings.length > 0 && (
+            {sortedBookings.length > 0 && (
               <div className="bg-white p-4 rounded-2xl border border-groomish-slate/10 shadow-soft">
                 <Pagination
                   currentPage={page}
-                  totalItems={filteredBookings.length}
+                  totalItems={sortedBookings.length}
                   pageSize={PAGE_SIZE}
                   onPageChange={setPage}
                   itemName="bookings"

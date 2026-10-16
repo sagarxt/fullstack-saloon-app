@@ -99,18 +99,48 @@ export default function NotificationDrawer({ open, onClose, onCountChange }) {
     }
   };
 
+  const resolveNotificationLink = (n) => {
+    // 1. Reference ID (Booking UUID) set by backend
+    if (n.referenceId) {
+      return `/customer/bookings/${n.referenceId}`;
+    }
+
+    // 2. Direct link set by backend
+    if (n.link && n.link.trim()) {
+      return n.link.trim();
+    }
+
+    const fullText = `${n.title || ""} ${n.message || ""}`;
+    const isBookingRelated =
+      n.type === "BOOKING" ||
+      n.type === "PAYMENT" ||
+      /booking|appointment|slot|reschedul|service|haircut|groomish/i.test(fullText);
+
+    // 3. Extract UUID from title or message
+    const uuidMatch = fullText.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+    if (uuidMatch && isBookingRelated) {
+      return `/customer/bookings/${uuidMatch[0]}`;
+    }
+
+    // 4. Fallbacks based on notification type
+    if (isBookingRelated) {
+      return "/customer/bookings";
+    } else if (n.type === "OFFER" || n.type === "REWARD") {
+      return "/customer/rewards";
+    }
+
+    return null;
+  };
+
   const handleItemClick = (n) => {
     if (!n.seen) {
       handleMarkSeen(n.id);
     }
     onClose();
 
-    if (n.type === "BOOKING") {
-      navigate("/customer/bookings");
-    } else if (n.type === "OFFER" || n.type === "REWARD") {
-      navigate("/customer/rewards");
-    } else if (n.type === "PAYMENT") {
-      navigate("/customer/bookings");
+    const targetUrl = resolveNotificationLink(n);
+    if (targetUrl) {
+      navigate(targetUrl);
     }
   };
 
@@ -172,7 +202,7 @@ export default function NotificationDrawer({ open, onClose, onCountChange }) {
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-slide-up border-l border-groomish-slate/10">
         {/* Header */}
-        <div className="p-5 border-b border-groomish-slate/10 bg-groomish-cream/70 space-y-3">
+        <div className="p-4 border-b border-groomish-slate/10 bg-groomish-cream/70 space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-groomish-orange/10 rounded-xl text-groomish-orange">
@@ -260,7 +290,7 @@ export default function NotificationDrawer({ open, onClose, onCountChange }) {
         </div>
 
         {/* Content List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-2">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center text-groomish-slate/40 gap-2">
               <div className="w-6 h-6 border-2 border-groomish-orange border-t-transparent rounded-full animate-spin" />
@@ -283,7 +313,7 @@ export default function NotificationDrawer({ open, onClose, onCountChange }) {
               <div
                 key={n.id}
                 onClick={() => handleItemClick(n)}
-                className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer group relative ${
+                className={`p-3.5 rounded-xl border transition-all duration-200 cursor-pointer group relative ${
                   n.seen
                     ? "bg-white border-groomish-slate/10 hover:border-groomish-slate/25"
                     : "bg-gradient-to-r from-groomish-cream/90 to-white border-groomish-orange/30 shadow-soft hover:border-groomish-orange/60"
@@ -325,13 +355,17 @@ export default function NotificationDrawer({ open, onClose, onCountChange }) {
                 </p>
 
                 {/* Deep-link Action Hint */}
-                <div className="mt-2.5 pt-2 border-t border-groomish-slate/5 flex items-center justify-between text-[11px] text-groomish-slate/40 group-hover:text-groomish-orange font-bold transition-colors">
+                <div className="mt-2.5 pt-2 border-t border-groomish-slate/5 flex items-center justify-between text-[11px] text-groomish-slate/50 group-hover:text-groomish-orange font-bold transition-colors">
                   <span>
-                    {n.type === "BOOKING"
-                      ? "View in My Bookings"
-                      : n.type === "OFFER"
-                      ? "Explore Loyalty Rewards"
-                      : "View Details"}
+                    {(() => {
+                      const link = resolveNotificationLink(n);
+                      if (link && link.includes("/customer/bookings/")) {
+                        return "Open Booking Details";
+                      }
+                      if (n.type === "BOOKING") return "View in My Bookings";
+                      if (n.type === "OFFER" || n.type === "REWARD") return "Explore Loyalty Rewards";
+                      return "View Details";
+                    })()}
                   </span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                 </div>

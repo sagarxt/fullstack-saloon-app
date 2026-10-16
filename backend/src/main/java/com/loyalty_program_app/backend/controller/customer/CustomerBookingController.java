@@ -37,9 +37,9 @@ public class CustomerBookingController {
     @GetMapping("/{id}")
     public BookingDetailsResponse getBookingById(
             @AuthenticationPrincipal CustomUserDetails user,
-            @PathVariable UUID id
+            @PathVariable String id
     ) {
-        return bookingService.getMyBookingById(user.getId(), id);
+        return bookingService.getMyBookingByIdOrCode(user.getId(), id);
     }
 
     @PostMapping("/preview")
@@ -52,7 +52,7 @@ public class CustomerBookingController {
     @GetMapping("/slots")
     public SlotAvailabilityResponse getUnavailableSlots(
             @RequestParam LocalDate date,
-            @RequestParam UUID serviceId
+            @RequestParam(required = false) UUID serviceId
     ) {
         return bookingService.getUnavailableSlots(date, serviceId);
     }

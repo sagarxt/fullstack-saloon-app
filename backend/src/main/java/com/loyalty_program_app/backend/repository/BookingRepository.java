@@ -23,6 +23,12 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
 
     java.util.Optional<Booking> findByBookingCode(String bookingCode);
 
+    java.util.Optional<Booking> findByBookingCodeIgnoreCase(String bookingCode);
+
+    java.util.Optional<Booking> findFirstByBookingCodeStartingWithIgnoreCase(String prefix);
+
+    List<Booking> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
     @Query("""
         SELECT b FROM Booking b
         WHERE DATE(b.scheduledAt) = :date

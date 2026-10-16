@@ -31,6 +31,11 @@ public interface CustomerBookingService {
             UUID bookingId
     );
 
+    BookingDetailsResponse getMyBookingByIdOrCode(
+            UUID userId,
+            String identifier
+    );
+
     BookingResponse rescheduleBooking(
             UUID userId,
             UUID bookingId,

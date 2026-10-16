@@ -183,7 +183,7 @@ export default function AdminBookingDetailPage() {
         payload.scheduledAt = `${editDate}T${editTime}:00`;
       }
       await updateBookingDetails(id, payload);
-      setSuccessMsg("Appointment changes updated successfully!");
+      setSuccessMsg("Appointment changes saved & updated details email sent to customer (Overrided by Administrator)!");
       await loadBooking();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save booking overrides");
@@ -238,7 +238,7 @@ export default function AdminBookingDetailPage() {
   const bookingCode = booking.bookingCode || `GN-${booking.id.slice(0, 8).toUpperCase()}`;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="space-y-4 animate-fade-in pb-6">
       {/* Top Breadcrumb & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -480,9 +480,10 @@ export default function AdminBookingDetailPage() {
                     <Clock className="w-3 h-3" />
                     <span>
                       {booking.scheduledAt
-                        ? new Date(booking.scheduledAt).toLocaleTimeString([], {
-                            hour: "2-digit",
+                        ? new Date(booking.scheduledAt).toLocaleTimeString("en-IN", {
+                            hour: "numeric",
                             minute: "2-digit",
+                            hour12: true,
                           })
                         : ""}{" "}
                       ({booking.totalDurationMinutes || 45} mins)
@@ -808,6 +809,15 @@ export default function AdminBookingDetailPage() {
                 <Save className="w-3.5 h-3.5" />
                 <span>{actionLoading ? "Saving..." : "Save Appointment Changes"}</span>
               </button>
+
+              <div className="pt-1 text-center">
+                <p className="text-[11px] text-groomish-slate/60 font-medium">
+                  Customer receives an instant updated details email.
+                </p>
+                <p className="text-[10px] text-groomish-orange font-bold uppercase tracking-wider mt-0.5">
+                  below (Overrided by Administrator)
+                </p>
+              </div>
             </form>
           </div>
         </div>

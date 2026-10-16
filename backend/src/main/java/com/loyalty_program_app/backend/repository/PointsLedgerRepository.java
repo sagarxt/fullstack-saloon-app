@@ -24,5 +24,9 @@ public interface PointsLedgerRepository extends JpaRepository<PointsLedger, UUID
     Page<PointsLedger> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
 
     boolean existsByRelatedId(UUID relatedId);
+
+    List<PointsLedger> findByRelatedId(UUID relatedId);
+
+    java.util.Optional<PointsLedger> findFirstByRelatedId(UUID relatedId);
 }
 

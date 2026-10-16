@@ -38,9 +38,20 @@ public class AdminInitializer implements CommandLineRunner {
     private final com.loyalty_program_app.backend.repository.CartRepository cartRepository;
     private final com.loyalty_program_app.backend.repository.PaymentRepository paymentRepository;
     private final com.loyalty_program_app.backend.repository.NotificationRepository notificationRepository;
+    private final com.loyalty_program_app.backend.repository.PolicyFaqRepository policyFaqRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) throws Exception {
+
+        // Ensure database check constraint on payments table supports ONLINE payment method
+        try {
+            jdbcTemplate.execute("ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_payment_method_check");
+            jdbcTemplate.execute("ALTER TABLE payments ADD CONSTRAINT payments_payment_method_check CHECK (payment_method IN ('CASH', 'CARD', 'UPI', 'ONLINE'))");
+            System.out.println("✔ Successfully updated payments_payment_method_check constraint to include ONLINE.");
+        } catch (Exception e) {
+            System.err.println("Notice on payments_payment_method_check: " + e.getMessage());
+        }
 
         // Seed initial coupons if none exist
         if (couponRepository.count() == 0) {
@@ -259,6 +270,94 @@ public class AdminInitializer implements CommandLineRunner {
                 referralRepository.save(r);
             }
             System.out.println("✔ Backfilled 10 referral points for " + unrewardedReferrals.size() + " existing referrals.");
+        }
+
+        // Seed initial Policy and Q&A items if none exist
+        if (policyFaqRepository.count() == 0) {
+            // Policies (Order, Payment, Cancellation, Refund)
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.POLICY)
+                    .category("ORDER")
+                    .heading("Order & Appointment Booking Policy")
+                    .description("All salon appointments and grooming product orders can be booked online via Groomish Now. We recommend booking slots at least 2 hours in advance to guarantee your preferred stylist and branch. Walk-in guests are always welcomed subject to chair and stylist availability. Once your booking is confirmed, an instant confirmation SMS, email, and notification with your booking reference will be provided.")
+                    .displayOrder(1)
+                    .active(true)
+                    .build());
+
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.POLICY)
+                    .category("PAYMENT")
+                    .heading("Payment Methods & Billing Policy")
+                    .description("We support a wide variety of safe and instant payment options: UPI (Google Pay, PhonePe, Paytm), Visa/Mastercard/RuPay Credit and Debit Cards, Net Banking, and Groomish Wallet GroomCoins. Customers may choose to pay online during checkout or pay in person after service completion at the salon counter. All salon tariffs and product prices are transparent and inclusive of applicable GST.")
+                    .displayOrder(2)
+                    .active(true)
+                    .build());
+
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.POLICY)
+                    .category("CANCELLATION")
+                    .heading("Cancellation & Rescheduling Policy")
+                    .description("We understand that plans can change. You may reschedule or cancel your appointment free of charge up to 2 hours before the scheduled time directly from your 'My Bookings' page. Rescheduling is subject to available branch slots. Cancellations requested less than 2 hours before the appointment or unattended bookings (no-shows) may forfeit reserved promotional coupons or incur a slot holding deduction.")
+                    .displayOrder(3)
+                    .active(true)
+                    .build());
+
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.POLICY)
+                    .category("REFUND")
+                    .heading("Refund & GroomCoin Reversal Policy")
+                    .description("For prepaid bookings cancelled in accordance with our cancellation policy, refunds are initiated immediately. Card and Net Banking refunds typically reflect in your account within 3–5 business days depending on your bank. Alternatively, customers can opt for instant GroomCoin credit to their Groomish Wallet. Any GroomCoins redeemed towards the cancelled booking are automatically reversed to your balance.")
+                    .displayOrder(4)
+                    .active(true)
+                    .build());
+
+            // Q&A
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.QA)
+                    .category("BOOKINGS")
+                    .heading("How do I book an appointment on Groomish Now?")
+                    .description("Simply select your nearest salon branch, choose your desired grooming services or packages, pick an available date and time slot, and proceed to checkout. You can pay online or choose Pay at Salon.")
+                    .displayOrder(1)
+                    .active(true)
+                    .build());
+
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.QA)
+                    .category("LOYALTY")
+                    .heading("What are GroomCoins and how do I earn and redeem them?")
+                    .description("GroomCoins are VIP reward coins earned on every service booking and retail product purchase. As your Tier progresses from Bronze to Silver, Gold, and Platinum, you unlock higher reward coin multipliers. You can redeem GroomCoins during checkout for instant bill discounts or exchange them for exclusive salon vouchers.")
+                    .displayOrder(2)
+                    .active(true)
+                    .build());
+
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.QA)
+                    .category("SERVICES")
+                    .heading("Can I add extra services or customize my treatment at the salon?")
+                    .description("Yes! During your consultation, your master stylist can recommend additions or customize your treatment. Our staff can add the extra services directly to your active booking.")
+                    .displayOrder(3)
+                    .active(true)
+                    .build());
+
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.QA)
+                    .category("PAYMENT")
+                    .heading("Is online payment mandatory when booking?")
+                    .description("No, online payment is optional. You can choose to pay securely online via UPI, Cards, or Net Banking, or select 'Pay at Salon' to settle the bill upon service completion.")
+                    .displayOrder(4)
+                    .active(true)
+                    .build());
+
+            policyFaqRepository.save(com.loyalty_program_app.backend.model.PolicyFaqItem.builder()
+                    .type(com.loyalty_program_app.backend.enums.PolicyFaqType.QA)
+                    .category("CANCELLATION")
+                    .heading("How do I cancel or reschedule my appointment?")
+                    .description("Go to 'My Bookings' from the customer navigation menu, select the booking you wish to modify, and click 'Reschedule Appointment' or 'Cancel Booking'. Changes are free up to 2 hours before the scheduled time.")
+                    .displayOrder(5)
+                    .active(true)
+                    .build());
+
+            System.out.println("✔ Seeded initial Policy and Q&A entries.");
         }
     }
 }

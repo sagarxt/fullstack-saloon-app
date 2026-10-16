@@ -30,4 +30,6 @@ public interface UserAdminService {
     UserResponse updateUserStatus(UUID id, Boolean active);
 
     Map<String, Object> sendEmailToUserGroup(String userGroup, String subject, String message, String couponCode);
+
+    Map<String, Object> sendEmailToIndividual(String userId, String email, String subject, String message, String couponCode);
 }

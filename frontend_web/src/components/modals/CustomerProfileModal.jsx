@@ -42,6 +42,7 @@ import {
   Package,
 } from "lucide-react";
 import GroomCoinIcon from "../common/GroomCoinIcon";
+import Pagination from "../common/Pagination";
 import {
   getUserCart,
   updateItemForUser,
@@ -89,6 +90,8 @@ export default function CustomerProfileModal({
   const [pointsHistory, setPointsHistory] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [bookingFilter, setBookingFilter] = useState("ALL"); // ALL | COMPLETED | PENDING | CANCELLED
+  const [bookingPage, setBookingPage] = useState(1);
+  const BOOKINGS_PAGE_SIZE = 20;
   const [copiedId, setCopiedId] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [userCart, setUserCart] = useState(null);
@@ -260,6 +263,10 @@ export default function CustomerProfileModal({
     }
   }, [open, customerId]);
 
+  useEffect(() => {
+    setBookingPage(1);
+  }, [bookingFilter]);
+
   const handleCopy = (text, type) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -332,6 +339,71 @@ export default function CustomerProfileModal({
     if (bookingFilter === "ALL") return true;
     return b.status === bookingFilter;
   });
+
+  const sortBookingsByBusinessRules = (list) => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayEnd = todayStart + 24 * 60 * 60 * 1000;
+
+    const getBucket = (b) => {
+      const status = (b.status || "").toUpperCase();
+      const isCompletedOrCancelled =
+        status === "COMPLETED" ||
+        status === "CANCELLED" ||
+        status === "CANCELED" ||
+        status === "AUTO_CANCELLED";
+
+      if (isCompletedOrCancelled) {
+        return 3;
+      }
+
+      if (!b.scheduledAt) {
+        return 3;
+      }
+
+      const bookingTime = new Date(b.scheduledAt).getTime();
+
+      // 1. Today's confirmed/modified/pending bookings
+      if (bookingTime >= todayStart && bookingTime < todayEnd) {
+        return 1;
+      }
+
+      // 2. Upcoming future bookings (after today)
+      if (bookingTime >= todayEnd) {
+        return 2;
+      }
+
+      // Past uncompleted appointments
+      return 3;
+    };
+
+    return [...list].sort((a, b) => {
+      const bucketA = getBucket(a);
+      const bucketB = getBucket(b);
+
+      if (bucketA !== bucketB) {
+        return bucketA - bucketB;
+      }
+
+      const timeA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const timeB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+
+      // Bucket 1 (Today): earliest time today first (ASC)
+      if (bucketA === 1) {
+        return timeA - timeB;
+      }
+
+      // Bucket 2 (Upcoming): nearest upcoming first (ASC)
+      if (bucketA === 2) {
+        return timeA - timeB;
+      }
+
+      // Bucket 3 (Completed / Cancelled): latest to old (DESC)
+      return timeB - timeA;
+    });
+  };
+
+  const sortedBookings = sortBookingsByBusinessRules(filteredBookings);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -605,7 +677,7 @@ export default function CustomerProfileModal({
                 ))}
               </div>
               <span className="text-[11px] text-groomish-slate/50">
-                Showing {filteredBookings.length} order{filteredBookings.length === 1 ? "" : "s"}
+                Showing {sortedBookings.length} order{sortedBookings.length === 1 ? "" : "s"}
               </span>
             </div>
 
@@ -614,13 +686,16 @@ export default function CustomerProfileModal({
                 <div className="w-6 h-6 border-2 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                 Loading appointment history...
               </div>
-            ) : filteredBookings.length === 0 ? (
+            ) : sortedBookings.length === 0 ? (
               <div className="py-12 text-center text-xs text-groomish-slate/40 border border-dashed border-groomish-slate/20 rounded-2xl">
                 No {bookingFilter !== "ALL" ? bookingFilter.toLowerCase() : ""} orders found for this customer.
               </div>
             ) : (
-              <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1">
-                {filteredBookings.map((b) => (
+              <>
+                <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1">
+                  {sortedBookings
+                  .slice((bookingPage - 1) * BOOKINGS_PAGE_SIZE, bookingPage * BOOKINGS_PAGE_SIZE)
+                  .map((b) => (
                   <div
                     key={b.id}
                     className="p-4 rounded-2xl bg-white border border-groomish-slate/10 shadow-soft hover:border-groomish-slate/20 transition space-y-2 text-xs"
@@ -726,9 +801,22 @@ export default function CustomerProfileModal({
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        )}
+
+              {sortedBookings.length > BOOKINGS_PAGE_SIZE && (
+                <div className="pt-2">
+                  <Pagination
+                    currentPage={bookingPage}
+                    totalItems={sortedBookings.length}
+                    pageSize={BOOKINGS_PAGE_SIZE}
+                    onPageChange={setBookingPage}
+                    itemName="bookings"
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
         {/* TAB 2: GROOM COINS LEDGER */}
         {activeTab === "POINTS" && (

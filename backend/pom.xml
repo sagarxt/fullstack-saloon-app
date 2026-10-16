@@ -111,6 +111,12 @@
             <artifactId>spring-boot-starter-mail</artifactId>
             <version>3.5.6</version>
         </dependency>
+        <!-- Razorpay Java SDK -->
+        <dependency>
+            <groupId>com.razorpay</groupId>
+            <artifactId>razorpay-java</artifactId>
+            <version>1.4.3</version>
+        </dependency>
     </dependencies>
 
 <!--    <dependencyManagement>-->

@@ -10,6 +10,7 @@ import com.loyalty_program_app.backend.repository.*;
 import com.loyalty_program_app.backend.service.BranchCatalogService;
 import com.loyalty_program_app.backend.service.BookingTimelineService;
 import com.loyalty_program_app.backend.service.CartService;
+import com.loyalty_program_app.backend.service.LoyaltyConfigService;
 import com.loyalty_program_app.backend.service.utils.EmailService;
 import com.loyalty_program_app.backend.util.BookingCodeGenerator;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ public class CartServiceImpl implements CartService {
     private final EmailService emailService;
     private final BookingTimelineService bookingTimelineService;
     private final BranchCatalogService branchCatalogService;
+    private final LoyaltyConfigService loyaltyConfigService;
 
     /* =====================================================
        GET OR CREATE CART
@@ -318,11 +320,17 @@ public class CartServiceImpl implements CartService {
 
         // Validate scheduling if services exist or if scheduledAt provided
         LocalDateTime scheduledAt = request.getScheduledAt();
-        if (!serviceItems.isEmpty() && scheduledAt == null) {
-            throw new RuntimeException("Appointment date & time is required for salon service treatments.");
-        }
-        if (scheduledAt != null && scheduledAt.isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Selected appointment slot cannot be in the past. Please select an upcoming slot.");
+        if (!serviceItems.isEmpty()) {
+            if (scheduledAt == null) {
+                throw new RuntimeException("Appointment date & time is required for salon service treatments.");
+            }
+            if (scheduledAt.isBefore(LocalDateTime.now().minusMinutes(15))) {
+                throw new RuntimeException("Selected appointment slot cannot be in the past. Please select an upcoming slot.");
+            }
+        } else {
+            if (scheduledAt == null || scheduledAt.isBefore(LocalDateTime.now().minusMinutes(15))) {
+                scheduledAt = LocalDateTime.now();
+            }
         }
 
         // Validate service branch catalog availability
@@ -470,7 +478,10 @@ public class CartServiceImpl implements CartService {
 
         if (request.getPaymentMethod() != null && !request.getPaymentMethod().isBlank()) {
             String pm = request.getPaymentMethod().toUpperCase();
-            if (pm.contains("UPI")) {
+            if (pm.contains("ONLINE") || pm.contains("RAZORPAY")) {
+                method = com.loyalty_program_app.backend.enums.PaymentMethod.ONLINE;
+                paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.PENDING;
+            } else if (pm.contains("UPI")) {
                 method = com.loyalty_program_app.backend.enums.PaymentMethod.UPI;
                 paymentStatus = com.loyalty_program_app.backend.enums.PaymentStatus.PENDING;
             } else if (pm.contains("CARD")) {
@@ -488,7 +499,7 @@ public class CartServiceImpl implements CartService {
                 .user(user)
                 .amount(finalPrice)
                 .paymentMethod(method)
-                .paymentModeDetails(method == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ? "Pay at Salon" : method.name())
+                .paymentModeDetails(method == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ? "Pay at Salon" : "Online Payment (Razorpay)")
                 .status(paymentStatus)
                 .invoiceNumber("INV-CART-" + (System.currentTimeMillis() % 1000000))
                 .paymentGatewayId("PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
@@ -535,6 +546,7 @@ public class CartServiceImpl implements CartService {
                 bi.setServiceNameSnapshot(itemName);
                 bi.setServicePriceSnapshot(itemPrice);
                 bi.setServiceDurationSnapshot(itemDur);
+                bi.setServiceRewardCoinsSnapshot(s.getRewards() != null ? s.getRewards() : 0);
                 bi.setStatus(initialStatus);
                 savedBookingItems.add(bookingItemRepository.save(bi));
             }
@@ -566,6 +578,32 @@ public class CartServiceImpl implements CartService {
         }
         savedBooking.setBookingProducts(savedBookingProducts);
 
+        // Snapshot expected reward points at booking creation time (immutable on future service catalog changes)
+        double multiplier = 1.0;
+        if (user.getTier() != null) {
+            switch (user.getTier()) {
+                case DIAMOND -> multiplier = 2.0;
+                case PLATINUM -> multiplier = 1.5;
+                case GOLD -> multiplier = 1.25;
+                case SILVER -> multiplier = 1.0;
+            }
+        }
+        double spendPerCoin = 100.0;
+        try {
+            if (loyaltyConfigService != null) {
+                spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+                if (spendPerCoin <= 0) spendPerCoin = 100.0;
+            }
+        } catch (Exception ignored) {}
+
+        int baseCoins = (int) Math.round((finalPrice / spendPerCoin) * multiplier);
+        int bonusCoins = savedBookingItems.stream()
+                .mapToInt(i -> i.getServiceRewardCoinsSnapshot() != null ? i.getServiceRewardCoinsSnapshot() : 0)
+                .sum();
+        int expectedRewardPoints = Math.max(1, baseCoins + bonusCoins);
+        savedBooking.setExpectedRewardPoints(expectedRewardPoints);
+        savedBooking = bookingRepository.save(savedBooking);
+
         // Record Timeline
         int totalItemsCount = serviceItems.size() + productItems.size();
         bookingTimelineService.recordTimeline(
@@ -579,33 +617,37 @@ public class CartServiceImpl implements CartService {
         );
 
         // In-app Notification
-        String detailsSummary = (serviceItems.size() > 0 ? serviceItems.size() + " service(s)" : "")
-                + (serviceItems.size() > 0 && productItems.size() > 0 ? " & " : "")
-                + (productItems.size() > 0 ? productItems.size() + " retail product(s)" : "");
-
-        Notification notification = Notification.builder()
-                .user(user)
-                .title(initialStatus == BookingStatus.CONFIRMED ? "Order & Booking Confirmed" : "Order & Booking Reserved (Payment Pending)")
-                .message(initialStatus == BookingStatus.CONFIRMED
-                        ? "Your order (" + detailsSummary + ") is confirmed! Booking ID: " + savedBooking.getBookingCode()
-                        : "Your order (" + detailsSummary + ") is reserved pending online payment. Complete payment to confirm your booking. Booking ID: " + savedBooking.getBookingCode())
-                .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
-                .build();
-        notificationRepository.save(notification);
-
-        // Real-time Email
         String serviceNames = serviceItems.stream().map(si -> si.getService().getName()).collect(Collectors.joining(", "));
         if (serviceNames.isBlank()) {
             serviceNames = productItems.stream().map(pi -> pi.getProduct().getName()).collect(Collectors.joining(", "));
         }
-        emailService.sendBookingConfirmationEmail(
-                user.getEmail(),
-                user.getName(),
-                savedBooking.getBookingCode(),
-                serviceNames,
-                savedBooking.getScheduledAt(),
-                savedBooking.getPricePaid()
-        );
+
+        // Only emit notification & email if booking is confirmed immediately (e.g. Pay at Salon / CASH).
+        // For ONLINE payment (PENDING), the final confirmation is sent after payment verification so the customer isn't spammed.
+        if (initialStatus == BookingStatus.CONFIRMED) {
+            String detailsSummary = (serviceItems.size() > 0 ? serviceItems.size() + " service(s)" : "")
+                    + (serviceItems.size() > 0 && productItems.size() > 0 ? " & " : "")
+                    + (productItems.size() > 0 ? productItems.size() + " retail product(s)" : "");
+
+            Notification notification = Notification.builder()
+                    .user(user)
+                    .title("Order & Booking Confirmed")
+                    .message("Your order (" + detailsSummary + ") is confirmed! Booking ID: " + savedBooking.getBookingCode())
+                    .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                    .referenceId(savedBooking.getId())
+                    .link("/customer/bookings/" + savedBooking.getId())
+                    .build();
+            notificationRepository.save(notification);
+
+            emailService.sendBookingConfirmationEmail(
+                    user.getEmail(),
+                    user.getName(),
+                    savedBooking.getBookingCode(),
+                    serviceNames,
+                    savedBooking.getScheduledAt(),
+                    savedBooking.getPricePaid()
+            );
+        }
 
         // CLEAR DB CART
         cartItemRepository.deleteByCartId(cart.getId());

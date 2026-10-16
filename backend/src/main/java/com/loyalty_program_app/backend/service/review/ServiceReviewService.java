@@ -20,6 +20,10 @@ public interface ServiceReviewService {
 
     ServiceRatingSummaryResponse getProductRatingSummary(UUID productId);
 
+    Page<ServiceReviewResponse> getReviewsForStore(UUID storeId, Pageable pageable);
+
+    ServiceRatingSummaryResponse getStoreRatingSummary(UUID storeId);
+
     java.util.List<ServiceReviewResponse> getReviewsForBooking(UUID bookingId);
 
     java.util.List<ServiceReviewResponse> getCustomerReviewsForBooking(UUID userId, UUID bookingId);

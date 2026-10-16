@@ -146,7 +146,7 @@ public class UserAdminServiceImpl implements UserAdminService {
                 try {
                     String content = "<div style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #373A43; line-height: 1.6;'>"
                             + "<div style='background: linear-gradient(135deg, #FC6957, #FD7F48); padding: 28px 20px; border-radius: 18px; color: white; text-align: center; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(252, 105, 87, 0.25);'>"
-                            + "<h1 style='margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;'>✨ Exclusive Groomish Now Offer</h1>"
+                            + "<h1 style='margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;'>Exclusive Groomish Now Offer</h1>"
                             + "<p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.95; font-weight: 600;'>Special Perks for " + groupLabel + "</p>"
                             + "</div>"
                             + "<p style='font-size: 15px;'>Hello <strong>" + (u.getName() != null ? u.getName() : "there") + "</strong>,</p>"
@@ -183,6 +183,69 @@ public class UserAdminServiceImpl implements UserAdminService {
         res.put("recipients", recipients);
         res.put("message", "Email successfully dispatched to " + sent + " customers in group " + groupLabel);
         return res;
+    }
+
+    @Override
+    public java.util.Map<String, Object> sendEmailToIndividual(String userId, String email, String subject, String message, String couponCode) {
+        User user = null;
+        if (userId != null && !userId.isBlank()) {
+            try {
+                user = userRepository.findById(UUID.fromString(userId.trim())).orElse(null);
+            } catch (Exception ignored) {}
+        }
+        if (user == null && email != null && !email.isBlank()) {
+            user = userRepository.findByEmail(email.trim().toLowerCase()).orElse(null);
+        }
+
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+            java.util.Map<String, Object> err = new java.util.HashMap<>();
+            err.put("success", false);
+            err.put("sentCount", 0);
+            err.put("message", "Target customer could not be found or has no valid email address.");
+            return err;
+        }
+
+        String recipientName = user.getName() != null && !user.getName().isBlank() ? user.getName() : "Valued Customer";
+        try {
+            String content = "<div style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #373A43; line-height: 1.6;'>"
+                    + "<div style='background: linear-gradient(135deg, #FC6957, #FD7F48); padding: 28px 20px; border-radius: 18px; color: white; text-align: center; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(252, 105, 87, 0.25);'>"
+                    + "<h1 style='margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;'>Exclusive Groomish Now Offer</h1>"
+                    + "<p style='margin: 6px 0 0 0; font-size: 13px; opacity: 0.95; font-weight: 600;'>Special Message for " + recipientName + "</p>"
+                    + "</div>"
+                    + "<p style='font-size: 15px;'>Hello <strong>" + recipientName + "</strong>,</p>"
+                    + "<div style='background: #FFFBF9; border: 1px solid rgba(252, 105, 87, 0.2); padding: 20px; border-radius: 16px; margin: 18px 0;'>"
+                    + "<p style='margin: 0; font-size: 14px; color: #373A43; white-space: pre-wrap;'>" + (message != null ? message : "") + "</p>"
+                    + "</div>";
+
+            if (couponCode != null && !couponCode.isBlank()) {
+                content += "<div style='text-align: center; margin: 26px 0; padding: 20px; background: #FFF6EE; border-radius: 16px; border: 1.5px dashed #FC6957;'>"
+                        + "<span style='font-size: 11px; font-weight: 700; text-transform: uppercase; color: #FC6957; letter-spacing: 1px; display: block; margin-bottom: 6px;'>Your Exclusive Coupon Code</span>"
+                        + "<span style='display: inline-block; font-family: monospace; font-size: 24px; font-weight: 900; color: #FC6957; letter-spacing: 2px;'>"
+                        + couponCode.trim().toUpperCase()
+                        + "</span>"
+                        + "<p style='font-size: 11px; color: #8F94A3; margin: 8px 0 0 0;'>Apply this code at checkout on the Groomish Now web app or mobile booking.</p>"
+                        + "</div>";
+            }
+
+            content += "<p style='font-size: 12px; color: #8F94A3; text-align: center; margin-top: 24px;'>Thank you for being part of the Groomish salon community!</p></div>";
+
+            String finalHtml = templateService != null ? templateService.buildTemplate(subject, content) : content;
+            emailService.sendHtmlEmail(user.getEmail(), subject, finalHtml);
+
+            java.util.Map<String, Object> res = new java.util.HashMap<>();
+            res.put("success", true);
+            res.put("targetType", "INDIVIDUAL");
+            res.put("sentCount", 1);
+            res.put("recipients", java.util.List.of(user.getEmail()));
+            res.put("message", "Email successfully sent to " + recipientName + " (" + user.getEmail() + ")");
+            return res;
+        } catch (Exception e) {
+            java.util.Map<String, Object> err = new java.util.HashMap<>();
+            err.put("success", false);
+            err.put("sentCount", 0);
+            err.put("message", "Failed to dispatch email: " + e.getMessage());
+            return err;
+        }
     }
 
     // ------------------------------------------

@@ -61,4 +61,38 @@ public class CustomerPaymentController {
         UUID userId = getCurrentUserId(user, request);
         return ResponseEntity.ok(paymentService.checkoutPayment(userId, checkoutRequest));
     }
+
+    @PostMapping("/razorpay/create-order")
+    public ResponseEntity<com.loyalty_program_app.backend.dto.payment.RazorpayOrderResponse> createRazorpayOrder(
+            @AuthenticationPrincipal CustomUserDetails user,
+            HttpServletRequest request,
+            @RequestBody com.loyalty_program_app.backend.dto.payment.RazorpayOrderRequest orderRequest
+    ) {
+        UUID userId = getCurrentUserId(user, request);
+        return ResponseEntity.ok(paymentService.createRazorpayOrder(userId, orderRequest));
+    }
+
+    @PostMapping("/razorpay/verify")
+    public ResponseEntity<PaymentResponse> verifyRazorpayPayment(
+            @AuthenticationPrincipal CustomUserDetails user,
+            HttpServletRequest request,
+            @RequestBody com.loyalty_program_app.backend.dto.payment.RazorpayVerifyRequest verifyRequest
+    ) {
+        UUID userId = getCurrentUserId(user, request);
+        return ResponseEntity.ok(paymentService.verifyRazorpayPayment(userId, verifyRequest));
+    }
+
+    @PostMapping("/switch-to-salon")
+    public ResponseEntity<PaymentResponse> switchToPayAtSalon(
+            @AuthenticationPrincipal CustomUserDetails user,
+            HttpServletRequest request,
+            @RequestBody java.util.Map<String, String> body
+    ) {
+        UUID userId = getCurrentUserId(user, request);
+        String bookingIdStr = body.get("bookingId");
+        if (bookingIdStr == null || bookingIdStr.isBlank()) {
+            throw new RuntimeException("bookingId is required");
+        }
+        return ResponseEntity.ok(paymentService.switchToPayAtSalon(userId, UUID.fromString(bookingIdStr.trim())));
+    }
 }

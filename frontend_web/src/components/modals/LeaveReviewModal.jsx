@@ -11,6 +11,8 @@ export default function LeaveReviewModal({
   serviceName,
   productId,
   productName,
+  storeId,
+  storeName,
   initialRating,
   initialReview,
   onReviewSubmitted,
@@ -31,17 +33,14 @@ export default function LeaveReviewModal({
     }
   }, [open, initialRating, initialReview]);
 
-  if (!serviceId && !productId) return null;
+  if (!serviceId && !productId && !storeId) return null;
 
-  const itemName = serviceName || productName || "Item";
-  const itemType = productId ? "Product" : "Service";
+  const isStore = !!storeId && !serviceId && !productId;
+  const itemName = isStore ? (storeName || "Salon Branch") : (serviceName || productName || "Item");
+  const itemType = isStore ? "Salon Branch" : (productId ? "Product" : "Service");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!review.trim()) {
-      setError("Please write a few words about your experience.");
-      return;
-    }
 
     setLoading(true);
     setError("");
@@ -51,8 +50,9 @@ export default function LeaveReviewModal({
         bookingId: bookingId || undefined,
         serviceId: serviceId || undefined,
         productId: productId || undefined,
+        storeId: storeId || undefined,
         rating: rating,
-        review: review.trim(),
+        review: review ? review.trim() : "",
       });
       setSubmitted(true);
       if (onReviewSubmitted) onReviewSubmitted();
@@ -137,20 +137,30 @@ export default function LeaveReviewModal({
 
             {/* Comment Area */}
             <div>
-              <label className="block text-xs font-semibold text-groomish-slate/80 mb-1.5">
-                {productId ? "Product Feedback & Review" : "Service & Stylist Feedback"}
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-groomish-slate/80">
+                  {isStore
+                    ? "Salon & Branch Hospitality Feedback"
+                    : productId
+                    ? "Product Feedback & Review"
+                    : "Service & Stylist Feedback"}
+                </label>
+                <span className="text-[11px] font-medium text-groomish-slate/40">
+                  (Optional)
+                </span>
+              </div>
               <textarea
-                rows={4}
+                rows={3}
                 value={review}
                 onChange={(e) => setReview(e.target.value)}
                 placeholder={
-                  productId
-                    ? "Share your thoughts on the product effectiveness, scent, texture, and results..."
-                    : "Share your thoughts on the service quality, hygiene, ambiance, and staff professionalism..."
+                  isStore
+                    ? "Optional: Share your feedback about this salon branch (ambience, cleanliness, front desk, hygiene, and hospitality)..."
+                    : productId
+                    ? "Optional: Share your thoughts on the product effectiveness, scent, texture, and results..."
+                    : "Optional: Share your thoughts on the service quality, hygiene, ambiance, and stylist professionalism..."
                 }
-                className="input-groomish resize-none"
-                required
+                className="input-groomish resize-none font-medium"
               />
             </div>
 

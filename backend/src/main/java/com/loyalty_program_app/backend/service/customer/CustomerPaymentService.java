@@ -13,5 +13,11 @@ public interface CustomerPaymentService {
     PaymentResponse getMyPayment(UUID userId, UUID paymentId);
 
     PaymentResponse checkoutPayment(UUID userId, com.loyalty_program_app.backend.dto.payment.PaymentCheckoutRequest request);
+
+    com.loyalty_program_app.backend.dto.payment.RazorpayOrderResponse createRazorpayOrder(UUID userId, com.loyalty_program_app.backend.dto.payment.RazorpayOrderRequest request);
+
+    PaymentResponse verifyRazorpayPayment(UUID userId, com.loyalty_program_app.backend.dto.payment.RazorpayVerifyRequest request);
+
+    PaymentResponse switchToPayAtSalon(UUID userId, UUID bookingId);
 }
 

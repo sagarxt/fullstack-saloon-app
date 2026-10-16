@@ -10,6 +10,8 @@ public class NotificationResponse {
     private String title;
     private String message;
     private String type;
+    private String link;
+    private UUID referenceId;
     private Boolean seen;
     private String createdAt;
 }

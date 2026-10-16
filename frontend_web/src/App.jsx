@@ -9,6 +9,8 @@ import PublicServicesPage from "./pages/public/ServicesPage";
 import ServiceDetailPage from "./pages/public/ServiceDetailPage";
 import PublicProductsPage from "./pages/public/ProductsPage";
 import ProductDetailPage from "./pages/public/ProductDetailPage";
+import QAPage from "./pages/public/QAPage";
+import PolicyPage from "./pages/public/PolicyPage";
 
 // Customer Pages
 import MyBookingsPage from "./pages/customer/MyBookingsPage";
@@ -34,6 +36,7 @@ import CouponsPage from "./pages/admin/CouponsPage";
 import PaymentsPage from "./pages/admin/PaymentsPage";
 import ReviewsPage from "./pages/admin/ReviewsPage";
 import AdminRewardsPage from "./pages/admin/RewardsPage";
+import AdminPolicyQAPage from "./pages/admin/AdminPolicyQAPage";
 
 // Staff Pages
 import StaffDashboard from "./pages/staff/StaffDashboard";
@@ -51,8 +54,11 @@ function App() {
       <Route path="/services/:serviceId" element={<ServiceDetailPage />} />
       <Route path="/products" element={<PublicProductsPage />} />
       <Route path="/products/:productId" element={<ProductDetailPage />} />
-      <Route path="/product/:productId" element={<ProductDetailPage />} />
       <Route path="/cart" element={<CartPage />} />
+      <Route path="/qa" element={<QAPage />} />
+      <Route path="/faq" element={<QAPage />} />
+      <Route path="/policy" element={<PolicyPage />} />
+      <Route path="/policies" element={<PolicyPage />} />
 
       {/* Customer Protected Routes (Only Authorized Customers) */}
       <Route element={<PrivateRoute roles={["CUSTOMER"]} />}>
@@ -87,6 +93,7 @@ function App() {
           <Route path="rewards" element={<AdminRewardsPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
+          <Route path="policies-qa" element={<AdminPolicyQAPage />} />
         </Route>
       </Route>
 

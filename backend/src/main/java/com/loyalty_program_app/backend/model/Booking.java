@@ -77,6 +77,9 @@ public class Booking {
     private LocalDateTime cancelledAt;
     private LocalDateTime completedAt;
 
+    @Column(name = "expected_reward_points")
+    private Integer expectedRewardPoints;
+
     @Builder.Default
     private Boolean reminderOneHourSent = false;
 

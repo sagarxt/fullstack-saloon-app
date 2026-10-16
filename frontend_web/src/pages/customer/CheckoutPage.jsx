@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -14,6 +14,10 @@ import {
   getMyVouchers,
   applyCoupon,
   getSlotAvailability,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  checkoutPayment,
+  switchToPayAtSalon,
 } from "../../api/customer";
 import { extractList } from "../../utils/dataHelper";
 import {
@@ -38,6 +42,8 @@ import {
   Check,
   Loader2,
   Plus,
+  RefreshCw,
+  RotateCcw,
 } from "lucide-react";
 
 export default function CheckoutPage() {
@@ -57,9 +63,38 @@ export default function CheckoutPage() {
     removeItem,
   } = useCart();
 
+  // Local calendar date helper avoiding UTC timezone offset shifts
+  const getLocalDateStr = (d = new Date()) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  // Real-time clock tick every 15s to automatically invalidate passed slots
+  const [currentNow, setCurrentNow] = useState(() => new Date());
+  useEffect(() => {
+    const clockTimer = setInterval(() => {
+      setCurrentNow(new Date());
+    }, 15000);
+    return () => clearInterval(clockTimer);
+  }, []);
+
+  // Format "13:30" -> "01:30 PM", "09:30" -> "09:30 AM"
+  const formatSlot12Hour = (timeStr) => {
+    if (!timeStr) return "";
+    const [hStr, mStr] = timeStr.split(":");
+    let h = parseInt(hStr, 10);
+    const m = mStr || "00";
+    const ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${String(h).padStart(2, "0")}:${m} ${ampm}`;
+  };
+
   // Booking states
-  const todayStr = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const todayStr = useMemo(() => getLocalDateStr(), []);
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateStr());
   const [selectedTime, setSelectedTime] = useState("");
   // Default branch matches navbar selectedStore, fallback to cart, then first store
   const [selectedStoreId, setSelectedStoreId] = useState(
@@ -85,6 +120,86 @@ export default function CheckoutPage() {
   const [myVouchers, setMyVouchers] = useState([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
   const [validatingDiscount, setValidatingDiscount] = useState(false);
+
+  // Payment Modal States (Retry / Pay at salon / Success)
+  const [paymentFailureModal, setPaymentFailureModal] = useState({
+    isOpen: false,
+    reason: "",
+    bookingId: null,
+    bookingCode: "",
+    amount: 0,
+    storeName: "",
+    scheduledAt: "",
+    retryCount: 0, // max 2 retries
+  });
+
+  const [paymentSuccessModal, setPaymentSuccessModal] = useState({
+    isOpen: false,
+    bookingId: null,
+    bookingCode: "",
+    amount: 0,
+    storeName: "",
+    scheduledAt: "",
+    paymentMethod: "ONLINE", // ONLINE | CASH
+  });
+
+  const [successCountdown, setSuccessCountdown] = useState(4);
+  const [pendingCountdown, setPendingCountdown] = useState(8);
+  const [switchingToSalon, setSwitchingToSalon] = useState(false);
+
+  const scheduledDateTimeStr = useMemo(() => {
+    if (selectedDate && selectedTime) {
+      return `${selectedDate}T${selectedTime}:00`;
+    }
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${getLocalDateStr(now)}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  }, [selectedDate, selectedTime]);
+
+  // Auto-redirect to booking details after payment confirmation
+  useEffect(() => {
+    if (!paymentSuccessModal.isOpen || !paymentSuccessModal.bookingId) return;
+
+    setSuccessCountdown(4);
+    const interval = setInterval(() => {
+      setSuccessCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          const targetId = paymentSuccessModal.bookingId;
+          setPaymentSuccessModal((m) => ({ ...m, isOpen: false }));
+          navigate(`/customer/bookings/${targetId}`, { replace: true });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [paymentSuccessModal.isOpen, paymentSuccessModal.bookingId, navigate]);
+
+  // Auto-redirect to booking details if payment pending modal remains open
+  useEffect(() => {
+    if (!paymentFailureModal.isOpen || !paymentFailureModal.bookingId) {
+      setPendingCountdown(8);
+      return;
+    }
+
+    setPendingCountdown(8);
+    const interval = setInterval(() => {
+      setPendingCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          const targetId = paymentFailureModal.bookingId;
+          setPaymentFailureModal((m) => ({ ...m, isOpen: false }));
+          navigate(`/customer/bookings/${targetId}`, { replace: true });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [paymentFailureModal.isOpen, paymentFailureModal.bookingId, navigate]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -136,54 +251,61 @@ export default function CheckoutPage() {
   const serviceItems = useMemo(() => items.filter((i) => i.itemType === "SERVICE"), [items]);
   const productItems = useMemo(() => items.filter((i) => i.itemType === "PRODUCT"), [items]);
 
+  const hasServices = serviceItems.length > 0;
+  const isSlotSelected = !hasServices || Boolean(selectedDate && selectedTime);
+
   const primaryServiceId = useMemo(() => {
     return serviceItems[0]?.serviceId || null;
   }, [serviceItems]);
 
-  // Load slot availability if date or primary service changes (no infinite loop)
-  useEffect(() => {
+  // Load slot availability with real-time support
+  const fetchSlotAvailability = useCallback(async (isManual = false) => {
     if (!selectedDate || !primaryServiceId) {
       setUnavailableSlots([]);
       setLoadingSlots(false);
       return;
     }
 
-    let isMounted = true;
     setLoadingSlots(true);
-    getSlotAvailability(selectedDate, primaryServiceId)
-      .then((res) => {
-        if (isMounted) {
-          setUnavailableSlots(res.data?.unavailableSlots || []);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to load slot availability:", err);
-        if (isMounted) setUnavailableSlots([]);
-      })
-      .finally(() => {
-        if (isMounted) setLoadingSlots(false);
-      });
+    try {
+      const res = await getSlotAvailability(selectedDate, primaryServiceId);
+      setUnavailableSlots(res.data?.unavailableSlots || []);
+      if (isManual) {
+        showToast("Stylist slot availability refreshed in real-time", "info");
+      }
+    } catch (err) {
+      console.error("Failed to load slot availability:", err);
+      setUnavailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [selectedDate, primaryServiceId, showToast]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedDate, primaryServiceId]);
+  // Initial fetch and real-time polling every 30 seconds
+  useEffect(() => {
+    fetchSlotAvailability();
+    const pollInterval = setInterval(() => {
+      fetchSlotAvailability();
+    }, 30000);
+    return () => clearInterval(pollInterval);
+  }, [fetchSlotAvailability]);
 
-  // Check if slot has already passed for today
-  const isSlotPast = (timeStr) => {
-    if (selectedDate !== todayStr) return false;
+  // Check if slot has already passed for today in real-time
+  const isSlotPast = useCallback((timeStr) => {
+    const currentToday = getLocalDateStr(currentNow);
+    if (selectedDate !== currentToday) return false;
     const [h, m] = timeStr.split(":").map(Number);
-    const slotDate = new Date();
+    const slotDate = new Date(currentNow);
     slotDate.setHours(h, m, 0, 0);
-    return slotDate <= new Date();
-  };
+    return slotDate <= currentNow;
+  }, [selectedDate, currentNow]);
 
-  // Reset selected time if it becomes past
+  // Reset selected time if it becomes past in real-time
   useEffect(() => {
     if (selectedTime && isSlotPast(selectedTime)) {
       setSelectedTime("");
     }
-  }, [selectedDate, selectedTime]);
+  }, [selectedDate, selectedTime, isSlotPast]);
 
   // Validate branch switch against current cart items
   const handleStoreBranchChange = async (newStoreId) => {
@@ -356,6 +478,168 @@ export default function CheckoutPage() {
     showToast("Discount removed", "info");
   };
 
+  // Handle launching Razorpay with retry tracking
+  const launchRazorpayPayment = async (bookingId, currentRetryCount = 0, initialScheduledAt = null) => {
+    try {
+      setSubmitting(true);
+      const orderRes = await createRazorpayOrder({ bookingId });
+      const orderData = orderRes.data;
+
+      if (typeof window !== "undefined" && window.Razorpay && orderData?.keyId) {
+        const options = {
+          key: orderData.keyId,
+          amount: orderData.amount,
+          currency: orderData.currency || "INR",
+          name: "Groomish Now",
+          description: `Appointment Payment (${orderData.bookingCode || bookingId})`,
+          image: "https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png",
+          order_id: orderData.orderId?.startsWith("order_sim_") ? undefined : orderData.orderId,
+          prefill: {
+            name: orderData.customerName || user?.name || "",
+            email: orderData.customerEmail || user?.email || "",
+            contact: orderData.customerPhone || user?.phone || "",
+          },
+          notes: {
+            bookingId: bookingId,
+            bookingCode: orderData.bookingCode || "",
+          },
+          theme: {
+            color: "#FA7B47",
+          },
+          modal: {
+            ondismiss: () => {
+              setSubmitting(false);
+              setPaymentFailureModal({
+                isOpen: true,
+                bookingId,
+                bookingCode: orderData.bookingCode || "",
+                amount: finalPayable,
+                storeName: selectedStore?.name || "Groomish Now Salon",
+                scheduledAt: initialScheduledAt || scheduledDateTimeStr,
+                reason: "Payment window was dismissed before completing transaction.",
+                retryCount: currentRetryCount + 1,
+              });
+            },
+          },
+          handler: async (response) => {
+            try {
+              setSubmitting(true);
+              showToast("Verifying payment...", "info");
+              await verifyRazorpayPayment({
+                bookingId: bookingId,
+                razorpayOrderId: response.razorpay_order_id || orderData.orderId,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+              setPaymentFailureModal({ isOpen: false, bookingId: null, bookingCode: "", reason: "", retryCount: 0 });
+              showToast("Payment verified! Booking confirmed.", "success");
+              setPaymentSuccessModal({
+                isOpen: true,
+                bookingId,
+                bookingCode: orderData.bookingCode || bookingId,
+                amount: finalPayable,
+                storeName: selectedStore?.name || "Groomish Now Salon",
+                scheduledAt: initialScheduledAt || scheduledDateTimeStr,
+                paymentMethod: "ONLINE",
+              });
+            } catch (vErr) {
+              console.error("Verification failed", vErr);
+              setPaymentFailureModal({
+                isOpen: true,
+                bookingId,
+                bookingCode: orderData.bookingCode || "",
+                amount: finalPayable,
+                storeName: selectedStore?.name || "Groomish Now Salon",
+                scheduledAt: initialScheduledAt || scheduledDateTimeStr,
+                reason: "Payment verification failed. You may retry online or switch to Pay at Salon.",
+                retryCount: currentRetryCount + 1,
+              });
+            } finally {
+              setSubmitting(false);
+            }
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on("payment.failed", function (resp) {
+          setSubmitting(false);
+          setPaymentFailureModal({
+            isOpen: true,
+            bookingId,
+            bookingCode: orderData.bookingCode || "",
+            amount: finalPayable,
+            storeName: selectedStore?.name || "Groomish Now Salon",
+            scheduledAt: initialScheduledAt || scheduledDateTimeStr,
+            reason: resp.error?.description || "Payment failed from Razorpay gateway.",
+            retryCount: currentRetryCount + 1,
+          });
+        });
+        rzp.open();
+      } else {
+        // Direct simulation payment
+        await checkoutPayment({
+          bookingId: bookingId,
+          paymentMethod: "ONLINE",
+        });
+        showToast("Payment completed! Booking confirmed.", "success");
+        setPaymentSuccessModal({
+          isOpen: true,
+          bookingId,
+          bookingCode: bookingId,
+          amount: finalPayable,
+          storeName: selectedStore?.name || "Groomish Now Salon",
+          scheduledAt: initialScheduledAt || scheduledDateTimeStr,
+          paymentMethod: "ONLINE",
+        });
+      }
+    } catch (rzpErr) {
+      console.error("Failed to initiate online payment", rzpErr);
+      setPaymentFailureModal({
+        isOpen: true,
+        bookingId,
+        bookingCode: "",
+        amount: finalPayable,
+        storeName: selectedStore?.name || "Groomish Now Salon",
+        scheduledAt: initialScheduledAt || scheduledDateTimeStr,
+        reason: rzpErr.response?.data?.message || "Failed to initiate online payment gateway.",
+        retryCount: currentRetryCount + 1,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRetryOnlinePayment = () => {
+    const { bookingId, retryCount, scheduledAt } = paymentFailureModal;
+    if (!bookingId) return;
+    setPaymentFailureModal((prev) => ({ ...prev, isOpen: false }));
+    launchRazorpayPayment(bookingId, retryCount, scheduledAt || scheduledDateTimeStr);
+  };
+
+  const handleSwitchToSalon = async () => {
+    const { bookingId, bookingCode, amount, storeName, scheduledAt } = paymentFailureModal;
+    if (!bookingId) return;
+    try {
+      setSwitchingToSalon(true);
+      await switchToPayAtSalon(bookingId);
+      setPaymentFailureModal({ isOpen: false, bookingId: null, bookingCode: "", reason: "", retryCount: 0 });
+      showToast("Appointment confirmed! Settle payment upon arrival at the salon.", "success");
+      setPaymentSuccessModal({
+        isOpen: true,
+        bookingId,
+        bookingCode: bookingCode || bookingId,
+        amount: amount || finalPayable,
+        storeName: storeName || selectedStore?.name || "Groomish Now Salon",
+        scheduledAt: scheduledAt || scheduledDateTimeStr,
+        paymentMethod: "CASH",
+      });
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to switch payment mode", "error");
+    } finally {
+      setSwitchingToSalon(false);
+    }
+  };
+
   // Checkout submission
   const handleSubmitCheckout = async (e) => {
     e.preventDefault();
@@ -376,17 +660,19 @@ export default function CheckoutPage() {
       return;
     }
 
-    let scheduledAt = null;
+    let scheduledAtStr = null;
     if (selectedDate && selectedTime) {
-      scheduledAt = `${selectedDate}T${selectedTime}:00`;
+      scheduledAtStr = `${selectedDate}T${selectedTime}:00`;
     } else {
-      scheduledAt = new Date().toISOString().slice(0, 19);
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      scheduledAtStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     }
 
     setSubmitting(true);
     try {
       const checkoutData = {
-        scheduledAt,
+        scheduledAt: scheduledAtStr,
         storeId: selectedStoreId || (stores[0] ? stores[0].id : null),
         couponCode: appliedCoupon ? appliedCoupon.code : null,
         voucherCode: appliedVoucher ? appliedVoucher.voucherCode : null,
@@ -396,7 +682,21 @@ export default function CheckoutPage() {
 
       const bookingRes = await checkout(checkoutData);
       if (bookingRes?.id) {
-        navigate(`/customer/bookings/${bookingRes.id}`, { replace: true });
+        if (paymentMethod === "ONLINE") {
+          await launchRazorpayPayment(bookingRes.id, 0, scheduledAtStr);
+        } else {
+          // Pay at Salon: Open Booking Confirmed modal before redirecting
+          showToast("Appointment booked successfully! Settle payment upon arrival at the salon.", "success");
+          setPaymentSuccessModal({
+            isOpen: true,
+            bookingId: bookingRes.id,
+            bookingCode: bookingRes.bookingCode || bookingRes.id,
+            amount: bookingRes.pricePaid ?? finalPayable,
+            storeName: selectedStore?.name || "Groomish Now Salon",
+            scheduledAt: scheduledAtStr,
+            paymentMethod: "CASH",
+          });
+        }
       } else {
         navigate("/customer/bookings", { replace: true });
       }
@@ -437,9 +737,9 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-1 pb-16">
+      <main className="flex-1 pb-8">
         {/* BREADCRUMB */}
-        <div className="bg-white border-b border-groomish-slate/10 py-3">
+        <div className="bg-white border-b border-groomish-slate/10 py-2.5">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-groomish-slate/60">
             <Link to="/" className="hover:text-groomish-orange flex items-center gap-1">
               <Home className="w-3.5 h-3.5" />
@@ -455,7 +755,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* HEADER */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-3">
           <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-groomish-slate tracking-tight">
             Checkout & Appointment Scheduling
           </h1>
@@ -465,10 +765,10 @@ export default function CheckoutPage() {
         </div>
 
         {/* CHECKOUT FORM & SUMMARY */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <form onSubmit={handleSubmitCheckout} className="grid lg:grid-cols-12 gap-8 items-start">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
+          <form onSubmit={handleSubmitCheckout} className="grid lg:grid-cols-12 gap-5 items-start">
             {/* LEFT COLUMN: SCHEDULING, REDEMPTION & PAYMENT */}
-            <div className="lg:col-span-8 space-y-6">
+            <div className="lg:col-span-8 space-y-4">
               {/* 1. SALON LOCATION */}
               <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-soft space-y-4">
                 <div className="flex items-center gap-2 border-b border-groomish-slate/10 pb-3">
@@ -511,27 +811,36 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* 2. DATE & SLOT SELECTION (if services present) */}
+              {/* 2. DATE & SLOT SELECTION */}
               <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-soft space-y-4">
                 <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-groomish-orange" />
                     <h2 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate">
-                      2. Appointment Date & Stylist Slot
+                      {hasServices ? "2. Appointment Date & Stylist Slot" : "2. Preferred Pickup / Delivery Schedule"}
                     </h2>
                   </div>
-                  {serviceItems.length > 0 && (
-                    <span className="text-[11px] font-bold text-groomish-orange bg-groomish-orangeLight px-2 py-0.5 rounded-full">
+                  {hasServices ? (
+                    <span className="text-[11px] font-bold text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full">
                       Required for treatments
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-groomish-green bg-groomish-greenLight px-2.5 py-0.5 rounded-full">
+                      Retail Products
                     </span>
                   )}
                 </div>
 
                 {/* Date Picker - Groomish Themed */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-groomish-slate">
-                    Select Appointment Date
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-groomish-slate">
+                      {hasServices ? "Select Appointment Date" : "Select Preferred Pickup Date"}
+                    </label>
+                    <span className="text-[11px] text-groomish-slate/50 font-medium">
+                      Today: {new Date().toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
                   <CustomDatePicker
                     value={selectedDate}
                     onChange={(e, val) => {
@@ -540,7 +849,7 @@ export default function CheckoutPage() {
                       setSelectedTime("");
                     }}
                     minDate={todayStr}
-                    placeholder="Select Appointment Date"
+                    placeholder="Select Date"
                     className="w-full"
                     triggerClassName="w-full bg-groomish-cream hover:bg-white border-groomish-slate/15 py-3 px-4 rounded-2xl text-xs font-bold transition"
                   />
@@ -548,24 +857,38 @@ export default function CheckoutPage() {
 
                 {/* Slots Grid */}
                 <div className="space-y-2 pt-2">
-                  <div className="flex items-center justify-between text-xs font-semibold text-groomish-slate">
-                    <span>Available Time Slot</span>
-                    {loadingSlots ? (
-                      <span className="text-[11px] text-groomish-orange font-semibold flex items-center gap-1.5 animate-pulse">
-                        <Sparkles className="w-3 h-3" />
-                        Checking stylist availability...
-                      </span>
-                    ) : (
-                      selectedTime && (
-                        <span className="text-[11px] font-bold text-groomish-green flex items-center gap-1">
+                  <div className="flex items-center justify-between text-xs font-semibold text-groomish-slate flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span>{hasServices ? "Available Stylist Slots" : "Preferred Pickup Time Slot"}</span>
+                      {selectedTime && (
+                        <span className="text-[11px] font-bold text-groomish-green bg-groomish-greenLight px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-groomish-green/20">
                           <CheckCircle2 className="w-3 h-3" />
-                          Selected: {selectedTime}
+                          Selected: {formatSlot12Hour(selectedTime)}
                         </span>
-                      )
-                    )}
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {loadingSlots && (
+                        <span className="text-[11px] text-groomish-orange font-semibold flex items-center gap-1.5 animate-pulse">
+                          <Sparkles className="w-3 h-3" />
+                          Checking live availability...
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => fetchSlotAvailability(true)}
+                        disabled={loadingSlots}
+                        className="py-1 px-2.5 rounded-xl text-[11px] font-bold text-groomish-slate/70 hover:text-groomish-orange bg-groomish-cream hover:bg-white border border-groomish-slate/15 flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                        title="Refresh live stylist slot availability"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${loadingSlots ? "animate-spin text-groomish-orange" : ""}`} />
+                        <span>Refresh Slots</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 pt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 pt-1">
                     {timeSlots.map((time) => {
                       const isPast = isSlotPast(time);
                       const isUnavailable = unavailableSlots.includes(time) || isPast;
@@ -581,10 +904,10 @@ export default function CheckoutPage() {
                             isPast
                               ? "Slot has already passed for today"
                               : isUnavailable
-                              ? "Fully booked slot"
-                              : `Book ${time}`
+                              ? "Fully booked slot across stylists"
+                              : `Book slot at ${formatSlot12Hour(time)}`
                           }
-                          className={`py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
+                          className={`py-2.5 px-2 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center gap-0.5 ${
                             isSelected
                               ? "bg-groomish-orange text-white shadow-glowOrange scale-102"
                               : isUnavailable
@@ -592,14 +915,22 @@ export default function CheckoutPage() {
                               : "bg-groomish-cream text-groomish-slate hover:bg-groomish-creamDark"
                           }`}
                         >
-                          <Clock className="w-3 h-3 shrink-0" />
-                          <span>{time}</span>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 shrink-0" />
+                            <span className="font-mono text-[11px] font-extrabold">{formatSlot12Hour(time)}</span>
+                          </div>
+                          {isSelected && (
+                            <span className="text-[9px] uppercase tracking-wider font-black text-white/90">
+                              Selected
+                            </span>
+                          )}
                         </button>
                       );
                     })}
                   </div>
-                  <p className="text-[11px] text-groomish-slate/50 mt-1">
-                    Live 5-stylist salon capacity check ensures you receive dedicated personal attention.
+                  <p className="text-[11px] text-groomish-slate/50 mt-1 flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-groomish-orange shrink-0" />
+                    <span>Real-time 5-stylist salon capacity check ensures personal attention. Slots refresh every 30s.</span>
                   </p>
                 </div>
               </div>
@@ -744,97 +1075,10 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              {/* 4. PAYMENT METHOD */}
-              <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-soft space-y-4">
-                <div className="flex items-center gap-2 border-b border-groomish-slate/10 pb-3">
-                  <CreditCard className="w-4 h-4 text-groomish-orange" />
-                  <h2 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate">
-                    4. Payment Mode
-                  </h2>
-                </div>
-
-                <div className="grid sm:grid-cols-3 gap-3">
-                  {/* CASH / AT SALON */}
-                  <label
-                    onClick={() => setPaymentMethod("CASH")}
-                    className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col items-start justify-between gap-3 ${
-                      paymentMethod === "CASH"
-                        ? "border-groomish-orange bg-groomish-orangeLight/40"
-                        : "border-groomish-slate/10 bg-white hover:border-groomish-slate/20"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <Banknote className="w-5 h-5 text-groomish-orange" />
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentMethod === "CASH" ? "border-groomish-orange bg-groomish-orange" : "border-groomish-slate/30"}`}>
-                        {paymentMethod === "CASH" && <Check className="w-2.5 h-2.5 text-white" />}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-xs font-extrabold text-groomish-slate block">
-                        Pay at Salon
-                      </span>
-                      <span className="text-[10px] text-groomish-slate/60">
-                        Cash or Card at desk upon service completion.
-                      </span>
-                    </div>
-                  </label>
-
-                  {/* UPI */}
-                  <label
-                    onClick={() => setPaymentMethod("UPI")}
-                    className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col items-start justify-between gap-3 ${
-                      paymentMethod === "UPI"
-                        ? "border-groomish-orange bg-groomish-orangeLight/40"
-                        : "border-groomish-slate/10 bg-white hover:border-groomish-slate/20"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <Smartphone className="w-5 h-5 text-groomish-blue" />
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentMethod === "UPI" ? "border-groomish-orange bg-groomish-orange" : "border-groomish-slate/30"}`}>
-                        {paymentMethod === "UPI" && <Check className="w-2.5 h-2.5 text-white" />}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-xs font-extrabold text-groomish-slate block">
-                        UPI Online
-                      </span>
-                      <span className="text-[10px] text-groomish-slate/60">
-                        Google Pay, PhonePe, Paytm, or BHIM.
-                      </span>
-                    </div>
-                  </label>
-
-                  {/* CARD */}
-                  <label
-                    onClick={() => setPaymentMethod("CARD")}
-                    className={`p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col items-start justify-between gap-3 ${
-                      paymentMethod === "CARD"
-                        ? "border-groomish-orange bg-groomish-orangeLight/40"
-                        : "border-groomish-slate/10 bg-white hover:border-groomish-slate/20"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <CreditCard className="w-5 h-5 text-groomish-green" />
-                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentMethod === "CARD" ? "border-groomish-orange bg-groomish-orange" : "border-groomish-slate/30"}`}>
-                        {paymentMethod === "CARD" && <Check className="w-2.5 h-2.5 text-white" />}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-xs font-extrabold text-groomish-slate block">
-                        Credit / Debit Card
-                      </span>
-                      <span className="text-[10px] text-groomish-slate/60">
-                        Visa, Mastercard, RuPay & Amex.
-                      </span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* 5. NOTES */}
+              {/* 4. NOTES */}
               <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-soft space-y-2">
-                <label className="text-xs font-semibold text-groomish-slate">
-                  Special Instructions / Styling Preferences (Optional)
+                <label className="text-xs font-bold text-groomish-slate">
+                  4. Special Instructions / Styling Preferences (Optional)
                 </label>
                 <textarea
                   rows={2}
@@ -944,20 +1188,153 @@ export default function CheckoutPage() {
                         ₹{finalPayable}
                       </span>
                       <span className="text-[10px] text-groomish-slate/50 block">
-                        {paymentMethod === "CASH" ? "Pay at salon" : "Online payment"}
+                        {paymentMethod === "CASH" ? "Pay at salon counter" : "Online payment (Razorpay)"}
                       </span>
                     </div>
                   </div>
                 </div>
 
+                {/* PAYMENT MODE - ONE ROW, NO DESCRIPTION */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-xs font-bold text-groomish-slate">
+                    <span>Payment Mode</span>
+                    {!isSlotSelected ? (
+                      <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                        Select slot first
+                      </span>
+                    ) : (
+                      <span className="text-[10px] uppercase tracking-wider font-extrabold text-groomish-orange">
+                        {paymentMethod === "CASH" ? "Pay at Salon" : "Razorpay Online"}
+                      </span>
+                    )}
+                  </div>
+                  <div className={`grid grid-cols-2 gap-2 transition-opacity ${!isSlotSelected ? "opacity-50" : ""}`}>
+                    {/* Pay at Salon */}
+                    <button
+                      type="button"
+                      disabled={!isSlotSelected}
+                      onClick={() => setPaymentMethod("CASH")}
+                      className={`p-2.5 rounded-xl border-2 transition flex items-center justify-between gap-1 text-left ${
+                        !isSlotSelected
+                          ? "cursor-not-allowed border-groomish-slate/15 bg-groomish-slate/5"
+                          : paymentMethod === "CASH"
+                          ? "border-groomish-orange bg-groomish-orangeLight/60 shadow-2xs cursor-pointer"
+                          : "border-groomish-slate/15 bg-white hover:border-groomish-slate/30 cursor-pointer"
+                      }`}
+                      title={!isSlotSelected ? "Please select an appointment time slot first" : undefined}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Store
+                          className={`w-4 h-4 shrink-0 ${
+                            !isSlotSelected
+                              ? "text-groomish-slate/40"
+                              : paymentMethod === "CASH"
+                              ? "text-groomish-orange"
+                              : "text-groomish-slate/60"
+                          }`}
+                        />
+                        <span
+                          className={`text-xs truncate ${
+                            !isSlotSelected
+                              ? "font-medium text-groomish-slate/50"
+                              : paymentMethod === "CASH"
+                              ? "font-extrabold text-groomish-slate"
+                              : "font-semibold text-groomish-slate/80"
+                          }`}
+                        >
+                          Pay at Salon
+                        </span>
+                      </div>
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                          !isSlotSelected
+                            ? "border-groomish-slate/20 bg-transparent"
+                            : paymentMethod === "CASH"
+                            ? "border-groomish-orange bg-groomish-orange"
+                            : "border-groomish-slate/30"
+                        }`}
+                      >
+                        {isSlotSelected && paymentMethod === "CASH" && (
+                          <Check className="w-2 h-2 text-white stroke-[3]" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Online Payment */}
+                    <button
+                      type="button"
+                      disabled={!isSlotSelected}
+                      onClick={() => setPaymentMethod("ONLINE")}
+                      className={`p-2.5 rounded-xl border-2 transition flex items-center justify-between gap-1 text-left ${
+                        !isSlotSelected
+                          ? "cursor-not-allowed border-groomish-slate/15 bg-groomish-slate/5"
+                          : paymentMethod === "ONLINE"
+                          ? "border-groomish-orange bg-groomish-orangeLight/60 shadow-2xs cursor-pointer"
+                          : "border-groomish-slate/15 bg-white hover:border-groomish-slate/30 cursor-pointer"
+                      }`}
+                      title={!isSlotSelected ? "Please select an appointment time slot first" : undefined}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <CreditCard
+                          className={`w-4 h-4 shrink-0 ${
+                            !isSlotSelected
+                              ? "text-groomish-slate/40"
+                              : paymentMethod === "ONLINE"
+                              ? "text-emerald-600"
+                              : "text-groomish-slate/60"
+                          }`}
+                        />
+                        <span
+                          className={`text-xs truncate ${
+                            !isSlotSelected
+                              ? "font-medium text-groomish-slate/50"
+                              : paymentMethod === "ONLINE"
+                              ? "font-extrabold text-groomish-slate"
+                              : "font-semibold text-groomish-slate/80"
+                          }`}
+                        >
+                          Online Payment
+                        </span>
+                      </div>
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                          !isSlotSelected
+                            ? "border-groomish-slate/20 bg-transparent"
+                            : paymentMethod === "ONLINE"
+                            ? "border-groomish-orange bg-groomish-orange"
+                            : "border-groomish-slate/30"
+                        }`}
+                      >
+                        {isSlotSelected && paymentMethod === "ONLINE" && (
+                          <Check className="w-2 h-2 text-white stroke-[3]" />
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                  {!isSlotSelected && (
+                    <p className="text-[11px] text-amber-600 font-medium flex items-center gap-1 pt-0.5">
+                      <Clock className="w-3 h-3 shrink-0" />
+                      Select an appointment time slot above to enable payment options
+                    </p>
+                  )}
+                </div>
+
                 {/* Confirm Button */}
                 <button
                   type="submit"
-                  disabled={submitting || checkingBranch || Object.keys(unavailableItemsMap).length > 0}
+                  disabled={
+                    submitting ||
+                    checkingBranch ||
+                    Object.keys(unavailableItemsMap).length > 0 ||
+                    !isSlotSelected
+                  }
                   className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
-                    <span>Confirming Appointment...</span>
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {paymentMethod === "ONLINE" ? "Opening Payment Gateway..." : "Confirming Appointment..."}
+                    </span>
                   ) : checkingBranch ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -965,9 +1342,18 @@ export default function CheckoutPage() {
                     </span>
                   ) : Object.keys(unavailableItemsMap).length > 0 ? (
                     <span>Resolve Unavailable Items</span>
+                  ) : !isSlotSelected ? (
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4" />
+                      Select Appointment Slot to Proceed
+                    </span>
                   ) : (
                     <>
-                      <span>Confirm & Book Appointment</span>
+                      <span>
+                        {paymentMethod === "ONLINE"
+                          ? `Pay Online & Confirm (₹${finalPayable})`
+                          : `Confirm Appointment (Pay at Salon)`}
+                      </span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -988,6 +1374,201 @@ export default function CheckoutPage() {
             </div>
           </form>
         </div>
+
+        {/* PAYMENT FAILURE / PENDING MODAL */}
+        {paymentFailureModal.isOpen && (
+          <div className="fixed inset-0 z-50 bg-groomish-slate/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-amber-100 space-y-4 animate-scaleUp text-center">
+              <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-sm">
+                <AlertCircle className="w-8 h-8 stroke-[2.5]" />
+              </div>
+
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                  <span>Payment Pending</span>
+                  {paymentFailureModal.bookingCode && (
+                    <span className="font-mono text-groomish-orange">• #{paymentFailureModal.bookingCode}</span>
+                  )}
+                </div>
+                <h3 className="text-xl font-heading font-extrabold text-groomish-slate">
+                  Booking Reserved (Payment Pending)
+                </h3>
+                <p className="text-xs text-groomish-slate/70">
+                  Your appointment slot is held, but online payment was not completed.
+                </p>
+              </div>
+
+              {/* Booking Summary */}
+              <div className="bg-amber-50/50 border border-amber-200/60 rounded-2xl p-3.5 text-left space-y-1.5 text-xs text-groomish-slate">
+                <div className="flex items-center justify-between font-medium">
+                  <span className="text-groomish-slate/60">Payable Amount</span>
+                  <span className="font-bold text-groomish-slate">₹{paymentFailureModal.amount}</span>
+                </div>
+                {paymentFailureModal.storeName && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-groomish-slate/60">Branch</span>
+                    <span className="font-semibold truncate max-w-[200px]">{paymentFailureModal.storeName}</span>
+                  </div>
+                )}
+                {paymentFailureModal.reason && (
+                  <div className="pt-1 border-t border-amber-200/50 text-[11px] text-amber-900 leading-snug">
+                    <span className="font-semibold">Note: </span>
+                    {paymentFailureModal.reason}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2.5 pt-1">
+                {/* Option 1: Try Again (Max 2 times) */}
+                {paymentFailureModal.retryCount < 2 && (
+                  <button
+                    type="button"
+                    onClick={handleRetryOnlinePayment}
+                    disabled={submitting}
+                    className="btn-auth w-full py-3.5 text-sm flex items-center justify-center gap-2 cursor-pointer shadow-glowOrange"
+                  >
+                    <RefreshCw className="w-4 h-4 animate-spin-reverse" />
+                    <span>Try Online Payment Again ({2 - paymentFailureModal.retryCount} left)</span>
+                  </button>
+                )}
+
+                {/* Option 2: Pay at Salon */}
+                <button
+                  type="button"
+                  onClick={handleSwitchToSalon}
+                  disabled={switchingToSalon}
+                  className="w-full py-3.5 px-4 rounded-xl border-2 border-emerald-600/30 bg-emerald-50 hover:bg-emerald-100/70 text-emerald-800 font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  {switchingToSalon ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                      <span>Switching to Pay at Salon...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Store className="w-4 h-4 text-emerald-700" />
+                      <span>Switch to Pay at Salon (Cash / UPI)</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Option 3: Review later with auto-redirect */}
+                {paymentFailureModal.bookingId && (
+                  <div className="pt-2 border-t border-groomish-slate/10 space-y-1.5">
+                    <div className="w-full bg-amber-100 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-amber-500 h-full transition-all duration-1000 ease-linear rounded-full"
+                        style={{ width: `${(pendingCountdown / 8) * 100}%` }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const id = paymentFailureModal.bookingId;
+                        setPaymentFailureModal({ isOpen: false, reason: "", bookingId: null, bookingCode: "", amount: 0, storeName: "", scheduledAt: "", retryCount: 0 });
+                        navigate(`/customer/bookings/${id}`, { replace: true });
+                      }}
+                      className="w-full py-1 text-xs text-groomish-slate/60 hover:text-groomish-slate font-semibold flex items-center justify-center gap-1.5 transition underline cursor-pointer"
+                    >
+                      <span>View Booking Details ({pendingCountdown}s)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PAYMENT SUCCESS / CONFIRMATION MODAL */}
+        {paymentSuccessModal.isOpen && (
+          <div className="fixed inset-0 z-50 bg-groomish-slate/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-emerald-100 text-center space-y-5 animate-scaleUp">
+              <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-inner animate-pulse">
+                <CheckCircle2 className="w-12 h-12 stroke-[2.5]" />
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs uppercase tracking-wider font-extrabold text-emerald-600">
+                  {paymentSuccessModal.paymentMethod === "ONLINE" ? "Transaction Complete" : "Booking Confirmed"}
+                </span>
+                <h3 className="text-2xl font-heading font-black text-groomish-slate">
+                  {paymentSuccessModal.paymentMethod === "ONLINE" ? "Booking & Payment Confirmed!" : "Booking Confirmed!"}
+                </h3>
+                <p className="text-xs text-groomish-slate/70">
+                  {paymentSuccessModal.paymentMethod === "ONLINE"
+                    ? "Your appointment is confirmed and payment has been verified."
+                    : "Your appointment is confirmed! Settle payment upon arrival at the salon."}
+                </p>
+              </div>
+
+              {/* Receipt Summary Card */}
+              <div className="bg-groomish-slate/5 border border-groomish-slate/10 rounded-2xl p-4 text-left space-y-2 text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-groomish-slate/10">
+                  <span className="text-groomish-slate/60">Booking Code</span>
+                  <span className="font-mono font-bold text-groomish-orange text-sm">
+                    {paymentSuccessModal.bookingCode}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-groomish-slate/60">
+                    {paymentSuccessModal.paymentMethod === "ONLINE" ? "Amount Paid" : "Amount to Pay at Salon"}
+                  </span>
+                  <span className="font-bold text-groomish-slate text-sm">
+                    ₹{paymentSuccessModal.amount}
+                  </span>
+                </div>
+                {paymentSuccessModal.storeName && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-groomish-slate/60">Branch</span>
+                    <span className="font-semibold text-groomish-slate truncate max-w-[180px]">
+                      {paymentSuccessModal.storeName}
+                    </span>
+                  </div>
+                )}
+                {paymentSuccessModal.scheduledAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-groomish-slate/60">Slot Time</span>
+                    <span className="font-semibold text-groomish-slate">
+                      {paymentSuccessModal.scheduledAt.replace("T", " ")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-[11px] text-groomish-slate/60">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Confirmation sent to {user?.email || "your registered email"}</span>
+              </div>
+
+              {/* Progress bar countdown */}
+              <div className="space-y-1.5 pt-1">
+                <div className="w-full bg-emerald-100 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-full transition-all duration-1000 ease-linear rounded-full"
+                    style={{ width: `${(successCountdown / 4) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-emerald-700 font-medium">
+                  Redirecting to booking details in {successCountdown}s...
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const id = paymentSuccessModal.bookingId;
+                  setPaymentSuccessModal({ isOpen: false, bookingId: null, bookingCode: "", amount: 0, storeName: "", scheduledAt: "", paymentMethod: "ONLINE" });
+                  if (id) navigate(`/customer/bookings/${id}`, { replace: true });
+                }}
+                className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 cursor-pointer shadow-glowOrange"
+              >
+                <span>View Booking Details Now</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />

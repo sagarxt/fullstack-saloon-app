@@ -30,6 +30,7 @@ public class BookingItem {
     private String serviceNameSnapshot;
     private Double servicePriceSnapshot;
     private Integer serviceDurationSnapshot;
+    private Integer serviceRewardCoinsSnapshot;
 
     @Enumerated(EnumType.STRING)
     private BookingStatus status;

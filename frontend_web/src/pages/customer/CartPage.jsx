@@ -90,7 +90,12 @@ export default function CartPage() {
         const res = await getPublicServicesApi();
         list = extractList(res.data);
       }
-      setAvailableServices(list);
+      const normalized = (list || []).map((s) => ({
+        ...s,
+        id: s.serviceId || s.id,
+        serviceId: s.serviceId || s.id,
+      }));
+      setAvailableServices(normalized);
     } catch (err) {
       console.error(err);
       setAvailableServices([]);
@@ -282,9 +287,9 @@ export default function CartPage() {
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-1 pb-16">
+      <main className="flex-1 pb-8">
         {/* BREADCRUMB */}
-        <div className="bg-white border-b border-groomish-slate/10 py-3">
+        <div className="bg-white border-b border-groomish-slate/10 py-2.5">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-groomish-slate/60">
             <Link to="/" className="hover:text-groomish-orange flex items-center gap-1">
               <Home className="w-3.5 h-3.5" />
@@ -296,7 +301,7 @@ export default function CartPage() {
         </div>
 
         {/* HEADER */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
@@ -363,9 +368,9 @@ export default function CartPage() {
             </div>
           ) : (
             /* ACTIVE CART GRID */
-            <div className="grid lg:grid-cols-12 gap-8 items-start">
+            <div className="grid lg:grid-cols-12 gap-5 items-start">
               {/* LEFT COLUMN: ITEMS & STORE */}
-              <div className="lg:col-span-8 space-y-6">
+              <div className="lg:col-span-8 space-y-4">
                 {/* SALON BRANCH SELECTION */}
                 <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">

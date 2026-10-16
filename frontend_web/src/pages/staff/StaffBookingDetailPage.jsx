@@ -390,7 +390,7 @@ export default function StaffBookingDetailPage() {
 
       {/* MAIN VIEWPORT */}
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto space-y-6">
+        <div className="p-3.5 sm:p-5 max-w-6xl w-full mx-auto space-y-4">
           {/* Top Header Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -615,9 +615,10 @@ export default function StaffBookingDetailPage() {
                         <Clock className="w-3 h-3" />
                         <span>
                           {booking.scheduledAt
-                            ? new Date(booking.scheduledAt).toLocaleTimeString([], {
-                                hour: "2-digit",
+                            ? new Date(booking.scheduledAt).toLocaleTimeString("en-IN", {
+                                hour: "numeric",
                                 minute: "2-digit",
+                                hour12: true,
                               })
                             : ""}{" "}
                           ({booking.totalDurationMinutes || 45} mins)

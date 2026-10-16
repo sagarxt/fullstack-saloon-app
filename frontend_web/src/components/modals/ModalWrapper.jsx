@@ -34,7 +34,9 @@ export default function ModalWrapper({ open, onClose, children, maxWidth = "max-
 
       {/* Modal Card - Constrained to Viewport with Internal Scroll */}
       <div
-        className={`relative bg-white text-groomish-slate rounded-3xl shadow-2xl w-full ${maxWidth} p-5 sm:p-7 z-10 border border-groomish-slate/10 animate-slide-up my-auto max-h-[92vh] flex flex-col`}
+        role="dialog"
+        aria-modal="true"
+        className={`relative bg-white text-groomish-slate rounded-2xl shadow-2xl w-full ${maxWidth} p-4 sm:p-5.5 z-10 border border-groomish-slate/10 animate-slide-up my-auto max-h-[92vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Scrollable Modal Content */}

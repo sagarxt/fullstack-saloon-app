@@ -42,8 +42,8 @@ export default function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
-      {/* Floating Notifications Hub */}
-      <div className="fixed top-5 right-5 z-[99999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-3">
+      {/* Floating Notifications Hub - positioned cleanly below the header bar */}
+      <div className="fixed top-20 sm:top-24 right-4 sm:right-6 z-[99999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-3">
         {toasts.map((t) => (
           <Toast
             key={t.id}

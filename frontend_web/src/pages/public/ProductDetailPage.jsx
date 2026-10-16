@@ -17,12 +17,11 @@ import {
   Sparkles,
   ArrowRight,
   ChevronRight,
+  ChevronDown,
   Home,
   ShieldCheck,
   Store,
-  Check,
   Tag,
-  Copy,
   Clock,
   Package,
   CheckCircle2,
@@ -42,12 +41,12 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [coupons, setCoupons] = useState([]);
-  const [copiedCode, setCopiedCode] = useState("");
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authOpen, setAuthOpen] = useState(false);
+  const [showAllOffers, setShowAllOffers] = useState(false);
 
   useEffect(() => {
     loadProductDetails();
@@ -88,12 +87,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  const handleCopyCode = (code) => {
-    navigator.clipboard?.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(""), 2500);
-  };
-
   const handleAddToCart = async (targetProduct = product, qty = quantity) => {
     if (!user) {
       setAuthOpen(true);
@@ -109,7 +102,11 @@ export default function ProductDetailPage() {
     setAddingToCart(false);
   };
 
-  const isAlreadyInCart = items.some((i) => i.productId === product?.id);
+  const isAlreadyInCart = items?.some(
+    (i) =>
+      (i.itemType === "PRODUCT" || !i.itemType) &&
+      (i.productId === product?.id || i.product?.id === product?.id)
+  );
 
   if (loading) {
     return (
@@ -206,10 +203,10 @@ export default function ProductDetailPage() {
         </div>
 
         {/* HERO / PRODUCT DETAILS SECTION */}
-        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        <section className="py-5 sm:py-7 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-12 gap-5 lg:gap-7">
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
-            <div className="lg:col-span-7 space-y-8">
+            <div className="lg:col-span-7 space-y-5">
               {/* Image Preview Card */}
               <div className="relative rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft p-6 sm:p-10 flex flex-col items-center justify-center min-h-[340px] sm:min-h-[460px]">
                 <img
@@ -389,83 +386,12 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
               </div>
-
-              {/* AVAILABLE OFFERS & PROMOTIONAL COUPONS */}
-              {coupons.length > 0 && (
-                <div className="bg-gradient-to-br from-white to-groomish-cream/40 rounded-3xl p-6 sm:p-8 border border-groomish-orange/20 shadow-soft space-y-5">
-                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center">
-                        <Tag className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h2 className="font-heading font-extrabold text-base sm:text-lg text-groomish-slate">
-                          Available Offers & Promotional Coupons
-                        </h2>
-                        <p className="text-[11px] text-groomish-slate/60">
-                          Redeemable during cart checkout on {product.category || "retail"} products
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-extrabold text-groomish-orange bg-groomish-orangeLight px-2.5 py-1 rounded-full">
-                      {coupons.length} Offers Active
-                    </span>
-                  </div>
-
-                  <div className="grid sm:grid-cols-2 gap-3.5">
-                    {coupons.map((coupon) => (
-                      <div
-                        key={coupon.id}
-                        className="p-4 rounded-2xl bg-white border border-groomish-slate/15 hover:border-groomish-orange transition-all shadow-sm space-y-2.5 flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-xs font-extrabold tracking-wider bg-groomish-cream text-groomish-orange px-2.5 py-1 rounded-lg border border-groomish-orange/20">
-                              {coupon.code}
-                            </span>
-                            <span className="text-xs font-black text-groomish-green">
-                              FLAT ₹{coupon.discount} OFF
-                            </span>
-                          </div>
-
-                          <p className="text-xs text-groomish-slate/80 mt-2 leading-relaxed font-medium">
-                            {coupon.description}
-                          </p>
-                        </div>
-
-                        <div className="pt-2 border-t border-groomish-slate/10 flex items-center justify-between">
-                          <span className="text-[11px] text-groomish-slate/50">
-                            Min Order: ₹{coupon.minAmount || 0}
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCode(coupon.code)}
-                            className="px-3 py-1.5 rounded-xl bg-groomish-orange hover:bg-groomish-orangeDark text-white font-bold text-[11px] flex items-center gap-1.5 transition-all shadow-xs"
-                          >
-                            {copiedCode === coupon.code ? (
-                              <>
-                                <Check className="w-3.5 h-3.5" />
-                                <span>Copied</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>Copy Code</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* RIGHT SIDEBAR: STICKY PRICING & PURCHASE CARD */}
-            <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-5">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-groomish-slate/10 shadow-card space-y-6">
+            {/* RIGHT SIDEBAR: STICKY PRICING & PURCHASE CARD (STICKY UNTIL DETAILS END) */}
+            <div className="lg:col-span-5 relative">
+              <div className="lg:sticky lg:top-24 space-y-4">
+                <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-card space-y-4">
                 <div>
                   <span className="text-[10px] uppercase font-bold tracking-wider text-groomish-slate/50 block mb-1">
                     Product Price & Availability
@@ -535,30 +461,57 @@ export default function ProductDetailPage() {
 
                 {/* CTA Action Buttons */}
                 <div className="space-y-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleAddToCart(product, quantity)}
-                    disabled={addingToCart}
-                    className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>
-                      {addingToCart
-                        ? "Adding to Cart..."
-                        : isAlreadyInCart
-                        ? `Add More to Cart (${quantity}) • ₹${product.price * quantity}`
-                        : `Add Product to Cart • ₹${product.price * quantity}`}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate("/cart")}
-                    className="btn-secondary w-full py-3 text-xs flex items-center justify-center gap-2"
-                  >
-                    <span>View Cart & Checkout</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-groomish-orange" />
-                  </button>
+                  {isAlreadyInCart ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => navigate("/cart")}
+                        className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange cursor-pointer"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>View Cart</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAddToCart(product, quantity)}
+                        disabled={addingToCart}
+                        className="btn-secondary w-full py-2.5 text-xs flex items-center justify-center gap-2 font-bold text-groomish-slate/75 hover:text-groomish-orange cursor-pointer"
+                      >
+                        <span>
+                          {addingToCart
+                            ? "Adding..."
+                            : `Add More to Cart (${quantity}) • ₹${product.price * quantity}`}
+                        </span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleAddToCart(product, quantity)}
+                        disabled={addingToCart}
+                        className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange cursor-pointer"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>
+                          {addingToCart
+                            ? "Adding to Cart..."
+                            : `Add Product to Cart • ₹${product.price * quantity}`}
+                        </span>
+                      </button>
+                      {items?.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => navigate("/cart")}
+                          className="btn-secondary w-full py-3 text-xs flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <span>View Cart & Checkout</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-groomish-orange" />
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {/* Trust Points */}
@@ -586,13 +539,106 @@ export default function ProductDetailPage() {
                   </p>
                 </div>
               </div>
+
+              {/* AVAILABLE OFFERS & PROMOTIONAL COUPONS (RIGHT SIDEBAR BELOW PURCHASE CARD) */}
+              {(coupons.length > 0 || coinsEarned > 0) && (
+                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-groomish-slate/10 shadow-card space-y-4">
+                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
+                        <Tag className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <h3 className="font-heading font-extrabold text-sm text-groomish-slate">
+                          Available Offers & Promotional Coupons
+                        </h3>
+                        <p className="text-[11px] text-groomish-slate/60">
+                          Redeemable during cart checkout on {product.category || "retail"} products
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-extrabold text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full shrink-0">
+                      {coupons.length + (coinsEarned > 0 ? 1 : 0)} Active
+                    </span>
+                  </div>
+
+                  {/* EXTRA GROOM COINS OFFER - ONE LINE */}
+                  {coinsEarned > 0 && (
+                    <div className="p-3 px-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-amber-500/10 border border-amber-300/80 flex items-center justify-between gap-2.5 text-xs shadow-2xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-lg bg-amber-500/25 text-amber-800 flex items-center justify-center shrink-0 border border-amber-400/40">
+                          <GroomCoinIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="font-extrabold text-groomish-slate truncate text-xs">
+                          <span className="text-amber-800 uppercase font-black tracking-wider text-[10px] mr-1">Coin Offer:</span>
+                          <span>Earn +{coinsEarned} Groom Coins on this product purchase!</span>
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full shrink-0">
+                        VIP Loyalty
+                      </span>
+                    </div>
+                  )}
+
+                  {/* PROMOTIONAL COUPONS - 2 LINES PER COUPON, NO COPY BUTTON */}
+                  {coupons.length > 0 && (
+                    <div className="space-y-2.5 pt-0.5">
+                      {(showAllOffers ? coupons : coupons.slice(0, 3)).map((coupon) => (
+                        <div
+                          key={coupon.id}
+                          className="bg-white rounded-2xl border border-groomish-slate/15 hover:border-groomish-orange/50 transition-all shadow-2xs p-3.5 space-y-2 group"
+                        >
+                          {/* LINE 1: Discount & Min order on left, Promo Code on right (NO COPY BUTTON) */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs sm:text-sm font-black text-groomish-green tracking-tight whitespace-nowrap">
+                                FLAT ₹{coupon.discount} OFF
+                              </span>
+                              <span className="text-[10px] sm:text-[11px] font-semibold text-groomish-slate/60 bg-groomish-cream px-2 py-0.5 rounded-md border border-groomish-slate/10 whitespace-nowrap">
+                                Min. order: ₹{coupon.minAmount || 0}
+                              </span>
+                            </div>
+
+                            <span
+                              className="font-mono text-xs font-black tracking-wider text-groomish-orange bg-groomish-orangeLight/80 px-2.5 py-1 rounded-lg border border-groomish-orange/30 shrink-0"
+                              title={coupon.code}
+                            >
+                              {coupon.code}
+                            </span>
+                          </div>
+
+                          {/* LINE 2: Offer Description */}
+                          <p className="text-xs text-groomish-slate/75 font-medium leading-relaxed">
+                            {coupon.description || "Valid on selected salon retail products at checkout"}
+                          </p>
+                        </div>
+                      ))}
+
+                      {/* View More Offers Toggle */}
+                      {coupons.length > 3 && (
+                        <div className="pt-1 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setShowAllOffers((prev) => !prev)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-groomish-orange bg-groomish-orangeLight/80 hover:bg-groomish-orange hover:text-white border border-groomish-orange/30 transition shadow-2xs cursor-pointer active:scale-95"
+                          >
+                            <span>{showAllOffers ? "Show Less Offers" : `View More Offers (+${coupons.length - 3} more)`}</span>
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAllOffers ? "rotate-180" : ""}`} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
         {/* RELATED PRODUCTS SECTION */}
         {relatedProducts.length > 0 && (
-          <section className="py-12 bg-white border-t border-groomish-slate/10">
+          <section className="py-8 bg-white border-t border-groomish-slate/10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -614,7 +660,7 @@ export default function ProductDetailPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {relatedProducts.map((rel) => {
-                  const relPoints = Math.floor(rel.price / 100);
+                  const relCoins = calculateCoins ? calculateCoins(rel.price) : Math.max(1, Math.floor(rel.price / 100));
                   return (
                     <div
                       key={rel.id}
@@ -650,9 +696,9 @@ export default function ProductDetailPage() {
                           <p className="text-[11px] text-groomish-slate/60 line-clamp-2">
                             {rel.description || "Signature beauty formula."}
                           </p>
-                          <div className="pt-1 flex items-center gap-1 text-[10px] font-bold text-groomish-orange">
-                            <Sparkles className="w-3 h-3" />
-                            <span>Earn +{relPoints} pts</span>
+                          <div className="pt-1 flex items-center gap-1.5 text-[10px] font-bold text-groomish-orange">
+                            <GroomCoinIcon className="w-3 h-3 shrink-0" />
+                            <span>Earn +{relCoins} Groom Coin{relCoins !== 1 ? "s" : ""}</span>
                           </div>
                         </div>
                       </div>
@@ -661,14 +707,29 @@ export default function ProductDetailPage() {
                         <span className="text-base font-extrabold text-groomish-slate">
                           ₹{rel.price}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleAddToCart(rel, 1)}
-                          className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1 shadow-xs"
-                        >
-                          <ShoppingCart className="w-3 h-3" />
-                          <span>Add</span>
-                        </button>
+                        {items?.some(
+                          (i) =>
+                            (i.itemType === "PRODUCT" || !i.itemType) &&
+                            (i.productId === rel.id || i.product?.id === rel.id)
+                        ) ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate("/cart")}
+                            className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1 bg-groomish-orangeLight/60 text-groomish-orange font-bold border border-groomish-orange/40 hover:bg-groomish-orange hover:text-white transition shadow-2xs"
+                          >
+                            <ShoppingCart className="w-3 h-3" />
+                            <span>View Cart</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(rel, 1)}
+                            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1 shadow-xs"
+                          >
+                            <ShoppingCart className="w-3 h-3" />
+                            <span>Add</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
