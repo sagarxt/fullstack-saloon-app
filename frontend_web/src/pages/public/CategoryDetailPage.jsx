@@ -10,6 +10,7 @@ import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
 import { extractList } from "../../utils/dataHelper";
 import { getOptimizedImageUrl } from "../../utils/imageHelper";
+import GroomCoinIcon from "../../components/common/GroomCoinIcon";
 import {
   Scissors,
   Clock,
@@ -27,7 +28,7 @@ export default function CategoryDetailPage() {
   const { categoryId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
 
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
@@ -374,8 +375,8 @@ export default function CategoryDetailPage() {
                         </p>
 
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-groomish-goldLight border border-groomish-gold/30 text-groomish-slate text-[10px] font-bold">
-                          <Sparkles className="w-3 h-3 text-groomish-orange fill-groomish-orange" />
-                          <span>Earn +{pointsEarned} Groomish Points</span>
+                          <GroomCoinIcon className="w-3.5 h-3.5 shrink-0" />
+                          <span>Earn +{pointsEarned} Groom Coin{pointsEarned !== 1 ? "s" : ""}</span>
                         </div>
                       </div>
                     </div>
@@ -393,13 +394,28 @@ export default function CategoryDetailPage() {
                         )}
                       </div>
 
-                      <button
-                        onClick={() => handleAddToCart(service)}
-                        className="btn-primary text-xs px-3.5 py-2 flex items-center gap-1.5 shadow-sm"
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        <span>Add Service</span>
-                      </button>
+                      {items?.some(
+                        (i) =>
+                          (i.itemType === "SERVICE" || !i.itemType) &&
+                          (i.serviceId === service.id || i.service?.id === service.id)
+                      ) ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate("/cart")}
+                          className="btn-secondary text-xs px-3.5 py-2 flex items-center gap-1.5 bg-groomish-orangeLight/60 border border-groomish-orange/40 text-groomish-orange hover:bg-groomish-orange hover:text-white transition shadow-2xs font-bold"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          <span>View Cart</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAddToCart(service)}
+                          className="btn-primary text-xs px-3.5 py-2 flex items-center gap-1.5 shadow-sm"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          <span>Add Service</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

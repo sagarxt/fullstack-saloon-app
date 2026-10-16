@@ -19,6 +19,8 @@ import {
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import CustomSelect from "../../components/common/CustomSelect";
+import CustomDatePicker from "../../components/common/CustomDatePicker";
+import { generateSlots } from "../../utils/slots";
 import Pagination from "../../components/common/Pagination";
 import { useAuth } from "../../context/useAuth";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
@@ -856,7 +858,7 @@ export default function StaffDashboard() {
         </div>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-6">
+        <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-5 space-y-4">
         {filter === "BRANCH_PROFILE" ? (
           <StaffProfileTab
             onNavigateTab={(tab) => {
@@ -1138,9 +1140,10 @@ export default function StaffDashboard() {
                 const firstItem = b.items?.[0];
                 const serviceName = firstItem?.serviceNameSnapshot || "Salon Care";
                 const timeStr = b.scheduledAt
-                  ? new Date(b.scheduledAt).toLocaleTimeString([], {
-                      hour: "2-digit",
+                  ? new Date(b.scheduledAt).toLocaleTimeString("en-IN", {
+                      hour: "numeric",
                       minute: "2-digit",
+                      hour12: true,
                     })
                   : "Scheduled";
                 const dateStr = b.scheduledAt
@@ -1734,26 +1737,58 @@ export default function StaffDashboard() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-groomish-slate mb-1">New Date</label>
-                <input
-                  type="date"
-                  required
+                <label className="block text-xs font-bold text-groomish-slate mb-1">New Appointment Date</label>
+                <CustomDatePicker
                   value={rescheduleDate}
-                  onChange={(e) => setRescheduleDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-groomish-slate/20 focus:border-groomish-orange focus:ring-1 focus:ring-groomish-orange text-xs text-groomish-slate font-medium"
+                  minDate={(() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                  })()}
+                  onChange={(e, val) => setRescheduleDate(val || e?.target?.value || "")}
+                  placeholder="Select Date"
+                  align="left"
+                  className="w-full"
+                  triggerClassName="w-full !py-2.5 !px-3.5 !rounded-xl !bg-groomish-cream/60 hover:!bg-white !border-groomish-slate/20 text-xs font-bold transition"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-groomish-slate mb-1">New Time</label>
-                <input
-                  type="time"
-                  required
-                  value={rescheduleTime}
-                  onChange={(e) => setRescheduleTime(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-groomish-slate/20 focus:border-groomish-orange focus:ring-1 focus:ring-groomish-orange text-xs text-groomish-slate font-medium"
-                />
+                <div className="flex items-center justify-between text-xs font-bold text-groomish-slate mb-1.5 flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-groomish-orange" />
+                    <span>Branch Time Slots</span>
+                    {rescheduleTime && (
+                      <span className="text-[10px] font-mono font-bold text-groomish-green bg-groomish-greenLight px-2 py-0.5 rounded-full border border-groomish-green/20">
+                        Selected: {rescheduleTime}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-40 overflow-y-auto p-1.5 border border-groomish-slate/15 rounded-xl bg-groomish-cream/40">
+                  {generateSlots("09:00", "21:00", 30).map((time) => {
+                    const isSelected = rescheduleTime === time;
+                    return (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => setRescheduleTime(time)}
+                        className={`py-1.5 px-1 rounded-lg text-xs font-mono font-bold transition flex items-center justify-center ${
+                          isSelected
+                            ? "bg-groomish-orange text-white shadow-soft font-black"
+                            : "bg-white text-groomish-slate border border-groomish-slate/20 hover:border-groomish-orange hover:bg-groomish-orangeLight/30"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-groomish-slate/50 mt-1">
+                  * 24-hour salon schedule format without AM/PM.
+                </p>
               </div>
             </div>
 

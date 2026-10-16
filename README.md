@@ -1,13 +1,15 @@
 <div align="center">
 
-<img src="https://res.cloudinary.com/dfdnljcyt/image/upload/groomish_logo_white_bg.png" alt="Groomish Now" width="280" style="border-radius: 14px; margin-bottom: 16px;" />
+<img src="https://res.cloudinary.com/dfdnljcyt/image/upload/v1792095435/groomish_logo_2_sby1pb.png" alt="Groomish Now" width="280" style="border-radius: 14px; margin-bottom: 16px;" />
 
-# Groomish Now
+<!-- # Groomish Now -->
 ### Luxury Salon Management, Retail E-Commerce and VIP Loyalty Ecosystem
 
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Java 21](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Expo](https://img.shields.io/badge/Expo_SDK-57-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
+[![React Native](https://img.shields.io/badge/React_Native-0.86-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactnative.dev/)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
@@ -28,14 +30,14 @@
 
 Groomish Now is designed with a bespoke luxury aesthetic featuring tailored color tokens, glassmorphic navigation, micro-interactions, and Google Fonts (`Outfit`, `Plus Jakarta Sans`, and `Playfair Display`):
 
-| Palette Token | Hex Code | Preview | Usage |
+| Palette Token | Hex Code | Usage |
 | :--- | :--- | :---: | :--- |
-| **Groomish Coral** | `#FC6957` | `■` | Primary buttons, active tabs, brand accents |
-| **Charcoal Slate** | `#373A43` | `■` | Typography, dark containers, admin navigation |
-| **Amber Gold** | `#FED652` | `■` | VIP tier badges, star ratings, reward points |
-| **Cream Canvas** | `#FAF6ED` | `■` | App background, subtle card surfaces, pills |
-| **Emerald Green** | `#34A955` | `■` | Completed states, success toasts, verified chips |
-| **Crimson Rose** | `#EA4158` | `■` | Error badges, cancellations, urgent warnings |
+| **Groomish Coral** | `#FC6957` | Primary buttons, active tabs, brand accents |
+| **Charcoal Slate** | `#373A43` | Typography, dark containers, admin navigation |
+| **Amber Gold** | `#FED652` | VIP tier badges, star ratings, reward points |
+| **Cream Canvas** | `#FAF6ED` | App background, subtle card surfaces, pills |
+| **Emerald Green** | `#34A955` | Completed states, success toasts, verified chips |
+| **Crimson Rose** | `#EA4158` | Error badges, cancellations, urgent warnings |
 
 ---
 
@@ -64,7 +66,15 @@ For optimal responsiveness, fast CDN delivery, and crisp rendering across Groomi
   - Cart is persistently backed by PostgreSQL database (`carts` and `cart_items`), preserving selections across refreshes, browsers, and devices.
   - Live reactive `ShoppingCart` badge in the header navbar and mobile drawer.
   - Dedicated `/cart` page with treatment and product categorization, quantity adjustment, store assignment, and points preview.
-  - Dedicated `/checkout` page with branch confirmation, appointment date and time slot selection (with 5-stylist capacity check), payment mode selection, and promo coupon or loyalty voucher redemption.
+  - Dedicated `/checkout` page with branch confirmation, appointment date and time slot selection (with 5-stylist capacity check), payment mode selection (Razorpay Online or Pay at Salon), and promo coupon or loyalty voucher redemption.
+  - **Authoritative Post-Payment Confirmation Flow**:
+    - Displays dedicated **"Booking & Payment Confirmed!"** screen only after successful payment verification (or when choosing Pay at Salon).
+    - Renders official receipt summary (10-digit Booking Code, Amount Paid, Salon Branch, and Slot Time).
+    - Features a 4-second animated progress bar with automatic redirection to `/customer/bookings/:id`, plus an instant **"View Booking Details Now"** button.
+    - If payment is dismissed or fails, displays **"Booking Reserved (Payment Pending)"** with 1-click **"Try Online Payment Again"**, **"Switch to Pay at Salon"**, or view details in pending status.
+  - **Spam-Free Notification Engine**:
+    - Dispatches a single, authoritative confirmation notification (`"Order & Booking Confirmed"`) and email only after payment is finalized.
+    - Guarded booking scheduler skips product-only orders and pending reservations from premature appointment alerts or cancellations.
   - Unauthenticated clients clicking "Add Service" are prompted with the Login/Register modal before services are placed in the cart.
 - **Available Offers and Promotional Coupons Hub**:
   - Luxury "Available Offers & Promotional Coupons" strip on Treatment Detail (`/services/:id`) and Products page (`/products`).
@@ -382,10 +392,12 @@ graph TD
 - Minimalist icon-driven action buttons across Customer and Staff directories.
 - Fixed viewport admin navigation and enhanced modal scroll-locking.
 
-### Milestone 5: Cross-Platform Mobile Application (`/mobile_app`)
-- Migrate skeleton to React Native Expo SDK 54 with NativeWind styling.
-- Implement persistent authentication storage (AsyncStorage / SecureStore).
-- Align mobile design with official Groomish Now brand colors and assets.
+### Milestone 5: Cross-Platform Mobile Application (`/mobile_app`) (Completed)
+- Upgraded mobile app to **Expo SDK 57**, React 19.2, and React Native 0.86 with Expo Router v57.
+- Integrated official brand logo (`logo.png`) across Login and Registration flows.
+- Implemented 3-slide luxury welcome onboarding carousel (`app/index.tsx`) allowing guest exploration of Home, Services, and Shop tabs without forced login.
+- Configured localtunnel with `Bypass-Tunnel-Reminder` headers and backend CORS wildcards for seamless remote device testing.
+- Feature parity across treatment booking, retail cart & shop, booking management, and VIP rewards.
 
 ---
 
@@ -397,6 +409,7 @@ graph TD
 - **PostgreSQL 14+** running locally or in Docker
 - **Cloudinary Account** (credentials configured in application properties)
 - **Gmail App Password** (for transactional emails)
+- **Expo Go App** (optional, on iOS or Android device for mobile testing)
 
 ### 1. Database Setup
 ```sql
@@ -433,8 +446,16 @@ npm run dev
 ```
 *Frontend runs on `http://localhost:5173`.*
 
+### 4. Cross-Platform Mobile App Setup and Launch
+```bash
+cd mobile_app
+npm install
+npx expo start --tunnel
+```
+*Scan the generated QR code using the **Expo Go** app on Android or iOS.*
+
 ---
 
 <div align="center">
-  <sub>Engineered with precision for <strong>Groomish Now</strong>. Built with Spring Boot 3.5, React 19, and Tailwind CSS.</sub>
+  <sub>Engineered with precision for <strong>Groomish Now</strong>. Built with Spring Boot 3.5, React 19, Tailwind CSS, and Expo SDK 57.</sub>
 </div>

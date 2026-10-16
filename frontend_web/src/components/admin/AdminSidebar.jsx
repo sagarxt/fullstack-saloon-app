@@ -17,6 +17,7 @@ import {
   Package,
   MapPin,
   Database,
+  HelpCircle,
 } from "lucide-react";
 
 const menuItems = [
@@ -32,6 +33,7 @@ const menuItems = [
   { name: "Reward Vouchers", path: "/admin/rewards", icon: Gift },
   { name: "Payments", path: "/admin/payments", icon: CreditCard },
   { name: "Customer Reviews", path: "/admin/reviews", icon: Star },
+  { name: "Q&A & Policies", path: "/admin/policies-qa", icon: HelpCircle },
 ];
 
 import { useState } from "react";

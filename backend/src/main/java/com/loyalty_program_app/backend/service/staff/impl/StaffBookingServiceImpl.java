@@ -32,6 +32,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
     private final BookingProductRepository bookingProductRepository;
     private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
     private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
+    private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
+    private final PointsLedgerRepository pointsLedgerRepository;
 
     @Override
     public BookingResponse createBookingForCustomer(UUID staffId, StaffCreateBookingRequest request) {
@@ -96,6 +98,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             item.setServiceNameSnapshot(s.getName());
             item.setServicePriceSnapshot(s.getPrice());
             item.setServiceDurationSnapshot(s.getDurationMinutes());
+            item.setServiceRewardCoinsSnapshot(s.getRewards() != null ? s.getRewards() : 0);
             item.setStatus(BookingStatus.CONFIRMED);
 
             items.add(item);
@@ -152,6 +155,30 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         }
 
         booking.setPricePaid(pricePaid);
+
+        // Snapshot expected reward points
+        double multiplier = 1.0;
+        if (customer.getTier() != null) {
+            switch (customer.getTier()) {
+                case DIAMOND -> multiplier = 2.0;
+                case PLATINUM -> multiplier = 1.5;
+                case GOLD -> multiplier = 1.25;
+                case SILVER -> multiplier = 1.0;
+            }
+        }
+        double spendPerCoin = 100.0;
+        try {
+            if (loyaltyConfigService != null) {
+                spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+                if (spendPerCoin <= 0) spendPerCoin = 100.0;
+            }
+        } catch (Exception ignored) {}
+
+        int baseCoins = (int) Math.round((pricePaid / spendPerCoin) * multiplier);
+        int bonusCoins = items.stream()
+                .mapToInt(i -> i.getServiceRewardCoinsSnapshot() != null ? i.getServiceRewardCoinsSnapshot() : 0)
+                .sum();
+        booking.setExpectedRewardPoints(Math.max(1, baseCoins + bonusCoins));
 
         Payment payment = Payment.builder()
                 .user(customer)
@@ -214,6 +241,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     .title("Appointment Rescheduled")
                     .message("Your appointment (" + displayCode + ") has been rescheduled to " + saved.getScheduledAt() + " by salon stylist " + staff.getName() + ".")
                     .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
                     .build();
             notificationRepository.save(notif);
         }
@@ -258,6 +287,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     .title("Appointment Cancelled")
                     .message("Your appointment (" + displayCode + ") was cancelled by salon stylist " + staff.getName() + (note != null && !note.isBlank() ? " (" + note + ")" : "."))
                     .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
                     .build();
             notificationRepository.save(notif);
         }
@@ -319,6 +350,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         item.setServiceNameSnapshot(service.getName());
         item.setServicePriceSnapshot(service.getPrice());
         item.setServiceDurationSnapshot(service.getDurationMinutes());
+        item.setServiceRewardCoinsSnapshot(service.getRewards() != null ? service.getRewards() : 0);
         item.setStatus(booking.getStatus());
         bookingItemRepository.save(item);
 
@@ -339,6 +371,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     .title("Service Added by Stylist")
                     .message("Stylist " + staff.getName() + " added " + service.getName() + " to your appointment (" + displayCode + ").")
                     .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
                     .build();
             notificationRepository.save(notif);
         }
@@ -393,6 +427,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     .title("Service Removed by Stylist")
                     .message("Stylist " + staff.getName() + " removed " + removedServiceName + " from your appointment (" + displayCode + ").")
                     .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
                     .build();
             notificationRepository.save(notif);
         }
@@ -450,6 +486,33 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         booking.setTotalAmount(totalAmount);
         booking.setPricePaid(pricePaid);
         booking.setTotalDurationMinutes(totalDuration);
+
+        // Recalculate snapshot expected reward points based on item snapshots (never live catalog)
+        double multiplier = 1.0;
+        if (booking.getUser() != null && booking.getUser().getTier() != null) {
+            switch (booking.getUser().getTier()) {
+                case DIAMOND -> multiplier = 2.0;
+                case PLATINUM -> multiplier = 1.5;
+                case GOLD -> multiplier = 1.25;
+                case SILVER -> multiplier = 1.0;
+            }
+        }
+        double spendPerCoin = 100.0;
+        try {
+            if (loyaltyConfigService != null) {
+                spendPerCoin = loyaltyConfigService.getOrCreateConfig().getSpendAmountPerCoin();
+                if (spendPerCoin <= 0) spendPerCoin = 100.0;
+            }
+        } catch (Exception ignored) {}
+
+        int baseCoins = (int) Math.round((pricePaid / spendPerCoin) * multiplier);
+        int bonusCoins = 0;
+        if (booking.getBookingItems() != null) {
+            bonusCoins = booking.getBookingItems().stream()
+                    .mapToInt(i -> i.getServiceRewardCoinsSnapshot() != null ? i.getServiceRewardCoinsSnapshot() : 0)
+                    .sum();
+        }
+        booking.setExpectedRewardPoints(Math.max(1, baseCoins + bonusCoins));
     }
 
     private BookingResponse toDto(Booking b) {
@@ -512,6 +575,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                 itDto.setServiceName(it.getServiceNameSnapshot());
                 itDto.setPrice(it.getServicePriceSnapshot());
                 itDto.setDurationMinutes(it.getServiceDurationSnapshot());
+                itDto.setRewardCoins(it.getServiceRewardCoinsSnapshot() != null ? it.getServiceRewardCoinsSnapshot() : 0);
                 itDto.setStatus(it.getStatus() != null ? it.getStatus().name() : null);
                 return itDto;
             }).collect(Collectors.toList()));
@@ -535,6 +599,32 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         } else {
             dto.setProducts(new ArrayList<>());
         }
+
+        int resolvedPoints = 0;
+        if (b.getStatus() == BookingStatus.COMPLETED) {
+            List<PointsLedger> ledgers = pointsLedgerRepository.findByRelatedId(b.getId());
+            if (ledgers != null && !ledgers.isEmpty()) {
+                resolvedPoints = ledgers.stream().mapToInt(l -> l.getChangeAmount() != null ? l.getChangeAmount() : 0).sum();
+            }
+        }
+        if (resolvedPoints <= 0 && b.getExpectedRewardPoints() != null && b.getExpectedRewardPoints() > 0) {
+            resolvedPoints = b.getExpectedRewardPoints();
+        }
+        if (resolvedPoints <= 0) {
+            double pAmount = dto.getPricePaid() != null ? dto.getPricePaid() : 0.0;
+            double multiplier = 1.0;
+            if (b.getUser() != null && b.getUser().getTier() != null) {
+                switch (b.getUser().getTier()) {
+                    case DIAMOND -> multiplier = 2.0;
+                    case PLATINUM -> multiplier = 1.5;
+                    case GOLD -> multiplier = 1.25;
+                    case SILVER -> multiplier = 1.0;
+                }
+            }
+            resolvedPoints = Math.max(1, (int) Math.round((pAmount / 100.0) * multiplier));
+        }
+        dto.setExpectedRewardPoints(resolvedPoints);
+        dto.setPointsConfirmed(b.getStatus() == BookingStatus.COMPLETED);
 
         dto.setTimeline(bookingTimelineService.getTimelineForBooking(b));
 
@@ -583,6 +673,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     .title("Appointment Confirmed")
                     .message("Your appointment (" + displayCode + ") has been confirmed by salon stylist " + staff.getName() + ".")
                     .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
                     .build();
             notificationRepository.save(notif);
         }

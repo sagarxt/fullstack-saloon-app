@@ -148,7 +148,6 @@ export const CartProvider = ({ children }) => {
       const res = await apiCheckoutCart(checkoutData);
       // Cart is cleared in DB, refresh local cart
       await fetchCart();
-      showToast("Appointment & order confirmed successfully!", "success");
       return res.data;
     } catch (err) {
       const msg = err.response?.data?.message || err.message || "Checkout failed";

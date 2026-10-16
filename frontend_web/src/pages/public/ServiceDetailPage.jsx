@@ -33,8 +33,7 @@ import {
   Share2,
   ShoppingCart,
   Tag,
-  Copy,
-  Check,
+  ChevronDown,
 } from "lucide-react";
 
 export default function ServiceDetailPage() {
@@ -48,7 +47,7 @@ export default function ServiceDetailPage() {
   const [reviews, setReviews] = useState([]);
   const [ratingSummary, setRatingSummary] = useState(null);
   const [coupons, setCoupons] = useState([]);
-  const [copiedCode, setCopiedCode] = useState("");
+  const [showAllOffers, setShowAllOffers] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedSubService, setSelectedSubService] = useState(null);
@@ -131,14 +130,10 @@ export default function ServiceDetailPage() {
     setAddingToCart(false);
   };
 
-  const handleCopyCode = (code) => {
-    navigator.clipboard?.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(""), 2500);
-  };
-
-  const isAlreadyInCart = items.some(
-    (i) => i.serviceId === service?.id && (!selectedSubService || i.subServiceName === selectedSubService.name)
+  const isAlreadyInCart = items?.some(
+    (i) =>
+      (i.itemType === "SERVICE" || !i.itemType) &&
+      (i.serviceId === service?.id || i.service?.id === service?.id)
   );
 
   const defaultServiceImages = {
@@ -231,10 +226,10 @@ export default function ServiceDetailPage() {
         </div>
 
         {/* HERO / PRODUCT DETAILS SECTION */}
-        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        <section className="py-5 sm:py-7 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-12 gap-5 lg:gap-7">
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
-            <div className="lg:col-span-7 space-y-8">
+            <div className="lg:col-span-7 space-y-5">
               {/* Image Preview */}
               <div className="relative rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft h-[320px] sm:h-[440px]">
                 <img
@@ -286,32 +281,7 @@ export default function ServiceDetailPage() {
                   </p>
                 </div>
 
-                {/* HIGHLIGHTED EXTRA GROOM COINS PROMOTION */}
-                {service.rewards > 0 && (
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/20 via-amber-400/25 to-amber-500/15 border-2 border-amber-300/80 text-amber-950 flex items-center justify-between gap-3 shadow-md">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-amber-500/30 text-amber-800 flex items-center justify-center shrink-0 border border-amber-400/40">
-                        <GroomCoinIcon className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-black uppercase tracking-wider text-amber-800">
-                          Exclusive Loyalty Privilege
-                        </div>
-                        <div className="text-sm font-extrabold text-amber-950">
-                          Receive +{service.rewards} Extra Groom Coins with this treatment!
-                        </div>
-                        <p className="text-[11px] text-amber-900/70 mt-0.5">
-                          Credited directly to your Groom Coin wallet upon appointment completion.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="shrink-0 hidden sm:block">
-                      <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-400 text-amber-950 shadow-xs uppercase tracking-wide">
-                        +{service.rewards} Extra Coins
-                      </span>
-                    </div>
-                  </div>
-                )}
+
 
                 {/* Description */}
                 <div>
@@ -344,22 +314,20 @@ export default function ServiceDetailPage() {
                             key={sub.id || idx}
                             type="button"
                             onClick={() => setSelectedSubService(sub)}
-                            className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
-                              isSelected
+                            className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${isSelected
                                 ? "bg-amber-50/80 border-groomish-orange shadow-sm ring-2 ring-groomish-orange/20"
                                 : "bg-white border-groomish-slate/15 hover:border-groomish-orange/40 hover:bg-groomish-cream/40"
-                            }`}
+                              }`}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <span className={`text-xs font-bold leading-tight ${isSelected ? "text-groomish-orange" : "text-groomish-slate"}`}>
                                 {sub.name}
                               </span>
                               <div
-                                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition ${
-                                  isSelected
+                                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition ${isSelected
                                     ? "border-groomish-orange bg-groomish-orange text-white"
                                     : "border-groomish-slate/30 bg-white"
-                                }`}
+                                  }`}
                               >
                                 {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                               </div>
@@ -421,78 +389,8 @@ export default function ServiceDetailPage() {
                 </div>
               </div>
 
-              {/* AVAILABLE OFFERS & PROMOTIONAL COUPONS */}
-              {coupons.length > 0 && (
-                <div className="bg-gradient-to-br from-white to-groomish-cream/40 rounded-3xl p-6 sm:p-8 border border-groomish-orange/20 shadow-soft space-y-5">
-                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center">
-                        <Tag className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h2 className="font-heading font-extrabold text-base sm:text-lg text-groomish-slate">
-                          Available Offers & Promotional Coupons
-                        </h2>
-                        <p className="text-[11px] text-groomish-slate/60">
-                          Redeemable during cart checkout on {categoryName} treatments
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-extrabold text-groomish-orange bg-groomish-orangeLight px-2.5 py-1 rounded-full">
-                      {coupons.length} Offers Active
-                    </span>
-                  </div>
-
-                  <div className="grid sm:grid-cols-2 gap-3.5">
-                    {coupons.map((coupon) => (
-                      <div
-                        key={coupon.id}
-                        className="p-4 rounded-2xl bg-white border border-groomish-slate/15 hover:border-groomish-orange transition-all shadow-sm space-y-2.5 flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-xs font-extrabold tracking-wider bg-groomish-cream text-groomish-orange px-2.5 py-1 rounded-lg border border-groomish-orange/20">
-                              {coupon.code}
-                            </span>
-                            <span className="text-xs font-black text-groomish-green">
-                              FLAT ₹{coupon.discount} OFF
-                            </span>
-                          </div>
-                          <p className="text-xs text-groomish-slate/80 mt-2 font-medium line-clamp-2">
-                            {coupon.description}
-                          </p>
-                        </div>
-
-                        <div className="pt-2 border-t border-groomish-slate/10 flex items-center justify-between text-[11px]">
-                          <span className="text-groomish-slate/50">
-                            Min Order: ₹{coupon.minAmount || 0}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCode(coupon.code)}
-                            className="text-groomish-orange hover:text-groomish-orangeDark font-bold flex items-center gap-1 transition"
-                          >
-                            {copiedCode === coupon.code ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-groomish-green" />
-                                <span className="text-groomish-green">Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>Copy Code</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* VERIFIED CUSTOMER REVIEWS & RATINGS */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-groomish-slate/10 shadow-soft space-y-6">
+              <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-soft space-y-4">
                 <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4">
                   <div>
                     <h2 className="font-heading font-extrabold text-xl text-groomish-slate flex items-center gap-2">
@@ -549,25 +447,26 @@ export default function ServiceDetailPage() {
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Star
                                 key={star}
-                                className={`w-3.5 h-3.5 ${
-                                  star <= (r.rating || 5)
+                                className={`w-3.5 h-3.5 ${star <= (r.rating || 5)
                                     ? "fill-groomish-gold text-groomish-gold"
                                     : "text-gray-200"
-                                }`}
+                                  }`}
                               />
                             ))}
                           </div>
                         </div>
 
-                        <p className="text-xs text-groomish-slate/80 leading-relaxed italic">
-                          "{r.review}"
-                        </p>
+                        {r.review && r.review.trim() && (
+                          <p className="text-xs text-groomish-slate/80 leading-relaxed italic">
+                            "{r.review}"
+                          </p>
+                        )}
 
                         <div className="text-[10px] text-groomish-slate/40 text-right">
                           {r.createdAt
                             ? new Date(r.createdAt).toLocaleDateString(undefined, {
-                                dateStyle: "medium",
-                              })
+                              dateStyle: "medium",
+                            })
                             : "Recently"}
                         </div>
                       </div>
@@ -577,106 +476,210 @@ export default function ServiceDetailPage() {
               </div>
             </div>
 
-            {/* RIGHT SIDEBAR: STICKY BOOKING CARD */}
-            <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-5">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-groomish-slate/10 shadow-card space-y-6">
-                <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-groomish-slate/50 block mb-1">
-                    Salon Tariff & Booking
-                  </span>
-
-                  <div className="flex items-baseline gap-3">
-                    <span className="text-4xl font-heading font-extrabold text-groomish-slate">
-                      ₹{activePrice}
+            {/* RIGHT SIDEBAR: STICKY BOOKING CARD (STICKY UNTIL REVIEWS END) */}
+            <div className="lg:col-span-5 relative">
+              <div className="lg:sticky lg:top-24 space-y-4">
+                <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-card space-y-4">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-groomish-slate/50 block mb-1">
+                      Salon Tariff & Booking
                     </span>
-                    {service.mrp > activePrice && (
+
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-4xl font-heading font-extrabold text-groomish-slate">
+                        ₹{activePrice}
+                      </span>
+                      {service.mrp > activePrice && (
+                        <>
+                          <span className="text-sm font-semibold text-groomish-slate/40 line-through">
+                            ₹{service.mrp}
+                          </span>
+                          <span className="text-xs font-bold text-groomish-green bg-groomish-greenLight px-2.5 py-0.5 rounded-full">
+                            {Math.round(((service.mrp - activePrice) / service.mrp) * 100)}% OFF
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {selectedSubService && (
+                      <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 text-groomish-orange border border-amber-200/60 text-xs font-bold">
+                        <span>Option: {selectedSubService.name}</span>
+                        <span className="text-groomish-slate/40">•</span>
+                        <span>{activeDuration}m</span>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-groomish-slate/50 mt-1">
+                      Inclusive of all taxes & professional salon hygiene sanitation.
+                    </p>
+                  </div>
+
+                  {/* Groom Coins Bonus Banner */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-200/80 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0 border border-amber-300/40">
+                      <GroomCoinIcon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-extrabold text-groomish-slate block flex items-center gap-1.5 flex-wrap">
+                        <span>Earn +{coinsEarned} Groom Coins</span>
+                        {service.rewards > 0 && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 font-black">
+                            Includes +{service.rewards} Bonus
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[11px] text-groomish-slate/70">
+                        Redeem Groom Coins for treatment vouchers & salon perks.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* CTA Buttons */}
+                  <div className="space-y-2.5">
+                    {isAlreadyInCart ? (
                       <>
-                        <span className="text-sm font-semibold text-groomish-slate/40 line-through">
-                          ₹{service.mrp}
-                        </span>
-                        <span className="text-xs font-bold text-groomish-green bg-groomish-greenLight px-2.5 py-0.5 rounded-full">
-                          {Math.round(((service.mrp - activePrice) / service.mrp) * 100)}% OFF
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => navigate("/cart")}
+                          className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange cursor-pointer"
+                        >
+                          <ShoppingCart className="w-4 h-4" />
+                          <span>View Cart</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddToCart}
+                          disabled={addingToCart}
+                          className="btn-secondary w-full py-2.5 text-xs flex items-center justify-center gap-2 font-bold text-groomish-slate/75 hover:text-groomish-orange cursor-pointer"
+                        >
+                          <span>{addingToCart ? "Adding..." : "Add Another to Cart (+1)"}</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleAddToCart}
+                          disabled={addingToCart}
+                          className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange cursor-pointer"
+                        >
+                          <ShoppingCart className="w-4 h-4" />
+                          <span>{addingToCart ? "Adding to Cart..." : "Add Service to Cart"}</span>
+                        </button>
+                        {items?.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => navigate("/cart")}
+                            className="btn-secondary w-full py-3 text-xs flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <span>View Cart & Checkout</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
-                  {selectedSubService && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-50 text-groomish-orange border border-amber-200/60 text-xs font-bold">
-                      <span>Option: {selectedSubService.name}</span>
-                      <span className="text-groomish-slate/40">•</span>
-                      <span>{activeDuration}m</span>
+                </div>
+
+                {/* AVAILABLE OFFERS & PROMOTIONAL COUPONS (RIGHT SIDEBAR BELOW TARIFF & BOOKING) */}
+                {(coupons.length > 0 || service.rewards > 0 || coinsEarned > 0) && (
+                  <div className="bg-white rounded-3xl p-5 sm:p-6 border border-groomish-slate/10 shadow-card space-y-4">
+                    <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
+                          <Tag className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <h3 className="font-heading font-extrabold text-sm text-groomish-slate">
+                            Available Offers & Promotional Coupons
+                          </h3>
+                          <p className="text-[11px] text-groomish-slate/60">
+                            Redeemable during cart checkout on {categoryName} treatments
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-extrabold text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full shrink-0">
+                        {coupons.length + (service.rewards > 0 || coinsEarned > 0 ? 1 : 0)} Active
+                      </span>
                     </div>
-                  )}
-                  <p className="text-[11px] text-groomish-slate/50 mt-1">
-                    Inclusive of all taxes & professional salon hygiene sanitation.
-                  </p>
-                </div>
 
-                {/* Groom Coins Bonus Banner */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-200/80 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center shrink-0 border border-amber-300/40">
-                    <GroomCoinIcon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-extrabold text-groomish-slate block flex items-center gap-1.5 flex-wrap">
-                      <span>Earn +{coinsEarned} Groom Coins</span>
-                      {service.rewards > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 font-black">
-                          Includes +{service.rewards} Bonus
+                    {/* EXTRA GROOM COINS OFFER - ONE LINE */}
+                    {(service.rewards > 0 || coinsEarned > 0) && (
+                      <div className="p-3 px-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-amber-500/10 border border-amber-300/80 flex items-center justify-between gap-2.5 text-xs shadow-2xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-6 h-6 rounded-lg bg-amber-500/25 text-amber-800 flex items-center justify-center shrink-0 border border-amber-400/40">
+                            <GroomCoinIcon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="font-extrabold text-groomish-slate truncate text-xs">
+                            {service.rewards > 0 ? (
+                              <>
+                                <span className="text-amber-800 uppercase font-black tracking-wider text-[10px] mr-1">Coin Offer:</span>
+                                <span>Earn +{coinsEarned} Groom Coins (+{service.rewards} Extra Bonus)</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-amber-800 uppercase font-black tracking-wider text-[10px] mr-1">Coin Offer:</span>
+                                <span>Earn +{coinsEarned} Groom Coins on this treatment</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full shrink-0">
+                          Loyalty
                         </span>
-                      )}
-                    </span>
-                    <span className="text-[11px] text-groomish-slate/70">
-                      Redeem Groom Coins for treatment vouchers & salon perks.
-                    </span>
-                  </div>
-                </div>
+                      </div>
+                    )}
 
-                {/* CTA Buttons */}
-                <div className="space-y-2.5">
-                  <button
-                    type="button"
-                    onClick={handleAddToCart}
-                    disabled={addingToCart}
-                    className="btn-auth w-full py-4 text-sm flex items-center justify-center gap-2 shadow-glowOrange"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span>{addingToCart ? "Adding to Cart..." : isAlreadyInCart ? "Add Another to Cart (+1)" : "Add Service to Cart"}</span>
-                  </button>
+                    {/* PROMOTIONAL COUPONS - 2 LINES PER COUPON, NO COPY BUTTON */}
+                    {coupons.length > 0 && (
+                      <div className="space-y-2.5 pt-0.5">
+                        {(showAllOffers ? coupons : coupons.slice(0, 3)).map((coupon) => (
+                          <div
+                            key={coupon.id}
+                            className="bg-white rounded-2xl border border-groomish-slate/15 hover:border-groomish-orange/50 transition-all shadow-2xs p-3.5 space-y-2 group"
+                          >
+                            {/* LINE 1: Discount & Min order on left, Promo Code on right (NO COPY BUTTON) */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs sm:text-sm font-black text-groomish-green tracking-tight whitespace-nowrap">
+                                  FLAT ₹{coupon.discount} OFF
+                                </span>
+                                <span className="text-[10px] sm:text-[11px] font-semibold text-groomish-slate/60 bg-groomish-cream px-2 py-0.5 rounded-md border border-groomish-slate/10 whitespace-nowrap">
+                                  Min. order: ₹{coupon.minAmount || 0}
+                                </span>
+                              </div>
 
-                  <button
-                    type="button"
-                    onClick={() => navigate("/cart")}
-                    className="btn-secondary w-full py-3 text-xs flex items-center justify-center gap-2"
-                  >
-                    <span>View Cart & Checkout</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                              <span
+                                className="font-mono text-xs font-black tracking-wider text-groomish-orange bg-groomish-orangeLight/80 px-2.5 py-1 rounded-lg border border-groomish-orange/30 shrink-0"
+                                title={coupon.code}
+                              >
+                                {coupon.code}
+                              </span>
+                            </div>
 
-                {/* Trust Points */}
-                <div className="space-y-2.5 pt-2 text-xs text-groomish-slate/70">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-groomish-green shrink-0" />
-                    <span>Real-time email booking confirmation</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-groomish-blue shrink-0" />
-                    <span>Free rescheduling up to appointment time</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-groomish-orange shrink-0" />
-                    <span>Pay online (UPI / Card) or pay at the salon</span>
-                  </div>
-                </div>
+                            {/* LINE 2: Offer Description */}
+                            <p className="text-xs text-groomish-slate/75 font-medium leading-relaxed">
+                              {coupon.description || "Valid on selected salon treatments at checkout"}
+                            </p>
+                          </div>
+                        ))}
 
-                {/* Concierge contact */}
-                <div className="pt-4 border-t border-groomish-slate/10 text-center text-xs text-groomish-slate/60">
-                  <span>Questions about this treatment?</span>
-                  <p className="font-bold text-groomish-orange mt-0.5">
-                    Call Salon Concierge: +91 98765 43210
-                  </p>
-                </div>
+                        {/* View More Offers Toggle */}
+                        {coupons.length > 3 && (
+                          <div className="pt-1 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setShowAllOffers((prev) => !prev)}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-groomish-orange bg-groomish-orangeLight/80 hover:bg-groomish-orange hover:text-white border border-groomish-orange/30 transition shadow-2xs cursor-pointer active:scale-95"
+                            >
+                              <span>{showAllOffers ? "Show Less Offers" : `View More Offers (+${coupons.length - 3} more)`}</span>
+                              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAllOffers ? "rotate-180" : ""}`} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

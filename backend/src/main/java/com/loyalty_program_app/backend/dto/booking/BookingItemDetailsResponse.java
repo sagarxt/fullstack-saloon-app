@@ -10,5 +10,6 @@ public class BookingItemDetailsResponse {
     private String serviceName;
     private Double price;
     private Integer durationMinutes;
+    private Integer rewardCoins;
     private String status;
 }

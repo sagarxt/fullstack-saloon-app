@@ -74,15 +74,22 @@ public class UserAdminController {
         return userAdminService.updateUserGroups(id, groups);
     }
 
-    // SEND TARGETED EMAIL TO USER GROUP
+    // SEND TARGETED EMAIL TO USER GROUP OR INDIVIDUAL CUSTOMER
     @PostMapping("/email-group")
     public java.util.Map<String, Object> sendEmailToUserGroup(
             @RequestBody java.util.Map<String, String> payload
     ) {
+        String recipientType = payload.get("recipientType");
+        String userId = payload.get("userId");
+        String email = payload.get("email");
         String userGroup = payload.get("userGroup");
         String subject = payload.get("subject");
         String message = payload.get("message");
         String couponCode = payload.get("couponCode");
+
+        if ("INDIVIDUAL".equalsIgnoreCase(recipientType) || (userId != null && !userId.isBlank()) || (email != null && !email.isBlank())) {
+            return userAdminService.sendEmailToIndividual(userId, email, subject, message, couponCode);
+        }
         return userAdminService.sendEmailToUserGroup(userGroup, subject, message, couponCode);
     }
 

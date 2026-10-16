@@ -17,6 +17,7 @@ export default function CustomTimePicker({
   placeholder = "Select Time",
   align = "left",
   className = "",
+  triggerClassName = "",
   disabled = false,
 }) {
   const [open, setOpen] = useState(false);
@@ -103,7 +104,7 @@ export default function CustomTimePicker({
           open
             ? "border-groomish-orange ring-2 ring-groomish-orange/25 bg-white shadow-soft"
             : "border-groomish-slate/20 bg-white hover:border-groomish-slate/40"
-        } ${disabled ? "opacity-50 cursor-not-allowed bg-groomish-cream/40" : ""}`}
+        } ${disabled ? "opacity-50 cursor-not-allowed bg-groomish-cream/40" : ""} ${triggerClassName}`}
       >
         <div className="flex items-center gap-2 min-w-0">
           <Clock className="w-3.5 h-3.5 text-groomish-orange shrink-0" />

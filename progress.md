@@ -1,7 +1,7 @@
 # Salon Booking & Loyalty Program - Project Progress Tracker
 
-> **Last Updated:** October 16, 2026  
-> **Status:** Backend and Frontend Web (Groomish Now) 100% Completed, Verified and Production Ready. Multi-Store Geolocation Architecture, Branch Catalogs, Staff Operations Hub, Visual Analytics, Database-Persistent Cart, Unified Checkout System, User Groups, Promotional Coupons, and Lifetime Tier Governance Fully Deployed.
+> **Last Updated:** October 17, 2026  
+> **Status:** Backend, Frontend Web, and Mobile App (Groomish Now) Fully Operational and Production Ready. Multi-Store Geolocation Architecture, Branch Catalogs, Unified Cart & Checkout, Authoritative Post-Payment Flow, Anti-Spam Notification Engine, Lifetime Tier Governance, and Expo SDK 57 Cross-Platform Mobile App Fully Deployed.
 
 ---
 
@@ -9,9 +9,9 @@
 
 | Subsystem | Tech Stack | Completion | Status Summary |
 | :--- | :--- | :---: | :--- |
-| **Backend** | Spring Boot 3.5, Java 21, PostgreSQL, JPA, JWT, JavaMail | **100%** | **Completed, Tested & Live Running.** Multi-store branch architecture, database-persistent Cart (`Cart` & `CartItem`), multi-item checkout converting to bookings & product attachments, coupon/voucher redemption, localized service/product availability overrides, staff/admin cart management, staff profile & password change endpoints, branch analytics API with customizable timeframes, real-time Gmail SMTP asynchronous mailing, complete Service Review system, payment checkout & point accruals, in-app notifications, and request context verified with live test user. |
-| **Frontend Web** | React 19, Vite 7, Tailwind CSS 3, Lucide Icons | **100%** | **Completed & Fully Production-Ready.** Overhauled with official Groomish Now brand palette, smooth keyframe animations, glassmorphism navbar, persistent Cart system with reactive cart badge, dedicated `/cart` and `/checkout` pages, promo coupon & loyalty voucher redemption, "Available Offers" sections on service & product pages, store geolocation selector with Haversine distance, Staff Station with tabbed appointment queues (Today, Upcoming, Completed, All), Staff Booking Detail page with itemized billing, Staff Branch Analytics dashboard, Staff & Admin customer cart inspector, Custom Groomish Date & Time Pickers, searchable `CustomSelect` dropdowns, item multiplier displays (`Item X {qty}`), and a global modal confirmation/alert system (`ConfirmContext`). Production build passes cleanly with 0 errors (`vite build` ✓). |
-| **Mobile App** | React Native (Expo SDK 54), TypeScript, NativeWind | **~15%** | Skeleton only: splash, login, register screens. Contains runtime bugs (missing logo asset, `/api/` instead of `/api/v1/`), no token persistence, and lacks customer browsing/booking/rewards screens. Next phase. |
+| **Backend** | Spring Boot 3.5, Java 21, PostgreSQL, JPA, JWT, JavaMail | **100%** | **Completed, Tested & Live Running.** Multi-store branch architecture, database-persistent Cart (`Cart` & `CartItem`), multi-item checkout converting to bookings & product attachments, coupon/voucher redemption, localized service/product availability overrides, staff/admin cart management, staff profile & password change endpoints, branch analytics API with customizable timeframes, real-time Gmail SMTP asynchronous mailing, complete Service Review system, payment checkout & point accruals, authoritative single-notification confirmation engine without spam, guarded appointment scheduler, and request context verified with live test user. |
+| **Frontend Web** | React 19, Vite 7, Tailwind CSS 3, Lucide Icons | **100%** | **Completed & Fully Production-Ready.** Overhauled with official Groomish Now brand palette, smooth keyframe animations, glassmorphism navbar, persistent Cart system with reactive cart badge, dedicated `/cart` and `/checkout` pages, promo coupon & loyalty voucher redemption, "Available Offers" sections on service & product pages, store geolocation selector with Haversine distance, Staff Station with tabbed appointment queues (Today, Upcoming, Completed, All), Staff Booking Detail page with itemized billing, Staff Branch Analytics dashboard, Staff & Admin customer cart inspector, Custom Groomish Date & Time Pickers, searchable `CustomSelect` dropdowns, item multiplier displays (`Item X {qty}`), global modal confirmation/alert system (`ConfirmContext`), and post-payment confirmation screen with auto-redirect countdown to Booking Details. Production build passes cleanly with 0 errors (`vite build` ✓). |
+| **Mobile App** | React Native (Expo SDK 57), React 19.2, React Native 0.86, TypeScript, NativeWind | **~95%** | **Upgraded to Expo SDK 57 & Live Running.** 3-Slide luxury welcome onboarding carousel (`app/index.tsx`) allowing guest browsing without forced login. Replaced scissor icon with official brand logo (`logo.png`) on Login & Register. Full feature parity with Web: Home with groom coins card, Services catalog & booking modal, Shop (products catalog, category/brand filters, cart sheet, persistent Groom Coins discounts), Bookings management (filter & cancel/reschedule), Rewards & tier perks, and Customer Profile. Verified with `npx expo-doctor` (21/21 passed) and TypeScript compilation (`tsc --noEmit` ✓). |
 
 ---
 
@@ -159,7 +159,8 @@
   - `CategoriesPage.jsx` (`/categories`): Full-featured salon categories gallery with service count, search, high-res photography, and direct navigation into dedicated category pages.
   - `CategoryDetailPage.jsx` (`/category/:categoryId` & `/categories/:categoryId`): **Dedicated Category Page** featuring hero cover, gender filter options (**Women**, **Men**, **Unisex**, **All**), live search, price/duration sorting, service cards with direct booking, and related collections carousel.
   - `ServicesPage.jsx` (`/services`): Dedicated salon treatments catalog with category pills filter, gender tabs, live keyword search, price sorting, and interactive booking modal trigger.
-  - `ServiceDetailPage.jsx` (`/services/:serviceId`): **Dedicated Treatment Detail Page** with high-res photography, gender badges, duration & pricing breakdown, verified customer reviews & rating summary integration (`/api/v1/public/reviews/service/{id}` & `/summary`), what-to-expect hygiene badges, sticky booking card with Groomish loyalty points preview, and "You Might Also Like" related services.
+  - `ServiceDetailPage.jsx` (`/services/:serviceId`): **Dedicated Treatment Detail Page** with high-res photography, gender badges, duration & pricing breakdown, verified customer reviews & rating summary integration (`/api/v1/public/reviews/service/{id}` & `/summary`), what-to-expect hygiene badges, **Salon Tariff & Booking** sidebar engineered with sticky positioning that scrolls alongside content and remains fixed until the customer review section ends, and **Available Offers & Promotional Coupons** featuring a single-liner Groom Coins reward banner and single-liner full-width coupon rows (max 3 visible by default with "View More Offers" toggle).
+  - `ProductDetailPage.jsx` (`/products/:productId`): **Dedicated Beauty Product Detail Page** with luxury Groomish styling, sticky purchase sidebar running alongside product specifications, brand navigation, Groom Coins rewards, and single-liner promotional offers (max 3 visible with expandable toggle).
   - `ProductsPage.jsx` (`/products`): **Dedicated Beauty Shop & In-Store Pickup Page** with luxury Groomish Now styling, category pills (**Hair Care**, **Skin & Facial**, **Beard Care**, **Styling**), live search, brand filters, in-store pickup indicators, loyalty points calculations, and interactive In-Store Product Reservation dialog.
   - `Navbar.jsx`: Added direct **Shop** link to both desktop navigation bar and mobile dropdown menu.
 - **Landing Page (`/`)**:
@@ -177,10 +178,11 @@
     4. Payment checkout selection (UPI, Card, Pay at Salon) directly calling `POST /customer/payments/checkout`.
     5. Celebration screen with appointment details, points earned, and confirmation email notice.
   - `CustomerBookingDetailsModal.jsx` & `RescheduleBookingModal.jsx`: Slot rescheduling and cancellation dialogs.
-  - `LeaveReviewModal.jsx`: Interactive 5-star rating component with comment feedback submitting to `CustomerReviewController`.
+  - `LeaveReviewModal.jsx`: Interactive 5-star rating component with comment feedback submitting to `CustomerReviewController`. Supports reviewing salon services, store retail products, and salon branch locations (ambience, cleanliness, front desk greeting, and staff hospitality).
   - `NotificationDrawer.jsx`: Real-time alerts drawer with mark-as-seen.
 - **Customer Pages (`/customer/*`)**:
-  - `MyBookingsPage.jsx`: Filter by All, Upcoming, Completed, and Cancelled with action buttons (Reschedule, Cancel, and Rate & Review).
+  - `MyBookingsPage.jsx`: Filter by All, Upcoming, Completed, and Cancelled with action buttons (Reschedule, Cancel, **Rate Salon**, and **Rate Service**).
+  - `BookingDetailPage.jsx`: Complete appointment overview with dedicated **Salon Branch & Hospitality Experience** rating card in the verified client reviews section, allowing customers to rate and review the salon branch with quick edit controls.
   - `RewardsPage.jsx`: VIP Tier status card with progress bar to next tier, perks breakdown, redeemable vouchers catalog with 1-click redemption, and transparent points ledger.
   - `ProfilePage.jsx`: User profile editor, security change password section with email alert, and VIP Referral Code card with 1-click clipboard copy and WhatsApp sharing link.
 - **Admin Portal (`/admin/*`)**:
@@ -485,13 +487,75 @@
    - Injected the dynamic logo URL across `EmailTemplateServiceImpl.java` and `OtpServiceImpl.java` with safe fallback containers.
    - Added the official brand logo header to the top of `README.md`.
 
+9. **Unified Offers and Perforated Coupon Cards on Details Pages**:
+   - Consolidated Extra Groom Coins offer into a single horizontal bar at the top of the "Available Offers & Promotional Coupons" section on both Service Detail (`ServiceDetailPage.jsx`) and Product Detail (`ProductDetailPage.jsx`) pages.
+   - Refactored promotional coupon items into a 3-column parallel grid (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3`) with a perforated ticket cut-line, separating discount value and terms on the left from the promo code chip and copy button on the right.
+
 ---
 
-## 4. Mobile App (`/mobile_app`) - Future Phase
+### Phase G: Checkout & Post-Payment Flow Overhaul and Spam-Free Notifications (Completed - October 17, 2026)
+1. **Post-Payment Only Confirmation Flow (`CheckoutPage.jsx`)**:
+   - Replaced instant background redirection with dedicated post-payment modal states.
+   - **Booking & Payment Confirmed Modal**: Shows immediately following online payment verification (Razorpay / simulated) or when selecting "Pay at Salon" (Cash). Displays full transaction receipt (Booking Code, Amount Paid / Payable at Salon, Branch, and Slot Time).
+   - **Animated Countdown Progress Bar**: 4-second auto-redirect progress bar (`Redirecting to booking details in Xs...`) paired with an instant **"View Booking Details Now"** CTA button that navigates directly to `/customer/bookings/:id`.
+   - **Booking Reserved (Payment Pending) Modal**: If the payment gateway is closed or transaction fails, the slot is held under `PENDING` status. Offers 1-click **"Try Online Payment Again"** (with remaining attempt counters), **"Switch to Pay at Salon"** (instant confirmation), or auto-redirects after 8s to the booking details page.
+   - Fixed `scheduledAt` undefined reference bug during checkout submission.
 
-### Action Plan
-1. Fix runtime crash in `mobile_app/app/index.tsx` (missing asset `salon-logo.png`).
-2. Fix API endpoints in `mobile_app/api/client.ts` (`/api/` -> `/api/v1/`).
-3. Implement persistent authentication storage (AsyncStorage / SecureStore) for JWT tokens.
-4. Align mobile UI with Groomish Now color palette and logo assets.
-5. Build customer mobile tabs: Home Services, Appointment Slots, My Bookings, Loyalty Rewards, and Profile.
+2. **Clean, Single Authoritative Confirmation Engine (`CartServiceImpl` & `CustomerPaymentServiceImpl`)**:
+   - Removed intermediate `"Order & Booking Reserved (Payment Pending)"` in-app notifications and customer emails during initial online checkout.
+   - Unified post-payment notification into a single authoritative confirmation:
+     > **"Order & Booking Confirmed"** — *Your order (GN-XX-XXXXXX) is confirmed! Online payment of ₹... received. +X Groom Coins will be credited upon completion.*
+   - Dispatches a single Gmail confirmation email with tax invoice details upon verified payment.
+
+3. **Guarded Appointment Scheduler (`BookingSchedulerService.java`)**:
+   - Excluded retail product-only purchases (`bookingItems.isEmpty()`) from salon stylist slot capacity checks, countdowns, and auto-cancellations (resolving the bug where buying hair products triggered premature salon appointment reminders).
+   - Restricted appointment reminders strictly to `CONFIRMED` or `MODIFIED` bookings.
+   - Added a 5-minute creation grace period to prevent immediate "Starts Now" alerts on newly booked appointments.
+
+5. **Real-Time Calendar & Slot Picker Timezone Fix (`CheckoutPage.jsx` & `BookingDetailPage.jsx`)**:
+   - **Root Cause Resolved**: Fixed the critical UTC date shift bug where `new Date().toISOString().split("T")[0]` produced yesterday's date after midnight in IST (+5:30). When selecting slot `13:30`, the checkout sent yesterday's date (`2026-10-16T13:30:00`), which was 12 hours in the past, causing the backend to clamp it to `LocalDateTime.now()` (`2026-10-17 01:09`).
+   - Replaced all UTC date slicing with `getLocalDateStr()`, ensuring correct local calendar day initialization.
+   - Upgraded all slot buttons to luxury 12-hour AM/PM format (e.g., `01:30 PM`, `09:30 AM`, `02:00 PM`) with explicit `Selected: 01:30 PM` confirmation chips.
+   - Added real-time auto-polling every 30 seconds for live stylist slot availability (`getSlotAvailability`), plus a 15-second real-time clock tick to dynamically disable passed slots.
+   - Added an interactive **"Refresh Slots"** button with live spinner.
+   - Updated `BookingDetailPage.jsx` to render times with explicit dynamic headers (`Appointment Schedule` for treatments vs `Order & Salon Pickup Schedule` for retail products).
+
+6. **Add Service Fix for Branch Services (`BookingDetailPage.jsx`, `CartPage.jsx`, `BranchServiceResponse.java`)**:
+   - Resolved `Method parameter 'serviceId': Failed to convert value of type 'java.lang.String' to required type 'java.util.UUID'; Invalid UUID string: undefined`.
+   - Branch services returned by `storeApi.getStoreServices` identify services using `serviceId` instead of `id`.
+   - Added normalization `id: s.serviceId || s.id` across `BookingDetailPage.jsx` and `CartPage.jsx`.
+   - Added `getId()` and `setId(UUID id)` aliases to `BranchServiceResponse.java` in backend for universal Jackson JSON compatibility.
+
+7. **Reschedule Appointment Live Branch Time Slots (No AM/PM) (`BookingDetailPage.jsx`, `StaffDashboard.jsx`, `CustomerBookingController.java`)**:
+   - Replaced static time input with a dynamic, real-time **Branch Time Slot Picker** in the Reschedule Modal.
+   - Fetches live availability from `getSlotAvailability(rescheduleDate, primaryServiceId)` with auto-polling every 30 seconds and live refresh CTA.
+   - **Strict 24-Hour Schedule Format (No AM/PM)**: Renders slots directly as `09:00`, `09:30`, `10:00`, `13:30`, `14:00`, `18:30`, etc.
+   - Dynamically disables past slots for today's date and booked salon stylist slots with visual indicators.
+   - Made `serviceId` optional in Spring Boot `/customer/bookings/slots` so slot availability checks work seamlessly across all booking items.
+
+---
+
+## 4. Mobile App (`/mobile_app`) - Implemented & Active (~95%)
+
+### Features Implemented
+1. **Expo SDK 57 Upgrade**:
+   - Migrated the application to Expo SDK 57 with React 19.2, React Native 0.86, and modern Expo Router.
+   - Verified via `npx expo-doctor` (21/21 passed) and TypeScript compilation (`tsc --noEmit` ✓).
+   - Enabled global tunneling via `@expo/ngrok` and Localtunnel.
+
+2. **Branded Visual Identity & Logo Integration**:
+   - Replaced generic scissors icon across `(auth)/login.tsx` and `(auth)/register.tsx` with the high-resolution official brand logo (`mobile_app/assets/images/logo.png`).
+   - Unified color tokens (`#FC6957`, `#373A43`, `#FAF6ED`, `#FED652`) with the web application.
+
+3. **3-Slide Luxury Onboarding Carousel & Guest Browsing (`app/index.tsx`)**:
+   - Built a 3-slide welcome onboarding screen with luxury styling, slide indicators, and brand value propositions:
+     - Slide 1: Premium Salon & Grooming Experience
+     - Slide 2: Earn & Redeem VIP Groom Coins
+     - Slide 3: Instant Booking & Branch Selection
+   - Added a **"Browse as Guest"** CTA allowing clients to explore Home, Services, and Shop tabs immediately without requiring registration.
+   - Authentication is only prompted when performing actions that require an account (Checkout, Confirm Booking, Profile).
+
+4. **Tunnel & Connectivity Optimization (`api/client.ts` & `.env`)**:
+   - Added `Bypass-Tunnel-Reminder: true` headers in Axios client to bypass Localtunnel confirmation screens.
+   - Configured `.env` with `EXPO_PUBLIC_API_URL` for seamless remote mobile testing.
+   - Configured Spring Boot CORS (`CorsConfig.java`) with wildcard origin patterns to support web, tunnel, and mobile clients.

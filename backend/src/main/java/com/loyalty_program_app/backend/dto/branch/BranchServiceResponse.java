@@ -30,4 +30,12 @@ public class BranchServiceResponse {
     private String storeName;
     private String updatedBy;
     private java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices;
+
+    public UUID getId() {
+        return serviceId;
+    }
+
+    public void setId(UUID id) {
+        this.serviceId = id;
+    }
 }

@@ -14,6 +14,21 @@ public interface EmailService {
 
     void sendBookingStatusEmail(String to, String name, String bookingId, String serviceName, String status, String note);
 
+    void sendBookingAdminOverrideEmail(
+            String to,
+            String name,
+            String bookingId,
+            String bookingCode,
+            String serviceName,
+            String storeName,
+            LocalDateTime scheduledAt,
+            String status,
+            Double pricePaid,
+            String paymentStatus,
+            String paymentMethod,
+            String adminNote
+    );
+
     void sendRewardRedeemedEmail(String to, String name, String rewardTitle, int pointsSpent, int remainingPoints);
 
     void sendPasswordChangedEmail(String to, String name);

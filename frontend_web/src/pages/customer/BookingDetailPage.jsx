@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -11,6 +11,9 @@ import {
   rescheduleBooking,
   cancelBooking,
   checkoutPayment,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+  getSlotAvailability,
 } from "../../api/customer";
 import { getPublicServicesApi } from "../../api/service";
 import { storeApi } from "../../api/store";
@@ -19,7 +22,16 @@ import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import { showConfirm, showAlert } from "../../context/ConfirmContext";
 import { useGroomCoin } from "../../context/GroomCoinContext";
 import GroomCoinIcon from "../../components/common/GroomCoinIcon";
+import CustomDatePicker from "../../components/common/CustomDatePicker";
+import { generateSlots } from "../../utils/slots";
 import { getBranchNavigationUrl } from "../../utils/mapHelper";
+
+const getLocalDateStr = (d = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 import {
   Calendar,
   Clock,
@@ -47,6 +59,7 @@ import {
   Navigation,
   Search,
   X,
+  Store,
 } from "lucide-react";
 
 export default function BookingDetailPage() {
@@ -77,6 +90,11 @@ export default function BookingDetailPage() {
   const [rescheduleNotes, setRescheduleNotes] = useState("");
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const [rescheduleError, setRescheduleError] = useState("");
+  const [rescheduleUnavailableSlots, setRescheduleUnavailableSlots] = useState([]);
+  const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
+  const [rescheduleNow, setRescheduleNow] = useState(new Date());
+
+  const rescheduleTimeSlots = generateSlots("09:00", "21:00", 30);
 
   // Review Modal State (Services & Products)
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -101,19 +119,81 @@ export default function BookingDetailPage() {
     setPayLoading(true);
     setPayError("");
     try {
-      await checkoutPayment({
-        bookingId: id,
-        paymentMethod: payMethod,
-      });
-      setPaySuccess(true);
-      setTimeout(async () => {
-        setPayModalOpen(false);
-        setPaySuccess(false);
-        await loadBooking();
-      }, 1200);
+      // 1. Create Razorpay Order on Backend
+      const orderRes = await createRazorpayOrder({ bookingId: id });
+      const orderData = orderRes.data;
+
+      // 2. Open Razorpay Gateway popup if client script is available
+      if (typeof window !== "undefined" && window.Razorpay && orderData.keyId) {
+        const options = {
+          key: orderData.keyId,
+          amount: orderData.amount,
+          currency: orderData.currency || "INR",
+          name: "Groomish Now",
+          description: `Salon Booking Payment (${orderData.bookingCode || id})`,
+          image: "https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png",
+          order_id: orderData.orderId?.startsWith("order_sim_") ? undefined : orderData.orderId,
+          prefill: {
+            name: orderData.customerName || "",
+            email: orderData.customerEmail || "",
+            contact: orderData.customerPhone || "",
+          },
+          notes: {
+            bookingId: id,
+            bookingCode: orderData.bookingCode || "",
+          },
+          theme: {
+            color: "#FA7B47",
+          },
+          modal: {
+            ondismiss: () => {
+              setPayLoading(false);
+            },
+          },
+          handler: async (response) => {
+            try {
+              setPayLoading(true);
+              await verifyRazorpayPayment({
+                bookingId: id,
+                razorpayOrderId: response.razorpay_order_id || orderData.orderId,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+              setPaySuccess(true);
+              setTimeout(async () => {
+                setPayModalOpen(false);
+                setPaySuccess(false);
+                await loadBooking();
+              }, 1200);
+            } catch (err) {
+              setPayError(err.response?.data?.message || "Payment signature verification failed.");
+            } finally {
+              setPayLoading(false);
+            }
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on("payment.failed", function (resp) {
+          setPayError(resp.error?.description || "Payment failed on Razorpay.");
+          setPayLoading(false);
+        });
+        rzp.open();
+      } else {
+        // Fallback simulation if Razorpay popup is blocked
+        await checkoutPayment({
+          bookingId: id,
+          paymentMethod: "ONLINE",
+        });
+        setPaySuccess(true);
+        setTimeout(async () => {
+          setPayModalOpen(false);
+          setPaySuccess(false);
+          await loadBooking();
+        }, 1200);
+      }
     } catch (err) {
-      setPayError(err.response?.data?.message || "Failed to process online payment. Please try again.");
-    } finally {
+      setPayError(err.response?.data?.message || "Failed to process payment. Please try again.");
       setPayLoading(false);
     }
   };
@@ -124,6 +204,9 @@ export default function BookingDetailPage() {
     try {
       const res = await getMyBookingDetails(id);
       setBooking(res.data);
+      if (res.data?.id && res.data.id !== id) {
+        navigate(`/customer/bookings/${res.data.id}`, { replace: true });
+      }
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Failed to load booking details");
@@ -144,6 +227,9 @@ export default function BookingDetailPage() {
       setTimeout(() => {
         reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 400);
+    }
+    if ((params.get("pay") === "true" || params.get("pay") === "online") && booking && (!booking.payment || booking.payment.status !== "COMPLETED")) {
+      handleOpenPayOnline();
     }
   }, [location.search, booking]);
 
@@ -176,6 +262,22 @@ export default function BookingDetailPage() {
     setReviewModalOpen(true);
   };
 
+  const handleOpenStoreReview = () => {
+    const storeId = booking?.storeId || booking?.store?.id;
+    const storeName = booking?.storeName || booking?.store?.name || "Salon Branch";
+    const existing = (booking?.customerReviews || []).find(
+      (r) => (r.storeId && r.storeId === storeId) || (!r.serviceId && !r.productId)
+    );
+    setActiveReviewItem({
+      type: "STORE",
+      storeId: storeId,
+      storeName: storeName,
+      initialRating: existing ? existing.rating : 5,
+      initialReview: existing ? existing.review : "",
+    });
+    setReviewModalOpen(true);
+  };
+
   const handleRateExperienceClick = () => {
     if (reviewsRef.current) {
       reviewsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -199,7 +301,12 @@ export default function BookingDetailPage() {
         const res = await getPublicServicesApi();
         list = extractList(res.data);
       }
-      setAvailableServices(list);
+      const normalized = (list || []).map((s) => ({
+        ...s,
+        id: s.serviceId || s.id,
+        serviceId: s.serviceId || s.id,
+      }));
+      setAvailableServices(normalized);
     } catch (err) {
       console.error(err);
       setAvailableServices([]);
@@ -217,6 +324,15 @@ export default function BookingDetailPage() {
 
   /* Add Service to Booking */
   const handleAddService = async (serviceId) => {
+    if (!serviceId) {
+      console.error("Missing serviceId when attempting to add service to booking");
+      await showAlert({
+        title: "Unable to Add Service",
+        message: "Invalid salon service selected. Please refresh the page and try again.",
+        variant: "danger",
+      });
+      return;
+    }
     setAddingServiceId(serviceId);
     try {
       const res = await addServiceToBooking(id, serviceId);
@@ -270,28 +386,79 @@ export default function BookingDetailPage() {
   /* Open Reschedule Modal */
   const handleOpenReschedule = () => {
     setRescheduleError("");
+    const todayStr = getLocalDateStr();
     if (booking?.scheduledAt) {
       const dt = new Date(booking.scheduledAt);
-      const yyyy = dt.getFullYear();
-      const mm = String(dt.getMonth() + 1).padStart(2, "0");
-      const dd = String(dt.getDate()).padStart(2, "0");
+      const bDateStr = getLocalDateStr(dt);
       const hh = String(dt.getHours()).padStart(2, "0");
       const min = String(dt.getMinutes()).padStart(2, "0");
-      setRescheduleDate(`${yyyy}-${mm}-${dd}`);
+      const initialDate = bDateStr >= todayStr ? bDateStr : todayStr;
+      setRescheduleDate(initialDate);
       setRescheduleTime(`${hh}:${min}`);
     } else {
-      setRescheduleDate("");
+      setRescheduleDate(todayStr);
       setRescheduleTime("");
     }
     setRescheduleNotes(booking?.note || "");
     setRescheduleModalOpen(true);
   };
 
+  const fetchRescheduleSlots = useCallback(async (isManual = false) => {
+    if (!rescheduleDate) return;
+    setLoadingRescheduleSlots(true);
+    try {
+      const primaryServiceId =
+        booking?.items?.find((i) => i.serviceId || i.service?.id)?.serviceId ||
+        booking?.items?.find((i) => i.serviceId || i.service?.id)?.service?.id ||
+        null;
+      const res = await getSlotAvailability(rescheduleDate, primaryServiceId);
+      setRescheduleUnavailableSlots(res.data?.unavailableSlots || []);
+    } catch (err) {
+      console.error("Failed to load branch reschedule slots:", err);
+      setRescheduleUnavailableSlots([]);
+    } finally {
+      setLoadingRescheduleSlots(false);
+    }
+  }, [rescheduleDate, booking]);
+
+  useEffect(() => {
+    if (rescheduleModalOpen && rescheduleDate) {
+      fetchRescheduleSlots();
+      const pollInterval = setInterval(() => {
+        fetchRescheduleSlots();
+      }, 30000);
+      return () => clearInterval(pollInterval);
+    }
+  }, [rescheduleModalOpen, rescheduleDate, fetchRescheduleSlots]);
+
+  useEffect(() => {
+    if (!rescheduleModalOpen) return;
+    const tick = setInterval(() => {
+      setRescheduleNow(new Date());
+    }, 15000);
+    return () => clearInterval(tick);
+  }, [rescheduleModalOpen]);
+
+  const isRescheduleSlotPast = useCallback((timeStr) => {
+    const today = getLocalDateStr(rescheduleNow);
+    if (rescheduleDate !== today) return false;
+    const [h, m] = timeStr.split(":").map(Number);
+    const slotDate = new Date(rescheduleNow);
+    slotDate.setHours(h, m, 0, 0);
+    return slotDate <= rescheduleNow;
+  }, [rescheduleDate, rescheduleNow]);
+
+  useEffect(() => {
+    if (rescheduleTime && isRescheduleSlotPast(rescheduleTime)) {
+      setRescheduleTime("");
+    }
+  }, [rescheduleDate, rescheduleTime, isRescheduleSlotPast]);
+
   /* Submit Reschedule */
   const handleRescheduleSubmit = async (e) => {
     e.preventDefault();
     if (!rescheduleDate || !rescheduleTime) {
-      setRescheduleError("Please select both a date and time slot.");
+      setRescheduleError("Please select both a date and a time slot.");
       return;
     }
 
@@ -370,8 +537,12 @@ export default function BookingDetailPage() {
     ...Array.from(new Set(availableServices.map((s) => s.categoryName).filter(Boolean))),
   ];
 
-  const getBookedCount = (serviceId) =>
-    (booking?.items || []).filter((it) => it.serviceId === serviceId).length;
+  const getBookedCount = (targetServiceId) => {
+    if (!targetServiceId || !booking?.items) return 0;
+    return booking.items.filter(
+      (it) => it.serviceId === targetServiceId || it.service?.id === targetServiceId
+    ).length;
+  };
 
   const filteredServices = availableServices
     .filter((s) => {
@@ -395,9 +566,9 @@ export default function BookingDetailPage() {
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
         {/* Navigation Breadcrumb */}
-        <div className="flex items-center gap-2 mb-6 text-xs text-groomish-slate/60">
+        <div className="flex items-center gap-2 mb-3.5 text-xs text-groomish-slate/60">
           <button
             onClick={() => navigate("/customer/bookings")}
             className="flex items-center gap-1 hover:text-groomish-orange transition font-semibold"
@@ -431,7 +602,7 @@ export default function BookingDetailPage() {
             </button>
           </div>
         ) : booking ? (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Urgent Reschedule Warning (Post-Slot 2-Hour Grace Period) */}
             {booking.graceMinutesRemaining != null &&
               booking.graceMinutesRemaining > 0 &&
@@ -498,10 +669,10 @@ export default function BookingDetailPage() {
             )}
 
             {/* Header Hero Banner */}
-            <div className="card-groomish p-6 sm:p-8 bg-gradient-to-br from-white to-groomish-cream/40 border border-groomish-slate/15 relative overflow-hidden">
+            <div className="card-groomish p-4 sm:p-5 bg-gradient-to-br from-white to-groomish-cream/40 border border-groomish-slate/15 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-groomish-orange/5 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-groomish-slate/10 pb-6 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-groomish-slate/10 pb-4 mb-4">
                 <div>
                   <div className="flex items-center gap-2.5 flex-wrap mb-2">
                     <span
@@ -555,71 +726,77 @@ export default function BookingDetailPage() {
               </div>
 
               {/* Appointment Schedule & Store Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Date & Time */}
-                <div className="p-4 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/10 flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-groomish-orange/15 text-groomish-orange flex items-center justify-center shrink-0">
-                    <Calendar className="w-5 h-5" />
+                <div className="p-3.5 rounded-xl bg-groomish-cream/70 border border-groomish-slate/10 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-groomish-orange/15 text-groomish-orange flex items-center justify-center shrink-0">
+                    <Calendar className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="text-[11px] uppercase font-bold text-groomish-orange tracking-wider">
-                      Appointment Schedule
+                      {booking.bookingItems && booking.bookingItems.length > 0
+                        ? "Appointment Schedule"
+                        : "Order & Salon Pickup Schedule"}
                     </div>
-                    <div className="text-base font-bold text-groomish-slate mt-0.5">
+                    <div className="text-sm font-bold text-groomish-slate mt-0.5">
                       {booking.scheduledAt
-                        ? new Date(booking.scheduledAt).toLocaleDateString(undefined, {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })
+                        ? new Date(booking.scheduledAt).toLocaleDateString("en-IN", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })
                         : "To be confirmed"}
                     </div>
                     <div className="text-xs text-groomish-slate/60 flex items-center gap-1.5 mt-0.5">
-                      <Clock className="w-3.5 h-3.5 text-groomish-slate/40" />
-                      <span>
+                      <Clock className="w-3 h-3 text-groomish-slate/40" />
+                      <span className="font-semibold text-groomish-slate">
                         {booking.scheduledAt
-                          ? new Date(booking.scheduledAt).toLocaleTimeString(undefined, {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
+                          ? new Date(booking.scheduledAt).toLocaleTimeString("en-IN", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
                           : ""}
                       </span>
-                      {totalDuration > 0 && <span>({totalDuration} mins total duration)</span>}
+                      {totalDuration > 0 && <span>({totalDuration} mins duration)</span>}
                     </div>
                   </div>
                 </div>
 
                 {/* Salon Branch */}
-                <div className="p-4 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/10 flex flex-col justify-between gap-3">
+                <div className="p-3.5 rounded-xl bg-groomish-cream/70 border border-groomish-slate/10 flex flex-col justify-between gap-2.5">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-groomish-orange/15 text-groomish-orange flex items-center justify-center shrink-0">
-                      <MapPin className="w-5 h-5" />
+                    <div className="w-9 h-9 rounded-lg bg-groomish-orange/15 text-groomish-orange flex items-center justify-center shrink-0">
+                      <MapPin className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-[11px] uppercase font-bold text-groomish-orange tracking-wider">
                         Salon Branch
                       </div>
-                      <div className="text-base font-bold text-groomish-slate mt-0.5 truncate">
+                      <div className="text-sm font-bold text-groomish-slate mt-0.5 truncate">
                         {booking.storeName || "Groomish Now Flagship Lounge"}
                       </div>
-                      <div className="text-xs text-groomish-slate/60 mt-0.5 line-clamp-2">
+                      <div className="text-xs text-groomish-slate/60 mt-0.5 line-clamp-1">
                         {booking.storeAddress || "Indiranagar 100ft Road, Bengaluru"}
                       </div>
                     </div>
                   </div>
 
-                  {/* Navigation Button (Opens Google Maps with current location to branch) */}
-                  <a
-                    href={getBranchNavigationUrl(booking)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-groomish-orange hover:bg-groomish-coral text-white font-bold text-xs shadow-soft transition-all duration-200"
-                    title="Open Google Maps with turn-by-turn navigation from your current location"
-                  >
-                    <Navigation className="w-3.5 h-3.5" />
-                    <span>Navigate to Branch (Google Maps)</span>
-                  </a>
+                  {/* Navigation Button (Rating moved cleanly to Feedback Section at bottom) */}
+                  <div>
+                    <a
+                      href={getBranchNavigationUrl(booking)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-groomish-slate/10 hover:bg-groomish-slate/20 text-groomish-slate font-bold text-xs transition-all duration-200"
+                      title="Open Google Maps with turn-by-turn navigation"
+                      aria-label={`Directions to ${booking.storeName || "Salon Branch"} on Google Maps`}
+                    >
+                      <Navigation className="w-3.5 h-3.5 text-groomish-orange" />
+                      <span>Directions (Maps)</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -640,11 +817,11 @@ export default function BookingDetailPage() {
             )}
 
             {/* Services Section */}
-            <div className="card-groomish p-6 sm:p-8 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-groomish-slate/10 pb-4">
+            <div className="card-groomish p-4 sm:p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-groomish-slate/10 pb-3">
                 <div>
-                  <h2 className="text-lg font-heading font-bold text-groomish-slate flex items-center gap-2">
-                    <Scissors className="w-5 h-5 text-groomish-orange" />
+                  <h2 className="text-base font-heading font-bold text-groomish-slate flex items-center gap-2">
+                    <Scissors className="w-4 h-4 text-groomish-orange" />
                     <span>Selected Salon Services</span>
                     <span className="text-xs font-semibold px-2 py-0.5 bg-groomish-orangeLight text-groomish-orange rounded-full">
                       {booking.items?.length || 0}
@@ -658,9 +835,9 @@ export default function BookingDetailPage() {
                 {isModifiable && (
                   <button
                     onClick={handleOpenAddService}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-groomish-orange bg-groomish-orangeLight hover:bg-groomish-orange hover:text-white rounded-xl transition shrink-0"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-groomish-orange bg-groomish-orangeLight hover:bg-groomish-orange hover:text-white rounded-lg transition shrink-0"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                     <span>Add Service</span>
                   </button>
                 )}
@@ -672,7 +849,7 @@ export default function BookingDetailPage() {
                   groupBookingServices(booking.items).map((grp, idx) => (
                     <div
                       key={grp.serviceId || grp.serviceName || idx}
-                      className="py-3.5 flex items-center justify-between gap-4 transition hover:bg-groomish-cream/30 px-2 rounded-xl"
+                      className="py-2.5 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 px-2 rounded-lg"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-lg bg-groomish-orange/10 text-groomish-orange font-bold flex items-center justify-center shrink-0 text-xs">
@@ -681,7 +858,7 @@ export default function BookingDetailPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-bold text-groomish-slate truncate">
-                              {grp.serviceName}{grp.quantity > 1 ? ` X ${grp.quantity}` : ""}
+                              {grp.serviceName}
                             </h3>
                             {grp.quantity > 1 && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-orange text-white shrink-0">
@@ -736,10 +913,10 @@ export default function BookingDetailPage() {
 
             {/* Attached Retail Products (if any) */}
             {booking.products && booking.products.length > 0 && (
-              <div className="card-groomish p-6 sm:p-8 space-y-4">
-                <div className="border-b border-groomish-slate/10 pb-4">
-                  <h2 className="text-lg font-heading font-bold text-groomish-slate flex items-center gap-2">
-                    <ShoppingBag className="w-5 h-5 text-groomish-orange" />
+              <div className="card-groomish p-4 sm:p-5 space-y-3">
+                <div className="border-b border-groomish-slate/10 pb-3">
+                  <h2 className="text-base font-heading font-bold text-groomish-slate flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4 text-groomish-orange" />
                     <span>Retail Products & Aftercare</span>
                     <span className="text-xs font-semibold px-2 py-0.5 bg-groomish-orangeLight text-groomish-orange rounded-full">
                       {booking.products.length}
@@ -754,7 +931,7 @@ export default function BookingDetailPage() {
                   {booking.products.map((prod) => (
                     <div
                       key={prod.id}
-                      className="py-3 flex items-center justify-between gap-4"
+                      className="py-2.5 flex items-center justify-between gap-3"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         {prod.image ? (
@@ -788,255 +965,14 @@ export default function BookingDetailPage() {
               </div>
             )}
 
-            {/* Individual Reviews Section for Completed Appointments */}
-            {booking.status === "COMPLETED" && (
-              <div
-                ref={reviewsRef}
-                id="reviews-section"
-                className="card-groomish p-6 sm:p-8 space-y-6 border-2 border-groomish-gold/40 bg-gradient-to-br from-amber-50/40 via-white to-groomish-orangeLight/20 shadow-soft animate-fade-in"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-groomish-slate/10 pb-4">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-gold/20 text-amber-800 uppercase tracking-wider flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-groomish-gold fill-current" />
-                        Verified Client Reviews
-                      </span>
-                      {booking.customerReviews && booking.customerReviews.length > 0 && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>{booking.customerReviews.length} Submitted</span>
-                        </span>
-                      )}
-                    </div>
-                    <h2 className="text-xl font-heading font-extrabold text-groomish-slate flex items-center gap-2">
-                      <Star className="w-5 h-5 text-groomish-gold fill-current" />
-                      <span>Rate Your Services & Products</span>
-                    </h2>
-                    <p className="text-xs text-groomish-slate/60 mt-0.5">
-                      Share your experience for each unique service and product individually to help us reward top stylists and improve beauty care.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Services Review Cards */}
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold text-groomish-slate/70 uppercase tracking-wider flex items-center gap-1.5">
-                    <Scissors className="w-3.5 h-3.5 text-groomish-orange" />
-                    <span>Salon Services ({groupedServices.length})</span>
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {groupedServices.map((grp) => {
-                      const rev = (booking.customerReviews || []).find(
-                        (r) => r.serviceId === grp.serviceId
-                      );
-
-                      return (
-                        <div
-                          key={grp.serviceId || grp.serviceName}
-                          className={`p-4 rounded-2xl border transition ${
-                            rev
-                              ? "bg-white/95 border-groomish-green/35 shadow-sm"
-                              : "bg-white border-groomish-slate/15 hover:border-groomish-gold/60 shadow-soft"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <h4 className="text-sm font-bold text-groomish-slate truncate">
-                                {grp.serviceName}
-                              </h4>
-                              <p className="text-[11px] text-groomish-slate/50">
-                                {grp.durationMinutes ? `${grp.durationMinutes} mins • ` : ""}₹{grp.unitPrice}
-                              </p>
-                            </div>
-                            {rev ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-groomish-greenLight text-groomish-green flex items-center gap-1 shrink-0">
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>Rated</span>
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
-                                Awaiting Rating
-                              </span>
-                            )}
-                          </div>
-
-                          {rev ? (
-                            <div className="mt-3 pt-3 border-t border-groomish-slate/10 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1">
-                                  {[1, 2, 3, 4, 5].map((s) => (
-                                    <Star
-                                      key={s}
-                                      className={`w-3.5 h-3.5 ${
-                                        s <= rev.rating
-                                          ? "fill-groomish-gold text-groomish-gold"
-                                          : "text-groomish-slate/20"
-                                      }`}
-                                    />
-                                  ))}
-                                  <span className="text-xs font-bold text-groomish-slate ml-1">
-                                    {rev.rating}.0
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => handleOpenServiceReview(grp)}
-                                  className="text-xs font-bold text-groomish-orange hover:underline"
-                                >
-                                  Edit Review
-                                </button>
-                              </div>
-                              {rev.review && (
-                                <p className="text-xs text-groomish-slate/80 bg-groomish-cream/70 p-2.5 rounded-xl italic">
-                                  "{rev.review}"
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="mt-3 pt-3 border-t border-groomish-slate/10 flex items-center justify-between">
-                              <div className="flex items-center gap-1 text-groomish-slate/30">
-                                {[1, 2, 3, 4, 5].map((s) => (
-                                  <Star key={s} className="w-3.5 h-3.5" />
-                                ))}
-                              </div>
-                              <button
-                                onClick={() => handleOpenServiceReview(grp)}
-                                className="px-3.5 py-1.5 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-soft"
-                              >
-                                <Star className="w-3.5 h-3.5 fill-current" />
-                                <span>Rate Service</span>
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Products Review Cards (if products attached) */}
-                {booking.products && booking.products.length > 0 && (
-                  <div className="space-y-3 pt-2">
-                    <h3 className="text-xs font-bold text-groomish-slate/70 uppercase tracking-wider flex items-center gap-1.5">
-                      <ShoppingBag className="w-3.5 h-3.5 text-groomish-orange" />
-                      <span>Purchased Retail Products ({booking.products.length})</span>
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                      {booking.products.map((prod) => {
-                        const prodId = prod.productId || prod.id;
-                        const rev = (booking.customerReviews || []).find(
-                          (r) => r.productId === prodId
-                        );
-
-                        return (
-                          <div
-                            key={prodId}
-                            className={`p-4 rounded-2xl border transition ${
-                              rev
-                                ? "bg-white/95 border-groomish-green/35 shadow-sm"
-                                : "bg-white border-groomish-slate/15 hover:border-groomish-gold/60 shadow-soft"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                {prod.image ? (
-                                  <img
-                                    src={prod.image}
-                                    alt={prod.productName}
-                                    className="w-9 h-9 rounded-lg object-cover border border-groomish-slate/10 shrink-0"
-                                  />
-                                ) : (
-                                  <div className="w-9 h-9 rounded-lg bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-slate/40 shrink-0">
-                                    <ShoppingBag className="w-4 h-4" />
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <h4 className="text-sm font-bold text-groomish-slate truncate">
-                                    {prod.productName}
-                                  </h4>
-                                  <p className="text-[11px] text-groomish-slate/50">
-                                    {prod.brand ? `${prod.brand} • ` : ""}₹{prod.unitPrice}
-                                  </p>
-                                </div>
-                              </div>
-                              {rev ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-groomish-greenLight text-groomish-green flex items-center gap-1 shrink-0">
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  <span>Rated</span>
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
-                                  Awaiting Rating
-                                </span>
-                              )}
-                            </div>
-
-                            {rev ? (
-                              <div className="mt-3 pt-3 border-t border-groomish-slate/10 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1">
-                                    {[1, 2, 3, 4, 5].map((s) => (
-                                      <Star
-                                        key={s}
-                                        className={`w-3.5 h-3.5 ${
-                                          s <= rev.rating
-                                            ? "fill-groomish-gold text-groomish-gold"
-                                            : "text-groomish-slate/20"
-                                        }`}
-                                      />
-                                    ))}
-                                    <span className="text-xs font-bold text-groomish-slate ml-1">
-                                      {rev.rating}.0
-                                    </span>
-                                  </div>
-                                  <button
-                                    onClick={() => handleOpenProductReview(prod)}
-                                    className="text-xs font-bold text-groomish-orange hover:underline"
-                                  >
-                                    Edit Review
-                                  </button>
-                                </div>
-                                {rev.review && (
-                                  <p className="text-xs text-groomish-slate/80 bg-groomish-cream/70 p-2.5 rounded-xl italic">
-                                    "{rev.review}"
-                                  </p>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="mt-3 pt-3 border-t border-groomish-slate/10 flex items-center justify-between">
-                                <div className="flex items-center gap-1 text-groomish-slate/30">
-                                  {[1, 2, 3, 4, 5].map((s) => (
-                                    <Star key={s} className="w-3.5 h-3.5" />
-                                  ))}
-                                </div>
-                                <button
-                                  onClick={() => handleOpenProductReview(prod)}
-                                  className="px-3.5 py-1.5 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-soft"
-                                >
-                                  <Star className="w-3.5 h-3.5 fill-current" />
-                                  <span>Rate Product</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Bill Summary & Breakdown */}
-            <div className="card-groomish p-6 sm:p-8 space-y-4">
-              <h2 className="text-lg font-heading font-bold text-groomish-slate flex items-center gap-2 border-b border-groomish-slate/10 pb-3">
-                <CreditCard className="w-5 h-5 text-groomish-orange" />
+            <div className="card-groomish p-4 sm:p-5 space-y-3">
+              <h2 className="text-base font-heading font-bold text-groomish-slate flex items-center gap-2 border-b border-groomish-slate/10 pb-2.5">
+                <CreditCard className="w-4 h-4 text-groomish-orange" />
                 <span>Invoice Breakdown</span>
               </h2>
 
-              <div className="space-y-2.5 text-xs text-groomish-slate/80">
+              <div className="space-y-2 text-xs text-groomish-slate/80">
                 <div className="flex justify-between py-1">
                   <span>Gross Total</span>
                   <span className="font-semibold">₹{booking.totalAmount}</span>
@@ -1058,11 +994,13 @@ export default function BookingDetailPage() {
                   <span className="font-bold text-groomish-slate">
                     {booking.paymentMethod === "CASH"
                       ? "Pay at Salon"
-                      : booking.paymentMethod === "UPI"
-                      ? "UPI / QR"
-                      : booking.paymentMethod === "CARD"
-                      ? "Card / Net Banking"
-                      : booking.paymentMethod || "Pay at Salon"}
+                      : booking.paymentMethod === "ONLINE"
+                        ? "Online Payment"
+                        : booking.paymentMethod === "UPI"
+                          ? "Online (UPI)"
+                          : booking.paymentMethod === "CARD"
+                            ? "Online (Card)"
+                            : booking.paymentMethod || "Pay at Salon"}
                   </span>
                 </div>
 
@@ -1071,24 +1009,24 @@ export default function BookingDetailPage() {
                   <div>
                     {booking.status === "CANCELLED" ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                        <AlertCircle className="w-3 h-3" />
+                        <AlertCircle className="w-3.5 h-3.5" />
                         <span>Cancelled • No Payment Received</span>
                       </span>
                     ) : (booking.status === "COMPLETED" || booking.paymentStatus === "COMPLETED") ? (
                       booking.paymentMethod === "CASH" ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
-                          <CheckCircle2 className="w-3 h-3" />
+                          <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Paid at Salon</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Paid Online ({booking.paymentMethod || "UPI"})</span>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Paid Online ({booking.paymentMethod === "ONLINE" ? "Razorpay" : booking.paymentMethod || "Razorpay"})</span>
                         </span>
                       )
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                        <Clock className="w-3 h-3" />
+                        <Clock className="w-3.5 h-3.5" />
                         <span>Payment Pending (Pay at Salon)</span>
                       </span>
                     )}
@@ -1111,10 +1049,10 @@ export default function BookingDetailPage() {
               {/* Pay Online Anytime in Active Window Callout */}
               {(booking.paymentStatus === "PENDING" || !booking.paymentStatus || booking.paymentMethod === "CASH") &&
                 booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (
-                  <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-groomish-orangeLight/80 via-amber-50 to-groomish-orangeLight/60 border border-groomish-orange/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
+                  <div className="mt-3 p-3.5 rounded-xl bg-gradient-to-r from-groomish-orangeLight/80 via-amber-50 to-groomish-orangeLight/60 border border-groomish-orange/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-soft">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 text-groomish-orange font-bold text-xs uppercase tracking-wider">
-                        <Zap className="w-4 h-4 fill-current" />
+                        <Zap className="w-3.5 h-3.5 fill-current" />
                         <span>Pay Online Option Active</span>
                       </div>
                       <p className="text-xs text-groomish-slate/80 mt-0.5 leading-relaxed">
@@ -1123,9 +1061,9 @@ export default function BookingDetailPage() {
                     </div>
                     <button
                       onClick={handleOpenPayOnline}
-                      className="px-5 py-2.5 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-glowOrange transition shrink-0"
+                      className="px-4 py-2 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-glowOrange transition shrink-0"
                     >
-                      <CreditCard className="w-4 h-4" />
+                      <CreditCard className="w-3.5 h-3.5" />
                       <span>⚡ Pay Online Now (₹{booking.pricePaid})</span>
                     </button>
                   </div>
@@ -1133,56 +1071,276 @@ export default function BookingDetailPage() {
 
               {/* Groom Coins Section */}
               {booking.status === "CANCELLED" ? (
-                <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 flex items-center gap-2 text-xs text-rose-800">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <div className="p-2.5 bg-rose-50 rounded-lg border border-rose-200 flex items-center gap-2 text-xs text-rose-800">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                   <span>
                     <strong>Groom Coins Cancelled:</strong> 0 Groom Coins credited (appointment was cancelled).
                   </span>
                 </div>
               ) : booking.status === "COMPLETED" ? (
-                <div className="p-3 bg-groomish-greenLight/60 rounded-xl border border-groomish-green/30 flex items-center gap-2.5 text-xs text-groomish-slate">
-                  <GroomCoinIcon className="w-4 h-4 shrink-0" />
+                <div className="p-2.5 bg-groomish-greenLight/60 rounded-lg border border-groomish-green/30 flex items-center gap-2 text-xs text-groomish-slate">
+                  <GroomCoinIcon className="w-3.5 h-3.5 shrink-0" />
                   <span>
                     ✓ <strong>Confirmed:</strong> You earned <strong className="font-bold text-groomish-green">+{booking.expectedRewardPoints ?? calculateCoins(booking.pricePaid)} Groom Coins</strong> on this completed appointment!
                   </span>
                 </div>
               ) : (
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-300/60 flex items-center gap-2.5 text-xs text-amber-900">
-                  <GroomCoinIcon className="w-4 h-4 shrink-0" />
+                <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-300/60 flex items-center gap-2 text-xs text-amber-900">
+                  <GroomCoinIcon className="w-3.5 h-3.5 shrink-0" />
                   <span>
-                    ⏳ <strong>Pending Groom Coins:</strong> <strong className="font-bold text-amber-700">+{booking.expectedRewardPoints ?? calculateCoins(booking.pricePaid)} Groom Coins</strong> will be confirmed and added to your wallet once your appointment is completed at the salon.
+                    ⏳ <strong className="font-bold text-amber-700">{booking.expectedRewardPoints ?? calculateCoins(booking.pricePaid)} Pending Groom Coins.</strong> Confirmed upon appointment completion.
                   </span>
                 </div>
               )}
             </div>
 
-            {/* Action Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            {/* Customer Feedback & Ratings Section (Compact & Accessible) */}
+            {booking.status === "COMPLETED" && (() => {
+              const storeId = booking.storeId || booking.store?.id;
+              const storeName = booking.storeName || booking.store?.name || "Salon Branch";
+              const storeReview = (booking.customerReviews || []).find(
+                (r) => (r.storeId && r.storeId === storeId) || (!r.serviceId && !r.productId)
+              );
+
+              const totalReviewables = 1 + groupedServices.length + (booking.products?.length || 0);
+              const ratedCount =
+                (storeReview ? 1 : 0) +
+                groupedServices.filter((g) =>
+                  (booking.customerReviews || []).some((r) => r.serviceId === g.serviceId)
+                ).length +
+                (booking.products || []).filter((p) =>
+                  (booking.customerReviews || []).some((r) => r.productId === (p.productId || p.id))
+                ).length;
+
+              return (
+                <div
+                  ref={reviewsRef}
+                  id="reviews-section"
+                  className="card-groomish p-3.5 sm:p-4.5 space-y-2.5 border border-groomish-slate/15 bg-white shadow-soft animate-fade-in"
+                >
+                  {/* Compact Header */}
+                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0 border border-amber-300/40">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <h2 className="text-sm sm:text-base font-heading font-extrabold text-groomish-slate leading-tight">
+                          Feedback & Ratings
+                        </h2>
+                        <p className="text-[11px] text-groomish-slate/60">
+                          Rate your salon visit, treatments, and retail products
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-groomish-cream text-groomish-slate border border-groomish-slate/10 shrink-0">
+                      {ratedCount}/{totalReviewables} Rated
+                    </span>
+                  </div>
+
+                  {/* Compact Feedback List */}
+                  <div className="divide-y divide-groomish-slate/10">
+                    {/* 1. Salon Branch */}
+                    <div className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-groomish-cream border border-groomish-slate/10 text-groomish-slate/60 flex items-center justify-center shrink-0">
+                          <Store className="w-3.5 h-3.5 text-groomish-orange" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs sm:text-sm font-bold text-groomish-slate truncate">
+                              {storeName}
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-groomish-slate/60 bg-groomish-cream border border-groomish-slate/10 px-1.5 py-0.5 rounded">
+                              Salon
+                            </span>
+                          </div>
+                          {storeReview && storeReview.review && storeReview.review.trim() && (
+                            <p className="text-[11px] text-groomish-slate/75 italic line-clamp-1 mt-0.5">
+                              "{storeReview.review}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {storeReview ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
+                              <Star className="w-3 h-3 fill-amber-500 text-amber-500" aria-hidden="true" />
+                              <span className="sr-only">Rated </span>
+                              <span>{storeReview.rating}.0</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleOpenStoreReview}
+                              className="text-xs font-bold text-groomish-orange hover:underline px-1.5 py-0.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:outline-none rounded"
+                              aria-label={`Edit review for salon branch ${storeName}. Current rating: ${storeReview.rating} out of 5 stars`}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleOpenStoreReview}
+                            className="px-3 py-1 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:outline-none"
+                            aria-label={`Rate salon branch ${storeName}`}
+                          >
+                            <Star className="w-3 h-3 fill-current" aria-hidden="true" />
+                            <span>Rate Salon</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 2. Services */}
+                    {groupedServices.map((grp) => {
+                      const rev = (booking.customerReviews || []).find((r) => r.serviceId === grp.serviceId);
+                      return (
+                        <div
+                          key={grp.serviceId || grp.serviceName}
+                          className="py-2.5 flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-groomish-cream border border-groomish-slate/10 text-groomish-slate/60 flex items-center justify-center shrink-0">
+                              <Scissors className="w-3.5 h-3.5 text-groomish-orange" aria-hidden="true" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs sm:text-sm font-bold text-groomish-slate truncate">
+                                  {grp.serviceName}
+                                </span>
+                                <span className="text-[9px] uppercase font-bold text-groomish-slate/60 bg-groomish-cream border border-groomish-slate/10 px-1.5 py-0.5 rounded">
+                                  Service
+                                </span>
+                              </div>
+                              {rev && rev.review && rev.review.trim() && (
+                                <p className="text-[11px] text-groomish-slate/75 italic line-clamp-1 mt-0.5">
+                                  "{rev.review}"
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {rev ? (
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
+                                  <Star className="w-3 h-3 fill-amber-500 text-amber-500" aria-hidden="true" />
+                                  <span className="sr-only">Rated </span>
+                                  <span>{rev.rating}.0</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenServiceReview(grp)}
+                                  className="text-xs font-bold text-groomish-orange hover:underline px-1.5 py-0.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:outline-none rounded"
+                                  aria-label={`Edit review for service ${grp.serviceName}. Current rating: ${rev.rating} out of 5 stars`}
+                                >
+                                  Edit
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenServiceReview(grp)}
+                                className="px-3 py-1 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:outline-none"
+                                aria-label={`Rate service ${grp.serviceName}`}
+                              >
+                                <Star className="w-3 h-3 fill-current" aria-hidden="true" />
+                                <span>Rate Service</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* 3. Products (if any) */}
+                    {booking.products &&
+                      booking.products.map((prod) => {
+                        const prodId = prod.productId || prod.id;
+                        const rev = (booking.customerReviews || []).find((r) => r.productId === prodId);
+                        return (
+                          <div
+                            key={prodId}
+                            className="py-2.5 flex items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-groomish-cream border border-groomish-slate/10 text-groomish-slate/60 flex items-center justify-center shrink-0">
+                                <ShoppingBag className="w-3.5 h-3.5 text-groomish-orange" aria-hidden="true" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs sm:text-sm font-bold text-groomish-slate truncate">
+                                    {prod.productName}
+                                  </span>
+                                  <span className="text-[9px] uppercase font-bold text-groomish-slate/60 bg-groomish-cream border border-groomish-slate/10 px-1.5 py-0.5 rounded">
+                                    Product
+                                  </span>
+                                </div>
+                                {rev && rev.review && rev.review.trim() && (
+                                  <p className="text-[11px] text-groomish-slate/75 italic line-clamp-1 mt-0.5">
+                                    "{rev.review}"
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {rev ? (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md">
+                                    <Star className="w-3 h-3 fill-amber-500 text-amber-500" aria-hidden="true" />
+                                    <span className="sr-only">Rated </span>
+                                    <span>{rev.rating}.0</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenProductReview(prod)}
+                                    className="text-xs font-bold text-groomish-orange hover:underline px-1.5 py-0.5 cursor-pointer focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:outline-none rounded"
+                                    aria-label={`Edit review for product ${prod.productName}. Current rating: ${rev.rating} out of 5 stars`}
+                                  >
+                                    Edit
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenProductReview(prod)}
+                                  className="px-3 py-1 bg-groomish-orange hover:bg-groomish-orangeHover text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:outline-none"
+                                  aria-label={`Rate product ${prod.productName}`}
+                                >
+                                  <Star className="w-3 h-3 fill-current" aria-hidden="true" />
+                                  <span>Rate Product</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Action Bar (Clean & compact with no duplicate buttons) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <button
                 onClick={() => navigate("/customer/bookings")}
-                className="btn-secondary text-xs px-5 py-2.5"
+                className="btn-secondary text-xs px-4 py-2"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Back to All Bookings</span>
               </button>
 
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {booking.status === "COMPLETED" && (
-                  <button
-                    onClick={handleRateExperienceClick}
-                    className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-groomish-orange bg-groomish-orangeLight hover:bg-groomish-orange hover:text-white rounded-xl transition shadow-soft"
-                  >
-                    <Star className="w-4 h-4 fill-current text-groomish-gold" />
-                    <span>Rate Experience</span>
-                  </button>
-                )}
-
+              <div className="flex items-center gap-2 flex-wrap">
                 {isModifiable && (
                   <>
                     <button
                       onClick={handleOpenReschedule}
                       disabled={actionLoading}
-                      className="btn-secondary text-xs px-4 py-2.5"
+                      className="btn-secondary text-xs px-3.5 py-2"
                     >
                       <Calendar className="w-3.5 h-3.5" />
                       <span>Reschedule Slot</span>
@@ -1191,7 +1349,7 @@ export default function BookingDetailPage() {
                     <button
                       onClick={handleCancelBooking}
                       disabled={actionLoading}
-                      className="px-4 py-2.5 rounded-xl border border-groomish-crimson/30 text-groomish-crimson hover:bg-groomish-crimson/10 text-xs font-bold transition flex items-center gap-1.5"
+                      className="px-3.5 py-2 rounded-xl border border-groomish-crimson/30 text-groomish-crimson hover:bg-groomish-crimson/10 text-xs font-bold transition flex items-center gap-1.5"
                     >
                       <span>Cancel Appointment</span>
                     </button>
@@ -1257,11 +1415,10 @@ export default function BookingDetailPage() {
                   key={cat}
                   type="button"
                   onClick={() => setSelectedServiceCategory(cat)}
-                  className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap transition ${
-                    selectedServiceCategory === cat
-                      ? "bg-groomish-orange text-white shadow-soft"
-                      : "bg-groomish-cream hover:bg-groomish-slate/10 text-groomish-slate/70"
-                  }`}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap transition ${selectedServiceCategory === cat
+                    ? "bg-groomish-orange text-white shadow-soft"
+                    : "bg-groomish-cream hover:bg-groomish-slate/10 text-groomish-slate/70"
+                    }`}
                 >
                   {cat === "ALL" ? "All Services" : cat}
                 </button>
@@ -1278,10 +1435,11 @@ export default function BookingDetailPage() {
               </div>
             ) : filteredServices.length > 0 ? (
               filteredServices.map((srv) => {
-                const bookedCount = getBookedCount(srv.id);
+                const srvId = srv.serviceId || srv.id;
+                const bookedCount = getBookedCount(srvId);
                 return (
                   <div
-                    key={srv.id}
+                    key={srvId}
                     className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -1323,11 +1481,11 @@ export default function BookingDetailPage() {
                         )}
                       </div>
                       <button
-                        onClick={() => handleAddService(srv.id)}
-                        disabled={addingServiceId === srv.id}
+                        onClick={() => handleAddService(srvId)}
+                        disabled={addingServiceId === srvId}
                         className="btn-primary text-xs px-3.5 py-1.5 font-bold shadow-soft flex items-center gap-1"
                       >
-                        {addingServiceId === srv.id ? (
+                        {addingServiceId === srvId ? (
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <>
@@ -1369,17 +1527,24 @@ export default function BookingDetailPage() {
       <ModalWrapper
         open={rescheduleModalOpen}
         onClose={() => setRescheduleModalOpen(false)}
-        maxWidth="max-w-md"
+        maxWidth="max-w-xl"
       >
         <form onSubmit={handleRescheduleSubmit} className="space-y-4">
-          <div className="border-b border-groomish-slate/10 pb-3">
-            <h3 className="text-lg font-heading font-bold text-groomish-slate flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-groomish-orange" />
-              <span>Reschedule Appointment</span>
-            </h3>
-            <p className="text-xs text-groomish-slate/60 mt-0.5">
-              Pick a new date and time for your salon appointment.
-            </p>
+          <div className="border-b border-groomish-slate/10 pb-3 flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-heading font-bold text-groomish-slate flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-groomish-orange" />
+                <span>Reschedule Appointment</span>
+              </h3>
+              <p className="text-xs text-groomish-slate/60 mt-0.5">
+                Select a new date and choose from live branch time slots (24-hour time).
+              </p>
+            </div>
+            {(booking?.storeName || booking?.store?.name) && (
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-groomish-cream border border-groomish-slate/15 text-groomish-slate shrink-0">
+                {booking.storeName || booking.store.name}
+              </span>
+            )}
           </div>
 
           {rescheduleError && (
@@ -1389,43 +1554,105 @@ export default function BookingDetailPage() {
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-groomish-slate/80 mb-1">
-                New Date
+              <label className="block text-xs font-bold text-groomish-slate/80 mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-groomish-orange" />
+                <span>New Appointment Date</span>
               </label>
-              <input
-                type="date"
+              <CustomDatePicker
                 value={rescheduleDate}
-                min={new Date().toISOString().split("T")[0]}
-                onChange={(e) => setRescheduleDate(e.target.value)}
-                required
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-groomish-slate focus:outline-none focus:border-groomish-orange"
+                minDate={getLocalDateStr()}
+                onChange={(e, val) => {
+                  const nextVal = val || e?.target?.value || "";
+                  setRescheduleDate(nextVal);
+                }}
+                placeholder="Select New Date"
+                align="left"
+                className="w-full"
+                triggerClassName="w-full !py-2.5 !px-3.5 !rounded-xl !bg-groomish-cream/70 hover:!bg-white !border-groomish-slate/15 text-xs font-bold transition"
               />
             </div>
 
+            {/* Branch Time Slots (Strictly 24-hour, NO AM-PM) */}
             <div>
-              <label className="block text-xs font-bold text-groomish-slate/80 mb-1">
-                New Time Slot
-              </label>
-              <input
-                type="time"
-                value={rescheduleTime}
-                onChange={(e) => setRescheduleTime(e.target.value)}
-                required
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-groomish-slate focus:outline-none focus:border-groomish-orange"
-              />
+              <div className="flex items-center justify-between text-xs font-bold text-groomish-slate/80 mb-2 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-groomish-orange" />
+                  <span>Branch Time Slots</span>
+                  {rescheduleTime && (
+                    <span className="text-[11px] font-mono font-bold text-groomish-green bg-groomish-greenLight px-2 py-0.5 rounded-full border border-groomish-green/20">
+                      Selected: {rescheduleTime}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {loadingRescheduleSlots && (
+                    <span className="text-[10px] text-groomish-orange font-semibold flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      Loading slots...
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fetchRescheduleSlots(true)}
+                    disabled={loadingRescheduleSlots}
+                    className="py-1 px-2.5 rounded-xl text-[10px] font-bold text-groomish-slate/70 hover:text-groomish-orange bg-groomish-cream hover:bg-white border border-groomish-slate/15 flex items-center gap-1 transition shadow-2xs"
+                    title="Refresh branch slots"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loadingRescheduleSlots ? "animate-spin text-groomish-orange" : ""}`} />
+                    <span>Refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 border border-groomish-slate/10 rounded-2xl bg-groomish-cream/30">
+                {rescheduleTimeSlots.map((time) => {
+                  const isPast = isRescheduleSlotPast(time);
+                  const isUnavailable = rescheduleUnavailableSlots.includes(time) || isPast;
+                  const isSelected = rescheduleTime === time;
+
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      disabled={isUnavailable}
+                      onClick={() => !isUnavailable && setRescheduleTime(time)}
+                      title={
+                        isPast
+                          ? "Slot has already passed for today"
+                          : isUnavailable
+                          ? "Slot fully booked or unavailable"
+                          : `Select ${time}`
+                      }
+                      className={`py-2 px-1 rounded-xl text-xs font-bold transition flex items-center justify-center font-mono ${
+                        isSelected
+                          ? "bg-groomish-orange text-white shadow-soft scale-102 border border-groomish-orange font-black"
+                          : isUnavailable
+                          ? "bg-groomish-slate/5 text-groomish-slate/30 border border-groomish-slate/10 cursor-not-allowed line-through"
+                          : "bg-white text-groomish-slate border border-groomish-slate/20 hover:border-groomish-orange hover:bg-groomish-orangeLight/40"
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-groomish-slate/50 mt-1.5">
+                * Slots displayed in 24-hour branch schedule format without AM/PM. Past or unavailable stylist slots are disabled.
+              </p>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-groomish-slate/80 mb-1">
+              <label className="block text-xs font-bold text-groomish-slate/80 mb-1.5">
                 Note / Stylist Instruction (optional)
               </label>
               <textarea
                 value={rescheduleNotes}
                 onChange={(e) => setRescheduleNotes(e.target.value)}
                 rows={2}
-                className="w-full px-3.5 py-2 text-xs rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-groomish-slate focus:outline-none focus:border-groomish-orange"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-groomish-slate focus:outline-none focus:border-groomish-orange transition placeholder:text-groomish-slate/40 resize-none font-medium"
                 placeholder="E.g. prefer evening slot, requested master stylist"
               />
             </div>
@@ -1441,8 +1668,8 @@ export default function BookingDetailPage() {
             </button>
             <button
               type="submit"
-              disabled={rescheduleLoading}
-              className="btn-primary text-xs px-5 py-2"
+              disabled={rescheduleLoading || !rescheduleDate || !rescheduleTime}
+              className="btn-primary text-xs px-5 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {rescheduleLoading ? "Saving..." : "Confirm Reschedule"}
             </button>
@@ -1463,6 +1690,8 @@ export default function BookingDetailPage() {
           serviceName={activeReviewItem.serviceName}
           productId={activeReviewItem.productId}
           productName={activeReviewItem.productName}
+          storeId={activeReviewItem.storeId}
+          storeName={activeReviewItem.storeName}
           initialRating={activeReviewItem.initialRating}
           initialReview={activeReviewItem.initialReview}
           onReviewSubmitted={loadBooking}
@@ -1522,67 +1751,32 @@ export default function BookingDetailPage() {
                   <span className="text-groomish-slate/50 block">Groom Coins Earned</span>
                   <span className="font-bold text-amber-700 flex items-center gap-1 justify-end">
                     <GroomCoinIcon className="w-3.5 h-3.5" />
-                    +{calculateCoins(booking?.pricePaid || 0)} Coins
+                    +{booking?.expectedRewardPoints != null ? booking.expectedRewardPoints : calculateCoins(booking?.pricePaid || 0)} Coins
                   </span>
                 </div>
               </div>
 
-              {/* Payment Method Selector */}
-              <div>
-                <label className="block text-xs font-bold text-groomish-slate/80 mb-2">
-                  Select Online Method
-                </label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setPayMethod("UPI")}
-                    className={`p-3 rounded-xl border text-center transition ${
-                      payMethod === "UPI"
-                        ? "bg-groomish-orangeLight border-groomish-orange text-groomish-orange font-bold shadow-soft"
-                        : "bg-white border-groomish-slate/15 text-groomish-slate hover:bg-groomish-cream"
-                    }`}
-                  >
-                    <Smartphone className="w-5 h-5 mx-auto mb-1" />
-                    <span className="text-xs block">UPI / QR Code</span>
-                  </button>
+              {/* Online Payment Method Info */}
+              <div className="p-4 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/15 space-y-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200/60 shrink-0">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h5 className="font-extrabold text-xs text-groomish-slate">
+                      Razorpay Online Payment Gateway
+                    </h5>
+                    <p className="text-[11px] text-groomish-slate/60 mt-0.5">
+                      Pay securely using UPI, Credit / Debit Cards, NetBanking, or Wallets.
+                    </p>
+                  </div>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setPayMethod("CARD")}
-                    className={`p-3 rounded-xl border text-center transition ${
-                      payMethod === "CARD"
-                        ? "bg-groomish-orangeLight border-groomish-orange text-groomish-orange font-bold shadow-soft"
-                        : "bg-white border-groomish-slate/15 text-groomish-slate hover:bg-groomish-cream"
-                    }`}
-                  >
-                    <CreditCard className="w-5 h-5 mx-auto mb-1" />
-                    <span className="text-xs block">Card / NetBanking</span>
-                  </button>
+                <div className="flex items-center gap-2 text-[11px] text-groomish-slate/60 pt-2 border-t border-groomish-slate/10">
+                  <ShieldCheck className="w-3.5 h-3.5 text-groomish-green shrink-0" />
+                  <span>256-bit bank encrypted payment • Instant booking confirmation</span>
                 </div>
               </div>
-
-              {/* Interactive Preview of Method */}
-              {payMethod === "UPI" ? (
-                <div className="p-3.5 rounded-xl bg-white border border-groomish-slate/15 space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-groomish-slate/70">
-                    <span className="font-semibold">UPI ID:</span>
-                    <span className="font-mono font-bold text-groomish-slate">groomishnow@okhdfcbank</span>
-                  </div>
-                  <div className="text-[11px] text-groomish-slate/50">
-                    Instant zero-fee simulation. Supports Google Pay, PhonePe, Paytm, and BHIM UPI.
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3.5 rounded-xl bg-white border border-groomish-slate/15 space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-groomish-slate/70">
-                    <span className="font-semibold">Instant Card Simulation:</span>
-                    <span className="font-mono font-bold text-groomish-slate">Visa / Mastercard / RuPay</span>
-                  </div>
-                  <div className="text-[11px] text-groomish-slate/50">
-                    Protected with 256-bit salon tokenized encryption.
-                  </div>
-                </div>
-              )}
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-groomish-slate/10">
                 <button

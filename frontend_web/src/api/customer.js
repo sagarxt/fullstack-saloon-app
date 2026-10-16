@@ -31,7 +31,7 @@ export const previewBooking = (data) =>
   axiosClient.post("/customer/bookings/preview", data);
 
 export const applyCoupon = (code, cartAmount = 0) =>
-  axiosClient.get(`/admin/coupons/validate?code=${encodeURIComponent(code)}&cartAmount=${cartAmount}`);
+  axiosClient.get(`/public/coupons/validate?code=${encodeURIComponent(code)}&cartAmount=${cartAmount}`);
 
 /* POINTS & REWARDS */
 export const getRewardBalance = () =>
@@ -65,6 +65,15 @@ export const changePassword = (data) =>
 /* PAYMENTS & CHECKOUT */
 export const checkoutPayment = (data) =>
   axiosClient.post("/customer/payments/checkout", data);
+
+export const createRazorpayOrder = (data) =>
+  axiosClient.post("/customer/payments/razorpay/create-order", data);
+
+export const verifyRazorpayPayment = (data) =>
+  axiosClient.post("/customer/payments/razorpay/verify", data);
+
+export const switchToPayAtSalon = (bookingId) =>
+  axiosClient.post("/customer/payments/switch-to-salon", { bookingId });
 
 export const getMyPayments = (page = 0, size = 20) =>
   axiosClient.get(`/customer/payments?page=${page}&size=${size}`);

@@ -7,7 +7,7 @@ export default function AdminLayout() {
       <AdminSidebar />
       <div className="pl-64 flex flex-col min-w-0 min-h-screen">
         {/* Page Content */}
-        <main className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3.5 sm:p-5 max-w-7xl w-full mx-auto">
           <Outlet />
         </main>
       </div>

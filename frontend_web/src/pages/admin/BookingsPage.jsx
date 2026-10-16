@@ -86,6 +86,71 @@ export default function BookingsPage() {
     return true;
   });
 
+  const sortBookingsByBusinessRules = (list) => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayEnd = todayStart + 24 * 60 * 60 * 1000;
+
+    const getBucket = (b) => {
+      const status = (b.status || "").toUpperCase();
+      const isCompletedOrCancelled =
+        status === "COMPLETED" ||
+        status === "CANCELLED" ||
+        status === "CANCELED" ||
+        status === "AUTO_CANCELLED";
+
+      if (isCompletedOrCancelled) {
+        return 3;
+      }
+
+      if (!b.scheduledAt) {
+        return 3;
+      }
+
+      const bookingTime = new Date(b.scheduledAt).getTime();
+
+      // 1. Today's confirmed/modified/pending bookings
+      if (bookingTime >= todayStart && bookingTime < todayEnd) {
+        return 1;
+      }
+
+      // 2. Upcoming future bookings (after today)
+      if (bookingTime >= todayEnd) {
+        return 2;
+      }
+
+      // Past uncompleted appointments
+      return 3;
+    };
+
+    return [...list].sort((a, b) => {
+      const bucketA = getBucket(a);
+      const bucketB = getBucket(b);
+
+      if (bucketA !== bucketB) {
+        return bucketA - bucketB;
+      }
+
+      const timeA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const timeB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+
+      // Bucket 1 (Today): earliest time today first (ASC)
+      if (bucketA === 1) {
+        return timeA - timeB;
+      }
+
+      // Bucket 2 (Upcoming): nearest upcoming first (ASC)
+      if (bucketA === 2) {
+        return timeA - timeB;
+      }
+
+      // Bucket 3 (Completed / Cancelled): latest to old (DESC)
+      return timeB - timeA;
+    });
+  };
+
+  const sortedBookings = sortBookingsByBusinessRules(filteredBookings);
+
   const storeOptions = [
     { value: "ALL", label: "All Salon Branches" },
     ...stores.map((st) => ({
@@ -203,7 +268,7 @@ export default function BookingsPage() {
       ) : (
         <div className="space-y-4">
           <div className="space-y-3">
-            {filteredBookings
+            {sortedBookings
               .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
               .map((b) => (
                 <BookingCard
@@ -216,7 +281,7 @@ export default function BookingsPage() {
 
           <Pagination
             currentPage={page}
-            totalItems={filteredBookings.length}
+            totalItems={sortedBookings.length}
             pageSize={PAGE_SIZE}
             onPageChange={setPage}
             itemName="appointments"

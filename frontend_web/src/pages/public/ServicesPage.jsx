@@ -29,7 +29,7 @@ export default function PublicServicesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
   const { calculateCoins } = useGroomCoin();
 
   const [categories, setCategories] = useState([]);
@@ -206,11 +206,10 @@ export default function PublicServicesPage() {
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
               <button
                 onClick={() => handleCategorySelect("ALL")}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${
-                  selectedCategory === "ALL"
-                    ? "bg-groomish-orange text-white shadow-glowOrange"
-                    : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
-                }`}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${selectedCategory === "ALL"
+                  ? "bg-groomish-orange text-white shadow-glowOrange"
+                  : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
+                  }`}
               >
                 All Categories
               </button>
@@ -218,11 +217,10 @@ export default function PublicServicesPage() {
                 <button
                   key={c.id}
                   onClick={() => handleCategorySelect(c.id)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${
-                    selectedCategory === c.id
-                      ? "bg-groomish-orange text-white shadow-glowOrange"
-                      : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
-                  }`}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${selectedCategory === c.id
+                    ? "bg-groomish-orange text-white shadow-glowOrange"
+                    : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
+                    }`}
                 >
                   {c.name}
                 </button>
@@ -237,11 +235,10 @@ export default function PublicServicesPage() {
                   <button
                     key={g}
                     onClick={() => setGenderFilter(g)}
-                    className={`px-2.5 py-1 rounded-lg transition ${
-                      genderFilter === g
-                        ? "bg-white text-groomish-slate shadow-sm font-bold"
-                        : "text-groomish-slate/60 hover:text-groomish-slate"
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg transition ${genderFilter === g
+                      ? "bg-white text-groomish-slate shadow-sm font-bold"
+                      : "text-groomish-slate/60 hover:text-groomish-slate"
+                      }`}
                   >
                     {g === "ALL" ? "All" : g === "FEMALE" ? "Women" : g === "MALE" ? "Men" : "Unisex"}
                   </button>
@@ -298,171 +295,187 @@ export default function PublicServicesPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredServices
-                .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-                .map((service) => {
-                const categoryObj = categories.find((c) => c.id === service.categoryId);
-                const categoryName = categoryObj ? categoryObj.name : "Salon Service";
-                const imgSrc =
-                  service.image ||
-                  defaultServiceImages[service.gender] ||
-                  defaultServiceImages.UNISEX;
+                {filteredServices
+                  .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                  .map((service) => {
+                    const categoryObj = categories.find((c) => c.id === service.categoryId);
+                    const categoryName = categoryObj ? categoryObj.name : "Salon Service";
+                    const imgSrc =
+                      service.image ||
+                      defaultServiceImages[service.gender] ||
+                      defaultServiceImages.UNISEX;
 
-                const hasSubServices = service.subServices && service.subServices.length > 0;
-                const activeSub =
-                  selectedSubServiceByServiceId[service.id] || (hasSubServices ? service.subServices[0] : null);
-                const displayPrice = activeSub ? activeSub.price : service.price;
-                const displayDuration = activeSub ? activeSub.durationMinutes : service.durationMinutes;
-                const coinsEarned = calculateCoins(displayPrice, service.rewards);
+                    const hasSubServices = service.subServices && service.subServices.length > 0;
+                    const activeSub =
+                      selectedSubServiceByServiceId[service.id] || (hasSubServices ? service.subServices[0] : null);
+                    const displayPrice = activeSub ? activeSub.price : service.price;
+                    const displayDuration = activeSub ? activeSub.durationMinutes : service.durationMinutes;
+                    const coinsEarned = calculateCoins(displayPrice, service.rewards);
+                    const isInCart = items?.some(
+                      (i) =>
+                        (i.itemType === "SERVICE" || !i.itemType) &&
+                        (i.serviceId === service.id || i.service?.id === service.id)
+                    );
 
-                return (
-                  <div
-                    key={service.id}
-                    className="card-groomish flex flex-col justify-between overflow-hidden group hover:border-groomish-orange/40 hover:-translate-y-1 transition duration-300"
-                  >
-                    <div>
-                      {/* Thumbnail (Clickable to dedicated service page) */}
+                    return (
                       <div
-                        onClick={() => navigate(`/services/${service.id}`)}
-                        className="relative h-44 overflow-hidden bg-groomish-slate/10 cursor-pointer"
+                        key={service.id}
+                        className="card-groomish flex flex-col justify-between overflow-hidden group hover:border-groomish-orange/40 hover:-translate-y-1 transition duration-300"
                       >
-                        <img
-                          src={getOptimizedImageUrl(imgSrc, { width: 600 })}
-                          alt={service.name}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-groomish-slateDark/60 via-transparent to-transparent" />
+                        <div>
+                          {/* Thumbnail (Clickable to dedicated service page) */}
+                          <div
+                            onClick={() => navigate(`/services/${service.id}`)}
+                            className="relative h-44 overflow-hidden bg-groomish-slate/10 cursor-pointer"
+                          >
+                            <img
+                              src={getOptimizedImageUrl(imgSrc, { width: 600 })}
+                              alt={service.name}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-groomish-slateDark/60 via-transparent to-transparent" />
 
-                        {/* Badges */}
-                        <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-groomish-slate backdrop-blur-sm shadow-sm uppercase">
-                            {service.gender}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-groomish-orange/90 text-white backdrop-blur-sm shadow-sm">
-                            {categoryName}
-                          </span>
-                        </div>
-
-                        <div className="absolute bottom-3 left-3 text-white flex items-center gap-1 text-xs font-semibold">
-                          <Clock className="w-3.5 h-3.5 text-groomish-gold" />
-                          <span>{displayDuration} mins</span>
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="p-4 space-y-2">
-                        <h3
-                          onClick={() => navigate(`/services/${service.id}`)}
-                          className="font-heading font-bold text-base text-groomish-slate group-hover:text-groomish-orange transition-colors line-clamp-1 cursor-pointer"
-                        >
-                          {service.name}
-                        </h3>
-
-                        <p className="text-xs text-groomish-slate/60 line-clamp-2 leading-relaxed">
-                          {service.description || "Signature styling delivered by master salon specialists."}
-                        </p>
-
-                        {/* Sub-Service Toggle Options */}
-                        {hasSubServices && (
-                          <div className="pt-2 border-t border-groomish-slate/10 space-y-1.5">
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="font-bold text-groomish-slate/60">Choose Option:</span>
-                              <span className="font-extrabold text-groomish-orange">{activeSub?.name}</span>
+                            {/* Badges */}
+                            <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-groomish-slate backdrop-blur-sm shadow-sm uppercase">
+                                {service.gender}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-groomish-orange/90 text-white backdrop-blur-sm shadow-sm">
+                                {categoryName}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                              {service.subServices.map((sub, sIdx) => {
-                                const isSelected =
-                                  activeSub &&
-                                  (activeSub.id ? activeSub.id === sub.id : activeSub.name === sub.name);
-                                return (
-                                  <button
-                                    key={sub.id || sIdx}
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSelectSubService(service.id, sub);
-                                    }}
-                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition flex items-center gap-1 border ${
-                                      isSelected
-                                        ? "bg-groomish-orange text-white border-groomish-orange shadow-xs scale-102"
-                                        : "bg-white text-groomish-slate border-groomish-slate/15 hover:border-groomish-orange/40 hover:bg-groomish-cream"
-                                    }`}
-                                  >
-                                    <span>{sub.name}</span>
-                                    <span
-                                      className={
-                                        isSelected ? "text-white/80 text-[10px]" : "text-groomish-slate/50 text-[10px]"
-                                      }
-                                    >
-                                      ₹{sub.price}
-                                    </span>
-                                  </button>
-                                );
-                              })}
+
+                            <div className="absolute bottom-3 left-3 text-white flex items-center gap-1 text-xs font-semibold">
+                              <Clock className="w-3.5 h-3.5 text-groomish-gold" />
+                              <span>{displayDuration} mins</span>
                             </div>
                           </div>
-                        )}
 
-                        {/* Highlighted Extra Coin Section if service has rewards */}
-                        {service.rewards > 0 && (
+                          {/* Content */}
+                          <div className="p-4 space-y-2">
+                            <h3
+                              onClick={() => navigate(`/services/${service.id}`)}
+                              className="font-heading font-bold text-base text-groomish-slate group-hover:text-groomish-orange transition-colors line-clamp-1 cursor-pointer"
+                            >
+                              {service.name}
+                            </h3>
+
+                            <p className="text-xs text-groomish-slate/60 line-clamp-2 leading-relaxed">
+                              {service.description || "Signature styling delivered by master salon specialists."}
+                            </p>
+
+                            {/* Sub-Service Toggle Options */}
+                            {hasSubServices && (
+                              <div className="pt-2 border-t border-groomish-slate/10 space-y-1.5">
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="font-bold text-groomish-slate/60">Choose Option:</span>
+                                  <span className="font-extrabold text-groomish-orange">{activeSub?.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                                  {service.subServices.map((sub, sIdx) => {
+                                    const isSelected =
+                                      activeSub &&
+                                      (activeSub.id ? activeSub.id === sub.id : activeSub.name === sub.name);
+                                    return (
+                                      <button
+                                        key={sub.id || sIdx}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSelectSubService(service.id, sub);
+                                        }}
+                                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition flex items-center gap-1 border ${isSelected
+                                          ? "bg-groomish-orange text-white border-groomish-orange shadow-xs scale-102"
+                                          : "bg-white text-groomish-slate border-groomish-slate/15 hover:border-groomish-orange/40 hover:bg-groomish-cream"
+                                          }`}
+                                      >
+                                        <span>{sub.name}</span>
+                                        <span
+                                          className={
+                                            isSelected ? "text-white/80 text-[10px]" : "text-groomish-slate/50 text-[10px]"
+                                          }
+                                        >
+                                          ₹{sub.price}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Highlighted Extra Coin Section if service has rewards */}
+                            {/* {service.rewards > 0 && (
                           <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-amber-500/10 border border-amber-300/70 text-amber-900 flex items-center gap-2 shadow-xs">
                             <GroomCoinIcon className="w-4 h-4 shrink-0" />
                             <span className="text-[11px] font-extrabold leading-tight">
                               Special Perk: +{service.rewards} Extra Groom Coins received!
                             </span>
                           </div>
-                        )}
+                        )} */}
 
-                        {/* Groom Coins reward badge */}
-                        <div className="pt-1 flex items-center gap-1.5 text-[11px] font-bold text-groomish-slate">
-                          <GroomCoinIcon className="w-3.5 h-3.5" />
-                          <span>Earn +{coinsEarned} Groom Coins</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Pricing & Booking Action */}
-                    <div className="p-4 pt-0 border-t border-groomish-slate/10 mt-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-lg font-extrabold text-groomish-slate">
-                          ₹{displayPrice}
-                        </div>
-                        {service.mrp > displayPrice && (
-                          <div className="text-[11px] text-groomish-slate/40 line-through">
-                            ₹{service.mrp}
+                            {/* Groom Coins reward badge */}
+                            <div className="pt-1 flex items-center gap-1.5 text-[11px] font-bold text-groomish-slate">
+                              <GroomCoinIcon className="w-3.5 h-3.5" />
+                              <span>Earn {coinsEarned} Groom Coins</span>
+                            </div>
                           </div>
-                        )}
+                        </div>
+
+                        {/* Pricing & Booking Action */}
+                        <div className="p-4 pt-0 border-t border-groomish-slate/10 mt-3 flex items-center justify-between">
+                          <div>
+                            <div className="text-lg font-extrabold text-groomish-slate">
+                              ₹{displayPrice}
+                            </div>
+                            {service.mrp > displayPrice && (
+                              <div className="text-[11px] text-groomish-slate/40 line-through">
+                                ₹{service.mrp}
+                              </div>
+                            )}
+                          </div>
+
+                          {isInCart ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate("/cart")}
+                              className="btn-secondary text-xs px-3.5 py-2 flex items-center gap-1.5 bg-groomish-orangeLight/60 border border-groomish-orange/40 text-groomish-orange hover:bg-groomish-orange hover:text-white transition shadow-2xs font-bold"
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                              <span>View Cart</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleAddToCart(service)}
+                              className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                              <span>Add Service</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-
-                      <button
-                        onClick={() => handleAddToCart(service)}
-                        className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        <span>Add Service</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {filteredServices.length > 0 && (
-              <div className="mt-8 bg-white p-4 rounded-2xl border border-groomish-slate/10 shadow-soft">
-                <Pagination
-                  currentPage={page}
-                  totalItems={filteredServices.length}
-                  pageSize={PAGE_SIZE}
-                  onPageChange={setPage}
-                  itemName="services"
-                />
+                    );
+                  })}
               </div>
-            )}
-          </>
-        )}
-      </section>
+
+              {filteredServices.length > 0 && (
+                <div className="mt-8 bg-white p-4 rounded-2xl border border-groomish-slate/10 shadow-soft">
+                  <Pagination
+                    currentPage={page}
+                    totalItems={filteredServices.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setPage}
+                    itemName="services"
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </section>
       </main>
 
       <Footer />

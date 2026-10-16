@@ -5,17 +5,26 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
     background-color: #FAF6ED;
     color: #373A43;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    overflow-x: hidden;
+    overflow-x: clip;
     width: 100%;
     min-height: 100vh;
   }
+}
+
+/* Hide scrollbar utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Animations */
@@ -47,39 +56,67 @@
 }
 
 @layer components {
-  /* Reusable Button Utilities */
+  /* Reusable Button Utilities - Compact & Accessible */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:from-groomish-orangeDark hover:to-groomish-coral shadow-glowOrange transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:from-groomish-orangeDark hover:to-groomish-coral shadow-glowOrange transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:ring-offset-2;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-semibold text-groomish-slate bg-white border border-groomish-slate/15 hover:bg-groomish-cream hover:border-groomish-slate/30 transition-all duration-200 active:scale-95 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-groomish-slate bg-white border border-groomish-slate/15 hover:bg-groomish-cream hover:border-groomish-slate/30 transition-all duration-200 active:scale-95 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:ring-offset-2;
   }
 
   .btn-gold {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-bold text-groomish-slate bg-groomish-gold hover:bg-groomish-goldDark shadow-glowGold transition-all duration-200 active:scale-95;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-groomish-slate bg-groomish-gold hover:bg-groomish-goldDark shadow-glowGold transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:ring-offset-2;
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-semibold text-white bg-groomish-crimson hover:bg-red-600 transition-all duration-200 active:scale-95;
+    @apply inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-xl font-semibold text-white bg-groomish-crimson hover:bg-red-600 transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2;
   }
 
   .btn-auth {
-    @apply w-full inline-flex items-center justify-center py-3 rounded-full font-bold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:shadow-glowOrange transition-all duration-200 active:scale-95;
+    @apply w-full inline-flex items-center justify-center py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:shadow-glowOrange transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:ring-offset-2;
   }
 
   .btn-groomish-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:from-groomish-orangeDark hover:to-groomish-coral shadow-glowOrange transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-white bg-gradient-to-r from-groomish-orange to-groomish-coral hover:from-groomish-orangeDark hover:to-groomish-coral shadow-glowOrange transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-groomish-orange focus-visible:ring-offset-2;
   }
 
-  /* Card & Surface Utilities */
+  /* Card & Surface Utilities - Compact Margins */
   .card-groomish {
-    @apply bg-white rounded-2xl border border-groomish-slate/10 shadow-soft hover:shadow-card transition-all duration-300;
+    @apply bg-white rounded-xl border border-groomish-slate/10 shadow-soft hover:shadow-card transition-all duration-300;
   }
 
   .input-groomish {
-    @apply w-full px-4 py-2.5 rounded-xl bg-white text-groomish-slate border border-groomish-slate/15 focus:border-groomish-orange focus:ring-2 focus:ring-groomish-orange/20 outline-none transition placeholder:text-groomish-slate/40 text-sm;
+    @apply w-full px-3.5 py-2 rounded-xl bg-white text-groomish-slate border border-groomish-slate/15 focus:border-groomish-orange focus:ring-2 focus:ring-groomish-orange/20 outline-none transition placeholder:text-groomish-slate/50 text-sm;
   }
+}
+
+/* Global Accessibility Focus Ring across all interactive elements */
+:focus-visible {
+  outline: 2px solid #FA7B47;
+  outline-offset: 2px;
+}
+
+/* Accessible & Compact Defaults for Admin & Staff Data Tables */
+table th {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #373A43B3;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+table td {
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  font-size: 0.75rem;
+  color: #373A43;
 }
 
 /* Custom Scrollbar */

@@ -19,6 +19,8 @@ public class ServiceReviewResponse {
     private String serviceName;
     private UUID productId;
     private String productName;
+    private UUID storeId;
+    private String storeName;
     private UUID bookingId;
     private UUID userId;
     private String userName;

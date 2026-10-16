@@ -366,7 +366,10 @@ public class ProductServiceImpl implements ProductService {
             if (spendPerCoin <= 0) spendPerCoin = 100.0;
         } catch (Exception ignored) {}
 
-        int pointsEarned = Math.max(1, (int) Math.round((finalAmount / spendPerCoin) * multiplier));
+        int pointsEarned = booking.getExpectedRewardPoints() != null && booking.getExpectedRewardPoints() > 0
+                ? booking.getExpectedRewardPoints()
+                : Math.max(1, (int) Math.round((finalAmount / spendPerCoin) * multiplier));
+        booking.setExpectedRewardPoints(pointsEarned);
 
         if (customer != null) {
             customer.setPoints((customer.getPoints() != null ? customer.getPoints() : 0) + pointsEarned);

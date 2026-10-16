@@ -37,12 +37,13 @@ public class EmailServiceImpl implements EmailService {
     @Async
     public void sendHtmlEmail(String to, String subject, String htmlContent) {
         try {
-            log.info("Sending real-time Groomish Now email to: {}, Subject: {}", to, subject);
+            String sanitizedSubject = sanitizeSubject(subject);
+            log.info("Sending real-time Groomish Now email to: {}, Subject: {}", to, sanitizedSubject);
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail, "Groomish Now");
             helper.setTo(to);
-            helper.setSubject(subject);
+            helper.setSubject(sanitizedSubject);
             helper.setText(htmlContent, true);
             mailSender.send(message);
             log.info("Groomish Now email successfully sent to: {}", to);
@@ -51,10 +52,19 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    private String sanitizeSubject(String subject) {
+        if (subject == null) {
+            return "";
+        }
+        // Remove emoji / pictographic characters, dingbats, surrogate pairs, and symbols
+        String cleaned = subject.replaceAll("[\\uD83C-\\uDBFF\\uDC00-\\uDFFF]|[\\u2600-\\u27BF]|[\\u2300-\\u23FF]|[\\u2B00-\\u2BFF]|[\\uFE00-\\uFE0F]|[\\u200D]", "");
+        return cleaned.replaceAll("\\s+", " ").trim();
+    }
+
     @Override
     @Async
     public void sendWelcomeEmail(String to, String name, String referralCode) {
-        String subject = "✨ Welcome to Groomish Now Loyalty Club!";
+        String subject = "Welcome to Groomish Now Loyalty Club - Groomish Now";
         String body = "<div style='color: #373A43;'>"
                 + "<h2 style='color: #FC6957; margin-top: 0; font-size: 20px;'>Welcome to Groomish Now, " + name + "!</h2>"
                 + "<p>We are thrilled to welcome you to our exclusive salon loyalty program. Every appointment you book and retail product you purchase earns you Groomish Rewards points redeemable for treatments and beauty care.</p>"
@@ -75,7 +85,8 @@ public class EmailServiceImpl implements EmailService {
     @Async
     public void sendBookingConfirmationEmail(String to, String name, String bookingId, String serviceName, LocalDateTime scheduledAt, Double pricePaid) {
         String formattedDate = scheduledAt != null ? scheduledAt.format(DATE_FORMATTER) : "Scheduled Soon";
-        String subject = "📅 Appointment Confirmed: " + serviceName + " at Groomish Now";
+        String displayCode = bookingId != null && !bookingId.isBlank() ? bookingId : "BK-ID-UNKNOWN";
+        String subject = "Booking Confirmed: " + displayCode + " - Groomish Now";
 
         String body = "<div style='color: #373A43;'>"
                 + "<h2 style='color: #FC6957; margin-top: 0; font-size: 20px;'>Your Appointment is Confirmed!</h2>"
@@ -98,8 +109,20 @@ public class EmailServiceImpl implements EmailService {
     @Override
     @Async
     public void sendBookingStatusEmail(String to, String name, String bookingId, String serviceName, String status, String note) {
-        String subject = "🔔 Appointment Update: " + status + " (" + serviceName + ")";
-        String statusColor = "CANCELLED".equalsIgnoreCase(status) ? "#EA4158" : "#207FBD";
+        String displayCode = bookingId != null && !bookingId.isBlank() ? bookingId : "BK-ID-UNKNOWN";
+        String subject;
+        if (status != null && (status.equalsIgnoreCase("CANCELLED") || status.equalsIgnoreCase("CANCELED") || status.equalsIgnoreCase("AUTO_CANCELLED"))) {
+            subject = "Booking Canceled: " + displayCode + " - Groomish Now";
+        } else if (status != null && (status.equalsIgnoreCase("MODIFIED") || status.equalsIgnoreCase("RESCHEDULED"))) {
+            subject = "Booking Modified: " + displayCode + " - Groomish Now";
+        } else if (status != null && status.equalsIgnoreCase("CONFIRMED")) {
+            subject = "Booking Confirmed: " + displayCode + " - Groomish Now";
+        } else if (status != null && status.equalsIgnoreCase("COMPLETED")) {
+            subject = "Booking Completed: " + displayCode + " - Groomish Now";
+        } else {
+            subject = "Booking Update: " + displayCode + " - Groomish Now";
+        }
+        String statusColor = ("CANCELLED".equalsIgnoreCase(status) || "CANCELED".equalsIgnoreCase(status) || "AUTO_CANCELLED".equalsIgnoreCase(status)) ? "#EA4158" : "#207FBD";
 
         String body = "<div style='color: #373A43;'>"
                 + "<h2 style='color: " + statusColor + "; margin-top: 0; font-size: 20px;'>Appointment Update: " + status + "</h2>"
@@ -110,7 +133,7 @@ public class EmailServiceImpl implements EmailService {
                     "<div style='background: #FAF6ED; border: 1px dashed #FC6957; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;'>"
                     + "<h3 style='margin: 0 0 6px 0; font-size: 16px; color: #373A43; font-weight: 800;'>How was your appointment today?</h3>"
                     + "<p style='margin: 0 0 14px 0; font-size: 13px; color: #7A7E89;'>Your honest feedback helps us recognize our stylists and maintain the highest standard of service.</p>"
-                    + "<a href='" + frontendUrl + "/customer/bookings/" + bookingId + "?review=true' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(252, 105, 87, 0.3);'>⭐ Please Review Your Experience</a>"
+                    + "<a href='" + frontendUrl + "/customer/bookings/" + bookingId + "?review=true' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(252, 105, 87, 0.3);'>Please Review Your Experience</a>"
                     + "</div>"
                 ) : "")
                 + "<p style='color: #7A7E89; font-size: 13px;'>If you have any questions or require assistance, please contact our salon desk.</p>"
@@ -123,8 +146,62 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Async
+    public void sendBookingAdminOverrideEmail(
+            String to,
+            String name,
+            String bookingId,
+            String bookingCode,
+            String serviceName,
+            String storeName,
+            LocalDateTime scheduledAt,
+            String status,
+            Double pricePaid,
+            String paymentStatus,
+            String paymentMethod,
+            String adminNote
+    ) {
+        String formattedDate = scheduledAt != null ? scheduledAt.format(DATE_FORMATTER) : "Pending Schedule";
+        String displayCode = bookingCode != null && !bookingCode.isBlank() ? bookingCode : (bookingId != null && !bookingId.isBlank() ? bookingId : "BK-ID-UNKNOWN");
+        String subject = "Booking Modified: " + displayCode + " - Groomish Now";
+
+        String statusBadgeColor = "#207FBD";
+        if ("COMPLETED".equalsIgnoreCase(status)) statusBadgeColor = "#34A955";
+        else if ("CANCELLED".equalsIgnoreCase(status) || "CANCELED".equalsIgnoreCase(status)) statusBadgeColor = "#EA4158";
+        else if ("CONFIRMED".equalsIgnoreCase(status)) statusBadgeColor = "#FC6957";
+
+        String body = "<div style='color: #373A43; font-family: sans-serif;'>"
+                + "<div style='display: inline-block; padding: 5px 14px; background: #FFF3CD; color: #856404; font-size: 11px; font-weight: 800; border-radius: 20px; border: 1px solid #FFEEBA; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;'>Admin Notice</div>"
+                + "<h2 style='color: #FC6957; margin-top: 0; font-size: 20px; font-weight: 800;'>Your Appointment Details Have Been Updated</h2>"
+                + "<p style='font-size: 14px; margin-bottom: 6px;'>Dear <strong>" + name + "</strong>,</p>"
+                + "<p style='font-size: 13px; color: #555; line-height: 1.6;'>Please be informed that an administrator has updated your salon appointment details at Groomish Now:</p>"
+                + "<table style='width: 100%; border-collapse: collapse; margin: 20px 0; background: #FAF6ED; border-radius: 12px; overflow: hidden;'>"
+                + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'><td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; width: 38%; font-size: 13px;'>Booking Reference:</td><td style='padding: 12px 16px; color: #373A43; font-weight: 800; font-family: monospace; font-size: 14px;'>" + displayCode + "</td></tr>"
+                + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'><td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Treatment Service(s):</td><td style='padding: 12px 16px; color: #FC6957; font-weight: 700; font-size: 13px;'>" + serviceName + "</td></tr>"
+                + (storeName != null && !storeName.isBlank() ? "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'><td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Salon Branch:</td><td style='padding: 12px 16px; color: #373A43; font-weight: 700; font-size: 13px;'>" + storeName + "</td></tr>" : "")
+                + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'><td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Updated Schedule:</td><td style='padding: 12px 16px; color: #373A43; font-weight: 700; font-size: 13px;'>" + formattedDate + "</td></tr>"
+                + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'><td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Current Status:</td><td style='padding: 12px 16px;'><span style='background: " + statusBadgeColor + "; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 11px; text-transform: uppercase; display: inline-block;'>" + status + "</span></td></tr>"
+                + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'><td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Total / Price Paid:</td><td style='padding: 12px 16px; color: #373A43; font-weight: 800; font-size: 15px;'>₹" + (pricePaid != null ? String.format("%.2f", pricePaid) : "0.00") + "</td></tr>"
+                + (paymentMethod != null || paymentStatus != null ? "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'><td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Payment:</td><td style='padding: 12px 16px; color: #373A43; font-size: 13px; font-weight: 600;'>" + (paymentMethod != null ? paymentMethod : "CASH") + " (" + (paymentStatus != null ? paymentStatus : "PENDING") + ")</td></tr>" : "")
+                + (adminNote != null && !adminNote.isBlank() ? "<tr><td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Admin Notes:</td><td style='padding: 12px 16px; color: #856404; background: #FFF3CD; font-size: 13px; font-weight: 600; font-style: italic;'>" + adminNote + "</td></tr>" : "")
+                + "</table>"
+                + "<div style='background: #F8F9FA; border-left: 4px solid #FC6957; padding: 14px 18px; border-radius: 6px; margin: 18px 0; font-size: 13px; color: #555;'>"
+                + "<strong>(Overrided by Administrator)</strong><br><span style='font-size: 12px; color: #777;'>These modifications were made and saved via administrative salon controls.</span>"
+                + "</div>"
+                + "<div style='margin: 24px 0; text-align: center;'>"
+                + "<a href='" + frontendUrl + "/customer/bookings/" + bookingId + "' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(252, 105, 87, 0.3);'>View Updated Appointment</a>"
+                + "</div>"
+                + "<p style='color: #7A7E89; font-size: 12px; line-height: 1.5;'>If you have questions regarding this change or need further assistance, please contact salon reception or reply to this email.</p>"
+                + "<p style='margin-top: 24px; font-size: 13px;'>Warm regards,<br><strong style='color: #373A43;'>Groomish Now Administration Team</strong><br><span style='font-size: 11px; color: #888; font-weight: 600;'>below (Overrided by Administrator)</span></p>"
+                + "</div>";
+
+        String fullHtml = templateService.buildTemplate(subject, body);
+        sendHtmlEmail(to, subject, fullHtml);
+    }
+
+    @Override
+    @Async
     public void sendRewardRedeemedEmail(String to, String name, String rewardTitle, int pointsSpent, int remainingPoints) {
-        String subject = "🎁 Perk Redeemed: " + rewardTitle;
+        String subject = "Perk Redeemed: " + rewardTitle + " - Groomish Now";
 
         String body = "<div style='color: #373A43;'>"
                 + "<h2 style='color: #FC6957; margin-top: 0; font-size: 20px;'>Congratulations on Your Reward!</h2>"
@@ -145,7 +222,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     @Async
     public void sendPasswordChangedEmail(String to, String name) {
-        String subject = "🔒 Security Alert: Your Password Was Changed";
+        String subject = "Security Alert: Your Password Was Changed - Groomish Now";
 
         String body = "<div style='color: #373A43;'>"
                 + "<h2 style='color: #373A43; margin-top: 0; font-size: 20px;'>Security Notification</h2>"
@@ -162,15 +239,13 @@ public class EmailServiceImpl implements EmailService {
     @Override
     @Async
     public void sendReferralBonusEmail(String to, String referrerName, String referredFriendName, int pointsEarned, int totalPointsBalance) {
-        String subject = "🎉 +" + pointsEarned + " Points Added to Your Wallet! " + referredFriendName + " joined using your invite code";
+        String subject = pointsEarned + " Points Added to Your Wallet - " + referredFriendName + " joined using your invite code - Groomish Now";
 
         String body = "<div style='color: #373A43;'>"
                 + "<h2 style='color: #FC6957; margin-top: 0; font-size: 22px; font-weight: 800;'>+" + pointsEarned + " Points Added to Your Wallet! 🎁</h2>"
                 + "<p>Dear <strong>" + referrerName + "</strong>,</p>"
                 + "<p>Exciting news! Your friend <strong style='color: #FC6957;'>" + referredFriendName + "</strong> just registered for Groomish Now using your unique referral invite code.</p>"
                 + "<p>As a thank you for expanding our salon community, we have credited <strong>" + pointsEarned + " VIP Reward Points</strong> directly to your account wallet!</p>"
-
-                // Highlighted Summary Card
                 + "<div style='background: #FAF6ED; border: 1px solid rgba(55,58,67,0.12); border-radius: 14px; padding: 20px; margin: 24px 0;'>"
                 + "<table style='width: 100%; border-collapse: collapse;'>"
                 + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.08);'>"
@@ -187,8 +262,6 @@ public class EmailServiceImpl implements EmailService {
                 + "</tr>"
                 + "</table>"
                 + "</div>"
-
-                // Instructions & How to Use
                 + "<div style='background: #FFFFFF; border-left: 4px solid #FC6957; padding: 16px 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);'>"
                 + "<h4 style='margin: 0 0 10px 0; color: #373A43; font-size: 14px; font-weight: 700;'>How You Can Use Your Points:</h4>"
                 + "<ul style='margin: 0; padding-left: 20px; color: #555A64; font-size: 13px; line-height: 1.6;'>"
@@ -198,11 +271,9 @@ public class EmailServiceImpl implements EmailService {
                 + "<li><strong>Invite More Friends:</strong> There is no limit! Continue sharing your referral code with friends and family to earn 10 points on each new registration.</li>"
                 + "</ul>"
                 + "</div>"
-
                 + "<div style='text-align: center; margin: 28px 0 20px 0;'>"
                 + "<a href='https://groomishnow.com/customer/rewards' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>View Your Points & Rewards</a>"
                 + "</div>"
-
                 + "<p style='margin-top: 24px; font-size: 13px; color: #7A7E89;'>Thank you for choosing Groomish Now!<br><strong style='color: #373A43;'>The Groomish Now Team</strong></p>"
                 + "</div>";
 
@@ -228,7 +299,8 @@ public class EmailServiceImpl implements EmailService {
     ) {
         String formattedDate = completedAt != null ? completedAt.format(INVOICE_DATE_FORMATTER) : LocalDateTime.now().format(INVOICE_DATE_FORMATTER);
         String invNum = invoiceNumber != null && !invoiceNumber.isBlank() ? invoiceNumber : "INV-GROOMISH-" + System.currentTimeMillis() % 100000;
-        String subject = "🧾 Tax Invoice & Payment Receipt: " + invNum + " | Groomish Now";
+        String displayRef = bookingId != null && !bookingId.isBlank() ? bookingId : invNum;
+        String subject = "Tax Invoice & Payment Receipt: " + displayRef + " - Groomish Now";
 
         StringBuilder itemsTable = new StringBuilder();
         if (items != null && !items.isEmpty()) {

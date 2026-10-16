@@ -37,6 +37,8 @@ public class BookingAdminServiceImpl implements BookingAdminService {
     private final PointsLedgerRepository pointsLedgerRepository;
     private final com.loyalty_program_app.backend.service.BookingTimelineService bookingTimelineService;
     private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
+    private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
+    private final NotificationRepository notificationRepository;
 
     // ===================== ADVANCED SEARCH =====================
     @Override
@@ -190,15 +192,20 @@ public class BookingAdminServiceImpl implements BookingAdminService {
                             if (spendPerCoin <= 0) spendPerCoin = 100.0;
                         } catch (Exception ignored) {}
 
-                        int baseEarned = (int) Math.round((amount / spendPerCoin) * multiplier);
-                        int bonusCoins = 0;
-                        if (booking.getBookingItems() != null) {
-                            bonusCoins = booking.getBookingItems().stream()
-                                    .filter(i -> i.getService() != null && i.getService().getRewards() != null && i.getService().getRewards() > 0)
-                                    .mapToInt(i -> i.getService().getRewards())
-                                    .sum();
+                        int earned;
+                        if (booking.getExpectedRewardPoints() != null && booking.getExpectedRewardPoints() > 0) {
+                            earned = booking.getExpectedRewardPoints();
+                        } else {
+                            int baseEarned = (int) Math.round((amount / spendPerCoin) * multiplier);
+                            int bonusCoins = 0;
+                            if (booking.getBookingItems() != null) {
+                                bonusCoins = booking.getBookingItems().stream()
+                                        .mapToInt(i -> i.getServiceRewardCoinsSnapshot() != null ? i.getServiceRewardCoinsSnapshot() : 0)
+                                        .sum();
+                            }
+                            earned = Math.max(1, baseEarned + bonusCoins);
+                            booking.setExpectedRewardPoints(earned);
                         }
-                        int earned = Math.max(1, baseEarned + bonusCoins);
                         customer.setPoints((customer.getPoints() != null ? customer.getPoints() : 0) + earned);
                         int lifetime = (customer.getLifetimePoints() != null ? customer.getLifetimePoints() : 0) + earned;
                         customer.setLifetimePoints(lifetime);
@@ -300,12 +307,53 @@ public class BookingAdminServiceImpl implements BookingAdminService {
         bookingTimelineService.recordTimeline(
                 saved,
                 "MODIFIED",
-                "Booking Modified by Admin",
-                desc.toString(),
+                "Booking Modified by Admin (Overrided by Administrator)",
+                desc.toString() + " (Overrided by Administrator)",
                 "Admin Staff",
                 "ADMIN",
                 null
         );
+
+        // Dispatch updated details email & notification to customer: (Overrided by Administrator)
+        if (saved.getUser() != null && saved.getUser().getEmail() != null) {
+            String serviceName = (saved.getBookingItems() != null && !saved.getBookingItems().isEmpty())
+                    ? saved.getBookingItems().stream()
+                        .map(bi -> bi.getServiceNameSnapshot() != null ? bi.getServiceNameSnapshot() : (bi.getService() != null ? bi.getService().getName() : "Salon Service"))
+                        .collect(Collectors.joining(", "))
+                    : "Salon Service";
+            String storeName = saved.getStore() != null ? saved.getStore().getName() : "Groomish Now";
+            String payStatus = saved.getPayment() != null && saved.getPayment().getStatus() != null ? saved.getPayment().getStatus().name() : "PENDING";
+            String payMethod = saved.getPayment() != null && saved.getPayment().getPaymentMethod() != null ? saved.getPayment().getPaymentMethod().name() : "CASH";
+            Double finalPrice = saved.getPricePaid() != null ? saved.getPricePaid() : (saved.getTotalAmount() != null ? saved.getTotalAmount() : 0.0);
+
+            try {
+                emailService.sendBookingAdminOverrideEmail(
+                        saved.getUser().getEmail(),
+                        saved.getUser().getName() != null ? saved.getUser().getName() : "Valued Customer",
+                        saved.getId().toString(),
+                        saved.getBookingCode(),
+                        serviceName,
+                        storeName,
+                        saved.getScheduledAt(),
+                        saved.getStatus() != null ? saved.getStatus().name() : "MODIFIED",
+                        finalPrice,
+                        payStatus,
+                        payMethod,
+                        saved.getNote()
+                );
+            } catch (Exception ignored) {}
+
+            try {
+                Notification overrideNotif = Notification.builder()
+                        .user(saved.getUser())
+                        .title("Appointment Updated (Overrided by Administrator)")
+                        .message("Your appointment " + (saved.getBookingCode() != null ? saved.getBookingCode() : saved.getId())
+                                + " has been modified by an administrator. (Overrided by Administrator)")
+                        .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                        .build();
+                notificationRepository.save(overrideNotif);
+            } catch (Exception ignored) {}
+        }
 
         return toBookingResponse(saved);
     }
@@ -443,17 +491,30 @@ public class BookingAdminServiceImpl implements BookingAdminService {
             dto.setProducts(new ArrayList<>());
         }
 
-        double pAmount = dto.getPricePaid() != null ? dto.getPricePaid() : 0.0;
-        double multiplier = 1.0;
-        if (b.getUser() != null && b.getUser().getTier() != null) {
-            switch (b.getUser().getTier()) {
-                case DIAMOND -> multiplier = 2.0;
-                case PLATINUM -> multiplier = 1.5;
-                case GOLD -> multiplier = 1.25;
-                case SILVER -> multiplier = 1.0;
+        int resolvedPoints = 0;
+        if (b.getStatus() == BookingStatus.COMPLETED) {
+            List<PointsLedger> ledgers = pointsLedgerRepository.findByRelatedId(b.getId());
+            if (ledgers != null && !ledgers.isEmpty()) {
+                resolvedPoints = ledgers.stream().mapToInt(l -> l.getChangeAmount() != null ? l.getChangeAmount() : 0).sum();
             }
         }
-        dto.setExpectedRewardPoints(Math.max(1, (int) Math.round((pAmount / 100.0) * multiplier)));
+        if (resolvedPoints <= 0 && b.getExpectedRewardPoints() != null && b.getExpectedRewardPoints() > 0) {
+            resolvedPoints = b.getExpectedRewardPoints();
+        }
+        if (resolvedPoints <= 0) {
+            double pAmount = dto.getPricePaid() != null ? dto.getPricePaid() : 0.0;
+            double multiplier = 1.0;
+            if (b.getUser() != null && b.getUser().getTier() != null) {
+                switch (b.getUser().getTier()) {
+                    case DIAMOND -> multiplier = 2.0;
+                    case PLATINUM -> multiplier = 1.5;
+                    case GOLD -> multiplier = 1.25;
+                    case SILVER -> multiplier = 1.0;
+                }
+            }
+            resolvedPoints = Math.max(1, (int) Math.round((pAmount / 100.0) * multiplier));
+        }
+        dto.setExpectedRewardPoints(resolvedPoints);
         dto.setPointsConfirmed(b.getStatus() == BookingStatus.COMPLETED);
         dto.setTimeline(bookingTimelineService.getTimelineForBooking(b));
 
@@ -467,6 +528,7 @@ public class BookingAdminServiceImpl implements BookingAdminService {
         dto.setServiceName(item.getServiceNameSnapshot() != null ? item.getServiceNameSnapshot() : (item.getService() != null ? item.getService().getName() : "Salon Service"));
         dto.setPrice(item.getServicePriceSnapshot() != null ? item.getServicePriceSnapshot() : (item.getService() != null ? item.getService().getPrice() : 0.0));
         dto.setDurationMinutes(item.getServiceDurationSnapshot() != null ? item.getServiceDurationSnapshot() : (item.getService() != null ? item.getService().getDurationMinutes() : 30));
+        dto.setRewardCoins(item.getServiceRewardCoinsSnapshot() != null ? item.getServiceRewardCoinsSnapshot() : 0);
         dto.setStatus(item.getStatus() != null ? item.getStatus().name() : "PENDING");
         return dto;
     }

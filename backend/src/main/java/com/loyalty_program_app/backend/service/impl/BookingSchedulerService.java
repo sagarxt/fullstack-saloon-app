@@ -44,9 +44,25 @@ public class BookingSchedulerService {
             try {
                 if (b.getScheduledAt() == null || b.getUser() == null) continue;
 
+                // 1) ONLY apply salon appointment lifecycle reminders & warnings to bookings containing actual salon services.
+                // Product-only purchases have no stylist or salon slot and must never receive appointment reminders or auto-cancellation.
+                if (b.getBookingItems() == null || b.getBookingItems().isEmpty()) {
+                    continue;
+                }
+
+                // 2) ONLY send reminders for CONFIRMED or MODIFIED bookings. Never for PENDING (unpaid/unconfirmed) orders.
+                if (b.getStatus() != BookingStatus.CONFIRMED && b.getStatus() != BookingStatus.MODIFIED) {
+                    continue;
+                }
+
+                // 3) Grace period: Don't trigger "Starts Now" for appointments created in the last 5 minutes.
+                if (b.getCreatedAt() != null && b.getCreatedAt().isAfter(now.minusMinutes(5))) {
+                    continue;
+                }
+
                 LocalDateTime scheduledAt = b.getScheduledAt();
                 String displayCode = b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase();
-                String serviceName = (b.getBookingItems() != null && !b.getBookingItems().isEmpty())
+                String serviceName = b.getBookingItems().get(0).getServiceNameSnapshot() != null
                         ? b.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Appointment";
                 String storeName = b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : (b.getStore() != null ? b.getStore().getName() : "Groomish Now Flagship");
 
@@ -64,6 +80,8 @@ public class BookingSchedulerService {
                             .title("Appointment in 1 Hour ⏰")
                             .message("Your appointment (" + displayCode + ") for " + serviceName + " at " + storeName + " is scheduled in 1 hour. See you soon!")
                             .type(NotificationType.BOOKING)
+                            .referenceId(b.getId())
+                            .link("/customer/bookings/" + b.getId())
                             .build();
                     notificationRepository.save(notif);
 
@@ -92,6 +110,8 @@ public class BookingSchedulerService {
                             .title("Your Appointment Starts Now! ✂️")
                             .message("Hi " + b.getUser().getName() + ", your appointment (" + displayCode + ") is starting now at " + storeName + ". Our stylists are ready for you!")
                             .type(NotificationType.BOOKING)
+                            .referenceId(b.getId())
+                            .link("/customer/bookings/" + b.getId())
                             .build();
                     notificationRepository.save(notif);
 
@@ -120,6 +140,8 @@ public class BookingSchedulerService {
                             .title("Action Required: Reschedule Appointment ⚠️")
                             .message("Your appointment (" + displayCode + ") scheduled at " + scheduledAt.toLocalTime() + " has passed. Please reschedule or check in within your 2-hour grace period to prevent automatic cancellation.")
                             .type(NotificationType.BOOKING)
+                            .referenceId(b.getId())
+                            .link("/customer/bookings/" + b.getId())
                             .build();
                     notificationRepository.save(notif);
 
@@ -166,6 +188,8 @@ public class BookingSchedulerService {
                             .title("Appointment Auto-Cancelled ❌")
                             .message("Your appointment (" + displayCode + ") was automatically cancelled as it was not attended or rescheduled within 2 hours of the slot.")
                             .type(NotificationType.BOOKING)
+                            .referenceId(b.getId())
+                            .link("/customer/bookings/" + b.getId())
                             .build();
                     notificationRepository.save(notif);
 

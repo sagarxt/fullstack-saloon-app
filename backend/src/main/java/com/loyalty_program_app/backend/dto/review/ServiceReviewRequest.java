@@ -19,6 +19,7 @@ public class ServiceReviewRequest {
 
     private UUID serviceId;
     private UUID productId;
+    private UUID storeId;
     private UUID bookingId;
 
     @NotNull(message = "Rating is required")
@@ -26,6 +27,6 @@ public class ServiceReviewRequest {
     @Max(value = 5, message = "Rating must be at most 5")
     private Integer rating;
 
-    @NotBlank(message = "Review text is required")
+    // Review / feedback comment is optional
     private String review;
 }
