@@ -5,6 +5,7 @@ import CategoryServicesModal from "../modals/CategoryServicesModal";
 import { Layers, Edit3, Power, ListFilter, Trash2 } from "lucide-react";
 import { forceDeleteCategoryApi } from "../../api/maintenance";
 import { getOptimizedImageUrl } from "../../utils/imageHelper";
+import { showConfirm, showAlert } from "../../context/ConfirmContext";
 
 export default function CategoryCard({ category, refresh }) {
   const [editOpen, setEditOpen] = useState(false);
@@ -16,6 +17,12 @@ export default function CategoryCard({ category, refresh }) {
       setLoading(true);
       await deactivateCategoryApi(category.id);
       refresh();
+    } catch (err) {
+      await showAlert({
+        title: "Action Failed",
+        message: err.response?.data?.message || "Failed to update category status.",
+        variant: "danger",
+      });
     } finally {
       setLoading(false);
     }
@@ -101,19 +108,29 @@ export default function CategoryCard({ category, refresh }) {
           <button
             disabled={loading}
             onClick={async () => {
-              if (window.confirm(`FORCE DELETE category "${category.name}"?\nThis permanently removes this category and unlinks all treatments.`)) {
-                try {
-                  setLoading(true);
-                  await forceDeleteCategoryApi(category.id);
-                  refresh();
-                } catch (err) {
-                  alert(err.response?.data?.message || "Failed to force delete category.");
-                } finally {
-                  setLoading(false);
-                }
+              const ok = await showConfirm({
+                title: "Force Delete Category",
+                message: `Are you sure you want to FORCE DELETE category "${category.name}"?\nThis permanently removes this category and unlinks all treatments.`,
+                confirmText: "Force Delete Category",
+                variant: "danger",
+              });
+              if (!ok) return;
+
+              try {
+                setLoading(true);
+                await forceDeleteCategoryApi(category.id);
+                refresh();
+              } catch (err) {
+                await showAlert({
+                  title: "Deletion Failed",
+                  message: err.response?.data?.message || "Failed to force delete category.",
+                  variant: "danger",
+                });
+              } finally {
+                setLoading(false);
               }
             }}
-            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-1 shadow-xs"
+            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
             title="Permanently remove category from database"
           >
             <Trash2 className="w-3.5 h-3.5" />

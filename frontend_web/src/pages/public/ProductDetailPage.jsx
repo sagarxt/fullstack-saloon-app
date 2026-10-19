@@ -660,7 +660,7 @@ export default function ProductDetailPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {relatedProducts.map((rel) => {
-                  const relCoins = calculateCoins ? calculateCoins(rel.price) : Math.max(1, Math.floor(rel.price / 100));
+                  const relCoins = calculateCoins ? calculateCoins(rel.price) : Math.max(1, Math.round(rel.price / 100));
                   return (
                     <div
                       key={rel.id}

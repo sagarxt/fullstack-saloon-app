@@ -2,9 +2,12 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
+const ACTIVE_TUNNEL_URL = 'https://tame-carrots-watch.loca.lt/api/v1';
+
 function getBaseUrl(): string {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl && !envUrl.includes('moody-states-jam') && !envUrl.includes('pink-seahorse')) {
+    return envUrl;
   }
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
   if (hostUri) {
@@ -13,7 +16,7 @@ function getBaseUrl(): string {
       return `http://${host}:8008/api/v1`;
     }
   }
-  return 'http://192.168.0.110:8008/api/v1';
+  return ACTIVE_TUNNEL_URL;
 }
 
 const BASE_URL = getBaseUrl();
@@ -27,24 +30,47 @@ const apiClient = axios.create({
   timeout: 15000,
 });
 
-// Attach JWT token to every request
+// Attach JWT token & bypass headers to every request
 apiClient.interceptors.request.use(
   async (config) => {
     try {
+      config.headers['Bypass-Tunnel-Reminder'] = 'true';
       const token = await AsyncStorage.getItem('token');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
       }
     } catch (_) {}
+
+    // Rewrite stale/dead tunnels if cached in client bundle
+    if (config.baseURL && (config.baseURL.includes('moody-states-jam') || config.baseURL.includes('pink-seahorse'))) {
+      config.baseURL = ACTIVE_TUNNEL_URL;
+    }
+    if (config.url && (config.url.includes('moody-states-jam') || config.url.includes('pink-seahorse'))) {
+      config.url = config.url.replace(/https:\/\/(moody-states-jam|pink-seahorse[^\/]*)\.loca\.lt\/api\/v1/, ACTIVE_TUNNEL_URL);
+    }
+
+    console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url || ''}`);
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('[API REQUEST ERROR]', error);
+    return Promise.reject(error);
+  }
 );
 
-// Response interceptor for 401 handling
+// Response interceptor for 401 handling & logging
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`[API RESPONSE] ${response.status} ${response.config.url}`);
+    return response;
+  },
   async (error) => {
+    console.error(
+      `[API ERROR] ${error.config?.method?.toUpperCase()} ${error.config?.baseURL || ''}${error.config?.url || ''}:`,
+      error.message,
+      error.code,
+      error.response ? `HTTP ${error.response.status}` : 'No response'
+    );
     if (error.response?.status === 401) {
       await AsyncStorage.multiRemove(['token', 'user']);
     }
@@ -81,19 +107,22 @@ export const publicApi = {
     }
     return apiClient.get('/public/stores', { params });
   },
-  getStore: (id: number) => apiClient.get(`/public/stores/${id}`),
-  getStoreServices: (storeId: number) => apiClient.get(`/public/stores/${storeId}/services`),
-  getStoreProducts: (storeId: number) => apiClient.get(`/public/stores/${storeId}/products`),
+  getStore: (id: string | number) => apiClient.get(`/public/stores/${id}`),
+  getStoreServices: (storeId: string | number) => apiClient.get(`/public/stores/${storeId}/services`),
+  getStoreProducts: (storeId: string | number) => apiClient.get(`/public/stores/${storeId}/products`),
+  getStoreReviews: (storeId: string | number) => apiClient.get(`/public/reviews/store/${storeId}`),
   getServices: () => apiClient.get('/public/services'),
+  getService: (id: string | number) => apiClient.get(`/public/services/${id}`),
   getCategories: () => apiClient.get('/public/categories'),
-  getCategoryDetail: (id: number) => apiClient.get(`/public/categories/${id}`),
+  getCategoryDetail: (id: string | number) => apiClient.get(`/public/categories/${id}`),
   getProducts: () => apiClient.get('/public/products'),
-  getProduct: (id: number) => apiClient.get(`/public/products/${id}`),
+  getProduct: (id: string | number) => apiClient.get(`/public/products/${id}`),
   getProductsByCategory: (cat: string) => apiClient.get(`/public/products/category/${encodeURIComponent(cat)}`),
   searchProducts: (q: string) => apiClient.get(`/public/products/search?q=${encodeURIComponent(q)}`),
   getProductCategories: () => apiClient.get('/public/products/categories'),
   getProductBrands: () => apiClient.get('/public/products/brands'),
   getGroomCoinConfig: () => apiClient.get('/public/groom-coin/config'),
+  getHomeData: () => apiClient.get('/public/home'),
 };
 
 /* ─── CUSTOMER ─── */
@@ -105,38 +134,41 @@ export const customerApi = {
 
   // Bookings
   getBookings: () => apiClient.get('/customer/bookings'),
-  getBookingDetail: (id: number) => apiClient.get(`/customer/bookings/${id}`),
-  cancelBooking: (id: number) => apiClient.put(`/customer/bookings/${id}/cancel`),
-  rescheduleBooking: (id: number, scheduledAt: string) =>
+  getBookingDetail: (id: string | number) => apiClient.get(`/customer/bookings/${id}`),
+  cancelBooking: (id: string | number) => apiClient.put(`/customer/bookings/${id}/cancel`),
+  rescheduleBooking: (id: string | number, scheduledAt: string) =>
     apiClient.put(`/customer/bookings/${id}/reschedule`, { scheduledAt }),
-  getSlotAvailability: (date: string, serviceId: number) =>
-    apiClient.get('/customer/bookings/slots', { params: { date, serviceId } }),
+  getSlotAvailability: (date: string, serviceId?: string | number) =>
+    apiClient.get('/customer/bookings/slots', { params: { date, ...(serviceId ? { serviceId } : {}) } }),
   previewBooking: (data: any) => apiClient.post('/customer/bookings/preview', data),
   createBooking: (data: any) => apiClient.post('/customer/bookings', data),
-  addServiceToBooking: (bookingId: number, serviceId: number) =>
+  addServiceToBooking: (bookingId: string | number, serviceId: string | number) =>
     apiClient.post(`/customer/bookings/${bookingId}/services/${serviceId}`),
+  removeServiceFromBooking: (bookingId: string | number, itemId: string | number) =>
+    apiClient.delete(`/customer/bookings/${bookingId}/items/${itemId}`),
 
   // Points & Rewards
   getRewardBalance: () => apiClient.get('/customer/points/balance'),
   getRewardLedger: () => apiClient.get('/customer/points/history'),
   getAvailableRewards: () => apiClient.get('/customer/rewards/available'),
   getAllRewards: () => apiClient.get('/customer/rewards/all'),
-  redeemReward: (id: number) => apiClient.post(`/customer/rewards/redeem/${id}`),
+  redeemReward: (id: string | number) => apiClient.post(`/customer/rewards/redeem/${id}`),
   getMyVouchers: () => apiClient.get('/customer/rewards/my-vouchers'),
 
   // Cart
   getCart: () => apiClient.get('/customer/cart'),
   addToCart: (data: any) => apiClient.post('/customer/cart/items', data),
-  updateCartItem: (itemId: number, data: any) => apiClient.put(`/customer/cart/items/${itemId}`, data),
-  removeCartItem: (itemId: number) => apiClient.delete(`/customer/cart/items/${itemId}`),
+  updateCartItem: (itemId: string | number, data: any) => apiClient.put(`/customer/cart/items/${itemId}`, data),
+  removeCartItem: (itemId: string | number) => apiClient.delete(`/customer/cart/items/${itemId}`),
   clearCart: () => apiClient.delete('/customer/cart'),
-  setCartStore: (storeId: number) => apiClient.put(`/customer/cart/store/${storeId}`),
+  setCartStore: (storeId: string | number) => apiClient.put(`/customer/cart/store/${storeId}`),
+  checkoutCart: (data: any) => apiClient.post('/customer/cart/checkout', data),
 
   // Payments
   checkoutPayment: (data: any) => apiClient.post('/customer/payments/checkout', data),
   createRazorpayOrder: (data: any) => apiClient.post('/customer/payments/razorpay/create-order', data),
   verifyRazorpayPayment: (data: any) => apiClient.post('/customer/payments/razorpay/verify', data),
-  switchToPayAtSalon: (bookingId: number) => apiClient.post('/customer/payments/switch-to-salon', { bookingId }),
+  switchToPayAtSalon: (bookingId: string | number) => apiClient.post('/customer/payments/switch-to-salon', { bookingId }),
   getMyPayments: (page = 0, size = 20) => apiClient.get(`/customer/payments?page=${page}&size=${size}`),
 
   // Notifications

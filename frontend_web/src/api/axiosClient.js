@@ -2,7 +2,7 @@ import axios from "axios";
 import { toastEmitter } from "../utils/toastEmitter";
 
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8008/api/v1",
+  baseURL: import.meta.env.VITE_API_URL || "/api/v1",
 });
 
 // Attach token to every outgoing request

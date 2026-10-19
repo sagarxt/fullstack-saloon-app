@@ -22,7 +22,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
@@ -42,6 +41,43 @@ public class CartServiceImpl implements CartService {
     private final BookingTimelineService bookingTimelineService;
     private final BranchCatalogService branchCatalogService;
     private final LoyaltyConfigService loyaltyConfigService;
+
+    public CartServiceImpl(
+            CartRepository cartRepository,
+            CartItemRepository cartItemRepository,
+            UserRepository userRepository,
+            ServiceRepository serviceRepository,
+            ProductRepository productRepository,
+            StoreRepository storeRepository,
+            CouponRepository couponRepository,
+            RedeemedVoucherRepository redeemedVoucherRepository,
+            BookingRepository bookingRepository,
+            BookingItemRepository bookingItemRepository,
+            BookingProductRepository bookingProductRepository,
+            PaymentRepository paymentRepository,
+            NotificationRepository notificationRepository,
+            EmailService emailService,
+            BookingTimelineService bookingTimelineService,
+            BranchCatalogService branchCatalogService,
+            LoyaltyConfigService loyaltyConfigService) {
+        this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.userRepository = userRepository;
+        this.serviceRepository = serviceRepository;
+        this.productRepository = productRepository;
+        this.storeRepository = storeRepository;
+        this.couponRepository = couponRepository;
+        this.redeemedVoucherRepository = redeemedVoucherRepository;
+        this.bookingRepository = bookingRepository;
+        this.bookingItemRepository = bookingItemRepository;
+        this.bookingProductRepository = bookingProductRepository;
+        this.paymentRepository = paymentRepository;
+        this.notificationRepository = notificationRepository;
+        this.emailService = emailService;
+        this.bookingTimelineService = bookingTimelineService;
+        this.branchCatalogService = branchCatalogService;
+        this.loyaltyConfigService = loyaltyConfigService;
+    }
 
     /* =====================================================
        GET OR CREATE CART
@@ -348,15 +384,17 @@ public class CartServiceImpl implements CartService {
         int totalDuration = 0;
         for (CartItem ci : serviceItems) {
             int qty = ci.getQuantity() != null && ci.getQuantity() > 0 ? ci.getQuantity() : 1;
-            servicesTotal += ci.getService().getPrice() * qty;
-            int dur = ci.getService().getDurationMinutes() != null ? ci.getService().getDurationMinutes() : 30;
+            double unitPrice = ci.getSubServicePrice() != null ? ci.getSubServicePrice() : (ci.getService() != null && ci.getService().getPrice() != null ? ci.getService().getPrice() : 0.0);
+            servicesTotal += unitPrice * qty;
+            int dur = ci.getSubServiceDuration() != null ? ci.getSubServiceDuration() : (ci.getService() != null && ci.getService().getDurationMinutes() != null ? ci.getService().getDurationMinutes() : 30);
             totalDuration += dur * qty;
         }
 
         double productsTotal = 0.0;
         for (CartItem ci : productItems) {
             int qty = ci.getQuantity() != null && ci.getQuantity() > 0 ? ci.getQuantity() : 1;
-            productsTotal += ci.getProduct().getPrice() * qty;
+            double unitPrice = ci.getProduct() != null && ci.getProduct().getPrice() != null ? ci.getProduct().getPrice() : 0.0;
+            productsTotal += unitPrice * qty;
         }
 
         double grossTotal = servicesTotal + productsTotal;
@@ -404,32 +442,79 @@ public class CartServiceImpl implements CartService {
                     throw new RuntimeException("Coupon '" + c.getCode() + "' is exclusively reserved for members of: " + String.join(", ", c.getApplicableUserGroups()));
                 }
             }
-            if (c.getMinAmount() != null && grossTotal < c.getMinAmount()) {
-                throw new RuntimeException("Order total ₹" + grossTotal + " does not meet coupon minimum of ₹" + c.getMinAmount());
-            }
 
             final java.util.List<String> eligibleCats = c.getEligibleCategories();
-            if (eligibleCats != null && !eligibleCats.isEmpty()) {
-                boolean hasEligibleItem = cart.getItems().stream().anyMatch(item -> {
-                    if (item.getService() != null && item.getService().getCategory() != null) {
-                        String catName = item.getService().getCategory().getName();
-                        return catName != null && eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(catName));
+            boolean hasSpecificCategories = eligibleCats != null && !eligibleCats.isEmpty()
+                    && eligibleCats.stream().noneMatch(ec -> ec.trim().equalsIgnoreCase("ALL"));
+
+            if (hasSpecificCategories) {
+                double eligibleCategoryTotal = 0.0;
+                int eligibleItemCount = 0;
+
+                for (CartItem ci : cart.getItems()) {
+                    int qty = ci.getQuantity() != null && ci.getQuantity() > 0 ? ci.getQuantity() : 1;
+                    boolean matchesCategory = false;
+
+                    if (ci.getService() != null && ci.getService().getCategory() != null) {
+                        String catName = ci.getService().getCategory().getName();
+                        String catId = ci.getService().getCategory().getId() != null ? ci.getService().getCategory().getId().toString() : "";
+                        matchesCategory = eligibleCats.stream().anyMatch(ec -> {
+                            String cleanEc = ec.trim();
+                            return (catName != null && cleanEc.equalsIgnoreCase(catName))
+                                    || cleanEc.equalsIgnoreCase(catId)
+                                    || (catName != null && (catName.toLowerCase().contains(cleanEc.toLowerCase()) || cleanEc.toLowerCase().contains(catName.toLowerCase())));
+                        });
+                    } else if (ci.getProduct() != null && ci.getProduct().getCategory() != null) {
+                        String prodCat = ci.getProduct().getCategory();
+                        matchesCategory = eligibleCats.stream().anyMatch(ec -> {
+                            String cleanEc = ec.trim();
+                            return cleanEc.equalsIgnoreCase(prodCat)
+                                    || prodCat.toLowerCase().contains(cleanEc.toLowerCase())
+                                    || cleanEc.toLowerCase().contains(prodCat.toLowerCase());
+                        });
                     }
-                    if (item.getProduct() != null && item.getProduct().getCategory() != null) {
-                        String catName = item.getProduct().getCategory();
-                        return catName != null && eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(catName));
+
+                    if (matchesCategory) {
+                        eligibleItemCount += qty;
+                        double itemPrice = 0.0;
+                        if (ci.getItemType() == CartItemType.SERVICE && ci.getService() != null) {
+                            itemPrice = ci.getSubServicePrice() != null ? ci.getSubServicePrice() : (ci.getService().getPrice() != null ? ci.getService().getPrice() : 0.0);
+                        } else if (ci.getItemType() == CartItemType.PRODUCT && ci.getProduct() != null) {
+                            itemPrice = ci.getProduct().getPrice() != null ? ci.getProduct().getPrice() : 0.0;
+                        }
+                        eligibleCategoryTotal += itemPrice * qty;
                     }
-                    return false;
-                });
-                if (!hasEligibleItem) {
+                }
+
+                if (eligibleItemCount == 0) {
                     throw new RuntimeException("Coupon '" + c.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
                 }
-            }
 
-            coupon = c;
-            discount = c.getDiscount() != null ? c.getDiscount() : 0.0;
-            if (c.getMaxDiscount() != null && discount > c.getMaxDiscount()) {
-                discount = c.getMaxDiscount();
+                if (c.getMinAmount() != null && eligibleCategoryTotal < c.getMinAmount()) {
+                    throw new RuntimeException("Combined total for eligible categories (" + String.join(", ", eligibleCats) + ") is ₹" + eligibleCategoryTotal + ", which does not meet coupon minimum of ₹" + c.getMinAmount());
+                }
+
+                coupon = c;
+                discount = c.getDiscount() != null ? c.getDiscount() : 0.0;
+                if (c.getMaxDiscount() != null && discount > c.getMaxDiscount()) {
+                    discount = c.getMaxDiscount();
+                }
+                if (discount > eligibleCategoryTotal) {
+                    discount = eligibleCategoryTotal;
+                }
+            } else {
+                if (c.getMinAmount() != null && grossTotal < c.getMinAmount()) {
+                    throw new RuntimeException("Order total ₹" + grossTotal + " does not meet coupon minimum of ₹" + c.getMinAmount());
+                }
+
+                coupon = c;
+                discount = c.getDiscount() != null ? c.getDiscount() : 0.0;
+                if (c.getMaxDiscount() != null && discount > c.getMaxDiscount()) {
+                    discount = c.getMaxDiscount();
+                }
+                if (discount > grossTotal) {
+                    discount = grossTotal;
+                }
             }
         } else if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
             RedeemedVoucher voucher = redeemedVoucherRepository.findByVoucherCode(request.getVoucherCode().trim())
@@ -639,14 +724,8 @@ public class CartServiceImpl implements CartService {
                     .build();
             notificationRepository.save(notification);
 
-            emailService.sendBookingConfirmationEmail(
-                    user.getEmail(),
-                    user.getName(),
-                    savedBooking.getBookingCode(),
-                    serviceNames,
-                    savedBooking.getScheduledAt(),
-                    savedBooking.getPricePaid()
-            );
+            com.loyalty_program_app.backend.dto.mail.BookingEmailDto emailDto = com.loyalty_program_app.backend.dto.mail.BookingEmailDto.fromBooking(savedBooking);
+            emailService.sendBookingConfirmationEmail(emailDto);
         }
 
         // CLEAR DB CART
@@ -691,12 +770,35 @@ public class CartServiceImpl implements CartService {
                 int dur = item.getSubServiceDuration() != null ? item.getSubServiceDuration() : (s.getDurationMinutes() != null ? s.getDurationMinutes() : 0);
                 totalDuration += dur * qty;
 
+                String sName = (item.getSubServiceName() != null && !item.getSubServiceName().isBlank())
+                        ? s.getName() + " (" + item.getSubServiceName() + ")"
+                        : s.getName();
+
+                Double subMrp = null;
+                if (item.getSubServiceName() != null && s.getSubServices() != null) {
+                    for (com.loyalty_program_app.backend.model.SubService sub : s.getSubServices()) {
+                        if (item.getSubServiceName().equalsIgnoreCase(sub.getName())) {
+                            if (sub.getMrp() != null && sub.getMrp() > 0) {
+                                subMrp = sub.getMrp();
+                            }
+                            break;
+                        }
+                    }
+                }
+                Double effectiveMrp = subMrp != null ? subMrp : (s.getMrp() != null ? s.getMrp() : unitPrice);
+                if (effectiveMrp < unitPrice) {
+                    effectiveMrp = unitPrice;
+                }
+
                 builder.serviceId(s.getId())
-                        .serviceName(s.getName())
+                        .serviceName(sName)
                         .subServiceName(item.getSubServiceName())
                         .subServicePrice(item.getSubServicePrice())
                         .subServiceDuration(item.getSubServiceDuration())
+                        .subServiceMrp(subMrp)
                         .servicePrice(unitPrice)
+                        .serviceMrp(effectiveMrp)
+                        .mrp(effectiveMrp)
                         .serviceDurationMinutes(dur)
                         .serviceGender(s.getGender() != null ? s.getGender().name() : null)
                         .serviceCategoryName(s.getCategory() != null ? s.getCategory().getName() : null)
@@ -709,12 +811,14 @@ public class CartServiceImpl implements CartService {
                 double unitPrice = p.getPrice() != null ? p.getPrice() : 0.0;
                 double itemTotal = unitPrice * qty;
                 productsSubtotal += itemTotal;
+                Double pMrp = p.getMrp() != null && p.getMrp() >= unitPrice ? p.getMrp() : unitPrice;
 
                 builder.productId(p.getId())
                         .productName(p.getName())
                         .productBrand(p.getBrand())
                         .productPrice(unitPrice)
-                        .productMrp(p.getMrp())
+                        .productMrp(pMrp)
+                        .mrp(pMrp)
                         .productImage(p.getImage())
                         .productVolume(p.getVolumeOrSize())
                         .productCategory(p.getCategory())
@@ -726,7 +830,7 @@ public class CartServiceImpl implements CartService {
         }
 
         double totalAmount = servicesSubtotal + productsSubtotal;
-        int estimatedPoints = (int) Math.floor(totalAmount / 100);
+        int estimatedPoints = (int) Math.round(totalAmount / 100.0);
 
         Store store = cart.getStore();
 

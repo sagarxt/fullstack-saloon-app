@@ -177,14 +177,8 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
             if (serviceNames.isBlank()) {
                 serviceNames = "Salon Appointment";
             }
-            emailService.sendBookingConfirmationEmail(
-                    user.getEmail(),
-                    user.getName(),
-                    booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString(),
-                    serviceNames,
-                    booking.getScheduledAt(),
-                    booking.getPricePaid()
-            );
+            com.loyalty_program_app.backend.dto.mail.BookingEmailDto emailDto = com.loyalty_program_app.backend.dto.mail.BookingEmailDto.fromBooking(booking);
+            emailService.sendBookingConfirmationEmail(emailDto);
         } catch (Exception e) {
             log.error("Failed to send booking confirmation email after payment: {}", e.getMessage());
         }
@@ -388,14 +382,8 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
             if (serviceNames.isBlank()) {
                 serviceNames = "Salon Appointment";
             }
-            emailService.sendBookingConfirmationEmail(
-                    user.getEmail(),
-                    user.getName(),
-                    savedBooking.getBookingCode(),
-                    serviceNames,
-                    savedBooking.getScheduledAt(),
-                    savedBooking.getPricePaid()
-            );
+            com.loyalty_program_app.backend.dto.mail.BookingEmailDto emailDto = com.loyalty_program_app.backend.dto.mail.BookingEmailDto.fromBooking(savedBooking);
+            emailService.sendBookingConfirmationEmail(emailDto);
         } catch (Exception e) {
             log.error("Failed to send confirmation email on switch to salon: {}", e.getMessage());
         }

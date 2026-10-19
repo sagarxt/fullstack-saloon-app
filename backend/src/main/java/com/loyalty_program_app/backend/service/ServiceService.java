@@ -115,6 +115,8 @@ public class ServiceService {
                     .map(sub -> com.loyalty_program_app.backend.dto.service.SubServiceDto.builder()
                             .id(sub.getId())
                             .name(sub.getName())
+                            .description(sub.getDescription())
+                            .mrp(sub.getMrp())
                             .price(sub.getPrice())
                             .durationMinutes(sub.getDurationMinutes())
                             .active(sub.isActive())

@@ -49,7 +49,7 @@ export default function BookingCard({ booking, refresh }) {
   const rewardCoins =
     booking.expectedRewardPoints != null && booking.expectedRewardPoints > 0
       ? booking.expectedRewardPoints
-      : Math.floor((booking.pricePaid || 0) / 100);
+      : Math.max(1, Math.round((booking.pricePaid || 0) / 100));
 
   const isTodayBooking = (() => {
     if (!booking.scheduledAt) return false;

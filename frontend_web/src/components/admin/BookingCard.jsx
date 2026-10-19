@@ -4,6 +4,7 @@ import { updateBookingStatus } from "../../api/admin";
 import CustomerProfileModal from "../modals/CustomerProfileModal";
 import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, MapPin, User, Trash2 } from "lucide-react";
 import { forceDeleteBookingApi } from "../../api/maintenance";
+import { showConfirm, showAlert } from "../../context/ConfirmContext";
 
 export default function BookingCard({ booking, refresh }) {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -16,6 +17,11 @@ export default function BookingCard({ booking, refresh }) {
       refresh();
     } catch (err) {
       console.error(err);
+      await showAlert({
+        title: "Action Failed",
+        message: err.response?.data?.message || "Failed to update booking status.",
+        variant: "danger",
+      });
     } finally {
       setLoading(false);
     }
@@ -145,19 +151,29 @@ export default function BookingCard({ booking, refresh }) {
           <button
             disabled={loading}
             onClick={async () => {
-              if (window.confirm(`FORCE DELETE booking ${booking.bookingCode || ""}? This permanently deletes the appointment from the database.`)) {
-                try {
-                  setLoading(true);
-                  await forceDeleteBookingApi(booking.id);
-                  if (refresh) refresh();
-                } catch (err) {
-                  alert(err.response?.data?.message || "Failed to force delete booking.");
-                } finally {
-                  setLoading(false);
-                }
+              const ok = await showConfirm({
+                title: "Force Delete Booking",
+                message: `Are you sure you want to FORCE DELETE booking ${booking.bookingCode || ""}? This permanently deletes the appointment from the database.`,
+                confirmText: "Force Delete Booking",
+                variant: "danger",
+              });
+              if (!ok) return;
+
+              try {
+                setLoading(true);
+                await forceDeleteBookingApi(booking.id);
+                if (refresh) refresh();
+              } catch (err) {
+                await showAlert({
+                  title: "Deletion Failed",
+                  message: err.response?.data?.message || "Failed to force delete booking.",
+                  variant: "danger",
+                });
+              } finally {
+                setLoading(false);
               }
             }}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition shadow-2xs"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs hover:bg-red-700 transition shadow-2xs cursor-pointer active:scale-95"
             title="Permanently remove booking from database"
           >
             <Trash2 className="w-3.5 h-3.5" />

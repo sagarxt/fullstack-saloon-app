@@ -41,7 +41,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
        =============================== */
     @Query("""
         SELECT b FROM Booking b
-        WHERE b.status IN ('PENDING', 'CONFIRMED', 'MODIFIED')
+        WHERE b.status IN ('PENDING', 'CONFIRMED', 'MODIFIED', 'IN_PROGRESS')
     """)
     List<Booking> findAllActiveBookings();
 }

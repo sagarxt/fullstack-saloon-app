@@ -145,13 +145,18 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
                 .build();
         notificationRepository.save(notif);
 
-        // Real-time Email
-        emailService.sendRewardRedeemedEmail(
+        // Real-time Rich Voucher Email
+        String eligible = reward.getServiceName() != null && !reward.getServiceName().isBlank()
+                ? reward.getServiceName() : "All Salon Services & Treatments";
+        emailService.sendVoucherClaimedEmail(
                 user.getEmail(),
                 user.getName(),
+                voucherCode,
                 reward.getTitle(),
-                pointsToDeduct,
-                user.getPoints()
+                reward.getDescription(),
+                reward.getDiscountPercent() != null ? reward.getDiscountPercent() : 100,
+                expiresAt,
+                eligible
         );
 
         return toDto(reward);

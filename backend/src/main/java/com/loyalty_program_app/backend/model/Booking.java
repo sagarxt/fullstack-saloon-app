@@ -84,6 +84,9 @@ public class Booking {
     private Boolean reminderOneHourSent = false;
 
     @Builder.Default
+    private Boolean reminderThirtyMinSent = false;
+
+    @Builder.Default
     private Boolean reminderStartSent = false;
 
     @Builder.Default

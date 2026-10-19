@@ -19,7 +19,7 @@ import {
   checkoutPayment,
   switchToPayAtSalon,
 } from "../../api/customer";
-import { extractList } from "../../utils/dataHelper";
+import { extractList, formatServiceName } from "../../utils/dataHelper";
 import {
   Calendar,
   Clock,
@@ -428,6 +428,19 @@ export default function CheckoutPage() {
 
   const finalPayable = Math.max(totalAmount - discountAmount, 0);
 
+  const totalMrp = useMemo(() => {
+    return (items || []).reduce((sum, item) => {
+      const unavailableInfo = unavailableItemsMap[item.id];
+      if (unavailableInfo) return sum;
+      const unit = Number(item.unitPrice || item.price || 0);
+      const rawMrp = Number(item.subServiceMrp || item.mrp || item.serviceMrp || item.productMrp || 0);
+      const mrp = Math.max(rawMrp, unit);
+      return sum + (mrp * (item.quantity || 1));
+    }, 0);
+  }, [items, unavailableItemsMap]);
+
+  const mrpSavings = Math.max(0, totalMrp - totalAmount);
+
   // Apply Coupon
   const handleApplyCoupon = async () => {
     if (!couponCodeInput.trim()) {
@@ -441,17 +454,34 @@ export default function CheckoutPage() {
       if (!coupon || !coupon.active) {
         throw new Error("Coupon is invalid or inactive");
       }
-      if (coupon.minAmount && totalAmount < coupon.minAmount) {
-        throw new Error(`Order total ₹${totalAmount} does not meet coupon minimum of ₹${coupon.minAmount}`);
-      }
-      if (coupon.eligibleCategories && coupon.eligibleCategories.length > 0) {
-        const hasEligible = cartItems.some(item => {
-          const catName = item.service?.category?.name || item.product?.category || item.category;
-          return catName && coupon.eligibleCategories.some(ec => ec.toLowerCase() === catName.toLowerCase());
+      const hasSpecificCategories = coupon.eligibleCategories && 
+        coupon.eligibleCategories.length > 0 && 
+        !coupon.eligibleCategories.some(ec => ec.trim().toUpperCase() === "ALL");
+
+      if (hasSpecificCategories) {
+        const eligibleItems = cartItems.filter(item => {
+          const catName = item.service?.category?.name || item.serviceCategoryName || item.product?.category || item.category;
+          const catId = item.service?.category?.id || item.service?.categoryId;
+          return catName && coupon.eligibleCategories.some(ec => {
+            const clean = ec.trim().toLowerCase();
+            return clean === catName.toLowerCase() ||
+                   (catId && String(catId).toLowerCase() === clean) ||
+                   catName.toLowerCase().includes(clean) ||
+                   clean.includes(catName.toLowerCase());
+          });
         });
-        if (!hasEligible) {
-          throw new Error(`Coupon '${coupon.code}' is only valid for: ${coupon.eligibleCategories.join(", ")}`);
+
+        if (eligibleItems.length === 0) {
+          throw new Error(`Coupon '${coupon.code}' is only valid for categories: ${coupon.eligibleCategories.join(", ")}`);
         }
+
+        const eligibleTotal = eligibleItems.reduce((sum, item) => sum + (Number(item.price || item.unitPrice || 0) * (item.quantity || 1)), 0);
+
+        if (coupon.minAmount && eligibleTotal < coupon.minAmount) {
+          throw new Error(`Combined total for eligible categories (${coupon.eligibleCategories.join(", ")}) is ₹${eligibleTotal}, which does not meet coupon minimum of ₹${coupon.minAmount}`);
+        }
+      } else if (coupon.minAmount && totalAmount < coupon.minAmount) {
+        throw new Error(`Order total ₹${totalAmount} does not meet coupon minimum of ₹${coupon.minAmount}`);
       }
       setAppliedCoupon(coupon);
       setAppliedVoucher(null);
@@ -769,46 +799,47 @@ export default function CheckoutPage() {
           <form onSubmit={handleSubmitCheckout} className="grid lg:grid-cols-12 gap-5 items-start">
             {/* LEFT COLUMN: SCHEDULING, REDEMPTION & PAYMENT */}
             <div className="lg:col-span-8 space-y-4">
-              {/* 1. SALON LOCATION */}
-              <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-soft space-y-4">
-                <div className="flex items-center gap-2 border-b border-groomish-slate/10 pb-3">
-                  <Store className="w-4 h-4 text-groomish-orange" />
-                  <h2 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate">
-                    1. Salon Location & Branch
-                  </h2>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-groomish-slate">
-                      Choose Salon Branch
-                    </label>
-                    {checkingBranch && (
-                      <span className="text-[11px] font-bold text-groomish-orange flex items-center gap-1">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Checking branch catalog...
-                      </span>
+              {/* 1. SALON LOCATION & BRANCH */}
+              <div className="bg-white rounded-3xl p-4 sm:p-5 border border-groomish-slate/10 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-groomish-cream text-groomish-orange flex items-center justify-center shrink-0">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-groomish-slate/50 block">
+                      Assigned Salon Branch
+                    </span>
+                    <span className="text-xs font-extrabold text-groomish-slate">
+                      {stores.find((s) => s.id === selectedStoreId)?.name || selectedStore?.name || "Select Salon Location"}
+                    </span>
+                    {(stores.find((s) => s.id === selectedStoreId)?.address || selectedStore?.address) && (
+                      <p className="text-[11px] text-groomish-slate/60 truncate max-w-sm">
+                        {stores.find((s) => s.id === selectedStoreId)?.address || selectedStore.address}
+                      </p>
                     )}
                   </div>
-                  <CustomSelect
-                    value={selectedStoreId}
-                    onChange={(e) => handleStoreBranchChange(e.target.value)}
-                    disabled={checkingBranch}
-                    className="py-2.5 text-xs bg-groomish-cream rounded-xl"
-                    options={(stores || []).map((s) => ({
-                      value: s.id,
-                      label: `${s.name} — ${s.city} (${s.openingTime || "09:00"} - ${s.closingTime || "21:30"})`,
-                    }))}
-                  />
-                  {selectedStore && (
-                    <p className="text-[11px] text-groomish-slate/60 flex items-center gap-1.5">
-                      <span>Default branch synced with Navbar:</span>
-                      <strong className="text-groomish-slate">
-                        {stores.find((s) => s.id === selectedStoreId)?.name || selectedStore.name}
-                      </strong>
-                    </p>
-                  )}
                 </div>
+
+                {stores && stores.length > 0 && (
+                  <div className="w-full sm:w-64 space-y-1">
+                    {checkingBranch && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-groomish-orange font-bold">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>Checking branch catalog...</span>
+                      </div>
+                    )}
+                    <CustomSelect
+                      value={selectedStoreId}
+                      onChange={(e) => handleStoreBranchChange(e.target.value)}
+                      disabled={checkingBranch}
+                      className="py-1.5 text-xs bg-groomish-cream rounded-xl border-transparent"
+                      options={(stores || []).map((s) => ({
+                        value: s.id,
+                        label: `${s.name} (${s.city})`,
+                      }))}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* 2. DATE & SLOT SELECTION */}
@@ -907,7 +938,7 @@ export default function CheckoutPage() {
                               ? "Fully booked slot across stylists"
                               : `Book slot at ${formatSlot12Hour(time)}`
                           }
-                          className={`py-2.5 px-2 rounded-xl text-xs font-bold transition flex flex-col items-center justify-center gap-0.5 ${
+                          className={`py-2.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center ${
                             isSelected
                               ? "bg-groomish-orange text-white shadow-glowOrange scale-102"
                               : isUnavailable
@@ -915,15 +946,10 @@ export default function CheckoutPage() {
                               : "bg-groomish-cream text-groomish-slate hover:bg-groomish-creamDark"
                           }`}
                         >
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <Clock className="w-3 h-3 shrink-0" />
                             <span className="font-mono text-[11px] font-extrabold">{formatSlot12Hour(time)}</span>
                           </div>
-                          {isSelected && (
-                            <span className="text-[9px] uppercase tracking-wider font-black text-white/90">
-                              Selected
-                            </span>
-                          )}
                         </button>
                       );
                     })}
@@ -1125,7 +1151,9 @@ export default function CheckoutPage() {
                               unavailableInfo ? "line-through text-groomish-crimson" : ""
                             }`}
                           >
-                            {item.serviceName || item.productName}
+                            {item.itemType === "SERVICE"
+                              ? formatServiceName(item.serviceName, item.subServiceName)
+                              : item.productName || item.serviceName}
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                             <span className="text-[10px] text-groomish-slate/60">
@@ -1145,13 +1173,20 @@ export default function CheckoutPage() {
                             )}
                           </div>
                         </div>
-                        <span
-                          className={`font-extrabold shrink-0 ${
-                            unavailableInfo ? "text-groomish-crimson text-[11px]" : ""
-                          }`}
-                        >
-                          {unavailableInfo ? "Unavailable" : `₹${item.totalPrice}`}
-                        </span>
+                        <div className="text-right shrink-0">
+                          <span
+                            className={`font-extrabold block ${
+                              unavailableInfo ? "text-groomish-crimson text-[11px]" : ""
+                            }`}
+                          >
+                            {unavailableInfo ? "Unavailable" : `₹${item.totalPrice}`}
+                          </span>
+                          {!unavailableInfo && (item.subServiceMrp || item.mrp || item.serviceMrp || item.productMrp) > item.unitPrice && (
+                            <span className="text-[10px] text-groomish-slate/40 line-through block">
+                              ₹{(item.subServiceMrp || item.mrp || item.serviceMrp || item.productMrp) * (item.quantity || 1)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -1160,15 +1195,37 @@ export default function CheckoutPage() {
                 {/* Price Breakdown */}
                 <div className="pt-3 border-t border-groomish-slate/10 space-y-2 text-xs text-groomish-slate">
                   <div className="flex items-center justify-between">
-                    <span className="text-groomish-slate/70">Subtotal</span>
-                    <span className="font-bold">₹{totalAmount}</span>
+                    <span className="text-groomish-slate/70">
+                      Subtotal {mrpSavings > 0 ? "(Total MRP)" : ""}
+                    </span>
+                    <span className="font-bold">₹{totalMrp > totalAmount ? totalMrp : totalAmount}</span>
                   </div>
 
-                  {discountAmount > 0 && (
+                  {mrpSavings > 0 && (
                     <div className="flex items-center justify-between text-groomish-green font-bold">
                       <span className="flex items-center gap-1">
                         <Tag className="w-3.5 h-3.5" />
-                        <span>Discount Applied</span>
+                        <span>Discount on MRP</span>
+                      </span>
+                      <span>- ₹{mrpSavings}</span>
+                    </div>
+                  )}
+
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between text-groomish-green font-bold">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>Coupon ({appliedCoupon.code})</span>
+                      </span>
+                      <span>- ₹{discountAmount}</span>
+                    </div>
+                  )}
+
+                  {appliedVoucher && (
+                    <div className="flex items-center justify-between text-groomish-green font-bold">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>Voucher ({appliedVoucher.code || appliedVoucher.title || "VIP"})</span>
                       </span>
                       <span>- ₹{discountAmount}</span>
                     </div>
@@ -1178,6 +1235,13 @@ export default function CheckoutPage() {
                     <span className="text-groomish-slate/70">Salon Hygiene & Taxes</span>
                     <span className="text-groomish-green font-bold text-[11px]">FREE</span>
                   </div>
+
+                  {(mrpSavings + discountAmount) > 0 && (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-[11px] font-bold flex items-center justify-between">
+                      <span>Total Savings on this appointment</span>
+                      <span className="text-emerald-700 font-extrabold text-xs">₹{mrpSavings + discountAmount} OFF</span>
+                    </div>
+                  )}
 
                   <div className="pt-3 border-t border-groomish-slate/10 flex items-baseline justify-between">
                     <span className="font-heading font-extrabold text-base text-groomish-slate">

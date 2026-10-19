@@ -15,4 +15,7 @@ public class BillItemDto {
     private Integer quantity;
     private Double unitPrice;
     private Double totalPrice;
+    private Double unitMrp;
+    private Double totalMrp;
+    private String image;
 }

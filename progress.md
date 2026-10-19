@@ -559,3 +559,38 @@
    - Added `Bypass-Tunnel-Reminder: true` headers in Axios client to bypass Localtunnel confirmation screens.
    - Configured `.env` with `EXPO_PUBLIC_API_URL` for seamless remote mobile testing.
    - Configured Spring Boot CORS (`CorsConfig.java`) with wildcard origin patterns to support web, tunnel, and mobile clients.
+
+---
+
+### Phase H: Loyalty Coin Rounding, Transparent Savings Stacking, and Cross-Platform Checkout Hardening (Completed - October 20, 2026)
+1. **Dynamic Groom Coin Rounding Rule (Backend, Web, Mobile)**:
+   - Updated reward calculation to follow standard rounding: 1 coin per ₹100 of shopping, rounding up when remainder is >= 50:
+     - ₹100 – ₹149 -> 1 Groom Coin
+     - ₹150 – ₹249 -> 2 Groom Coins
+     - ₹250 – ₹349 -> 3 Groom Coins (e.g., ₹299 -> 3 coins, ₹249 -> 2 coins)
+   - Synchronized across Backend (`CartServiceImpl.java`, `CustomerRewardServiceImpl.java`, `BookingAdminServiceImpl.java`, `StaffBookingServiceImpl.java`), Frontend Web (`GroomCoinContext.jsx`, `dataHelper.js`, `CheckoutPage.jsx`), and Mobile App (`cart.tsx`, `CartContext.tsx`).
+
+2. **Transparent MRP Savings & Promo Coupon Stacking**:
+   - In Checkout & Appointment Scheduling on both Web and Mobile, normal discount on MRP is kept visible alongside applied promo coupons.
+   - Shows original MRP, discounted price, coupon savings, and total overall savings.
+   - Synchronized across confirmation emails (`BookingEmailDto.java`, `EmailServiceImpl.java`) with a dedicated "Total Savings on this Order" highlight.
+
+3. **Multi-Service Category-Combined Coupon Eligibility (`CartServiceImpl.java`)**:
+   - Fixed coupon validation for category-specific discounts when purchasing multiple services/items.
+   - If a coupon targets specific categories, the combined total value of all matching category items is summed to evaluate `minOrderAmount`, allowing coupons to apply properly when combining multiple services.
+
+4. **Web Services "View Options" Navigation Flow (`ServicesPage.jsx`, `CategoryDetailPage.jsx`, `ServicesSection.jsx`)**:
+   - When a service has more than one sub-service variation (`subServices.length > 1`), the inline "Choose Option:" text and horizontal option chips are hidden on the service card.
+   - The card displays the formatted price range and a clean **"View Options"** button that navigates directly to the dedicated treatment page (`/services/:id`) for full configuration.
+   - Single or zero sub-service treatments retain direct "Add Service" / "View Cart" actions.
+
+5. **Mobile Appointment Slot Selection (No Row Width Jumping) (`mobile_app/app/(tabs)/cart.tsx`)**:
+   - Removed checkmark icons from selected slot cards to ensure cards maintain identical fixed dimensions across unselected, selected, and disabled states.
+   - Selected slots highlight with solid `Colors.orange` background and bold white text with zero layout shifts or row expansion.
+
+6. **Mobile Razorpay NetBanking & Test Environment Gateway Interception (`RazorpayCheckoutModal.tsx`)**:
+   - Enabled `setSupportMultipleWindows={false}`, `javaScriptCanOpenWindowsAutomatically={true}`, `thirdPartyCookiesEnabled={true}`, and overridden `window.open` inside the WebView to prevent Android WebView from dropping bank simulation redirect popups.
+   - In test mode, intercepted test bank simulation errors ("Please use another method") to approve test transactions via `order_sim_...` credentials, which Spring Boot backend natively recognizes and approves without HMAC signature rejection.
+   - Added a top test banner with a **`Pass Test Mode ✓`** button inside the modal for instant 1-tap testing.
+   - Added automatic stale localtunnel rewrite in `api/client.ts` to seamlessly route Expo mobile requests to the active tunnel.
+

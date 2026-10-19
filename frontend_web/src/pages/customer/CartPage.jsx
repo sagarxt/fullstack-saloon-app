@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -12,7 +12,7 @@ import { useToast } from "../../context/ToastProvider";
 import { useConfirm } from "../../context/ConfirmContext";
 import { storeApi } from "../../api/store";
 import { getPublicServicesApi } from "../../api/service";
-import { extractList } from "../../utils/dataHelper";
+import { extractList, formatServiceName } from "../../utils/dataHelper";
 import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import {
@@ -283,6 +283,16 @@ export default function CartPage() {
     }
   };
 
+  const totalMrp = useMemo(() => {
+    return (items || []).reduce((sum, item) => {
+      const unit = Number(item.unitPrice || item.price || 0);
+      const rawMrp = Number(item.subServiceMrp || item.mrp || item.serviceMrp || item.productMrp || 0);
+      const itemMrp = Math.max(rawMrp, unit);
+      return sum + (itemMrp * (item.quantity || 1));
+    }, 0);
+  }, [items]);
+  const totalSavings = Math.max(0, totalMrp - totalAmount);
+
   return (
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
       <Navbar />
@@ -480,7 +490,7 @@ export default function CartPage() {
                                     )}
                                   </div>
                                   <h3 className={`font-heading font-bold text-sm text-groomish-slate mt-1 truncate ${unavailableInfo ? "line-through text-groomish-crimson" : ""}`}>
-                                    {item.serviceName}
+                                    {formatServiceName(item.serviceName, item.subServiceName)}
                                   </h3>
                                   {item.subServiceName && (
                                     <div className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-0.5 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold border border-amber-200/60">
@@ -502,6 +512,11 @@ export default function CartPage() {
                                 <span className={`text-base font-extrabold block ${unavailableInfo ? "text-groomish-crimson text-xs" : "text-groomish-slate"}`}>
                                   {unavailableInfo ? "Unavailable" : `₹${item.totalPrice}`}
                                 </span>
+                                {(item.mrp || item.serviceMrp) && (item.mrp || item.serviceMrp) > item.unitPrice && !unavailableInfo && (
+                                  <span className="text-[11px] text-groomish-slate/40 line-through block">
+                                    ₹{(item.mrp || item.serviceMrp) * item.quantity}
+                                  </span>
+                                )}
                                 {item.quantity > 1 && !unavailableInfo && (
                                   <span className="text-[11px] text-groomish-slate/40 block">
                                     ₹{item.unitPrice} each
@@ -744,21 +759,34 @@ export default function CartPage() {
                   </h3>
 
                   <div className="space-y-3 text-xs text-groomish-slate">
-                    {servicesCount > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-groomish-slate/70">
-                          Salon Services ({servicesCount})
+                    <div className="flex items-center justify-between">
+                      <span className="text-groomish-slate/70">
+                        Subtotal {totalSavings > 0 ? "(Total MRP)" : ""}
+                      </span>
+                      <span className="font-bold">₹{totalMrp > totalAmount ? totalMrp : totalAmount}</span>
+                    </div>
+
+                    {totalSavings > 0 && (
+                      <div className="flex items-center justify-between text-groomish-green font-bold">
+                        <span className="flex items-center gap-1">
+                          <Tag className="w-3.5 h-3.5" />
+                          <span>Discount on MRP</span>
                         </span>
-                        <span className="font-bold">₹{cart?.servicesSubtotal || 0}</span>
+                        <span>- ₹{totalSavings}</span>
+                      </div>
+                    )}
+
+                    {servicesCount > 0 && (
+                      <div className="flex items-center justify-between text-groomish-slate/60 text-[11px] pt-1">
+                        <span>Salon Services ({servicesCount})</span>
+                        <span>₹{cart?.servicesSubtotal || 0}</span>
                       </div>
                     )}
 
                     {productsCount > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-groomish-slate/70">
-                          Retail Products ({productsCount})
-                        </span>
-                        <span className="font-bold">₹{cart?.productsSubtotal || 0}</span>
+                      <div className="flex items-center justify-between text-groomish-slate/60 text-[11px]">
+                        <span>Retail Products ({productsCount})</span>
+                        <span>₹{cart?.productsSubtotal || 0}</span>
                       </div>
                     )}
 

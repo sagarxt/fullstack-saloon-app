@@ -35,7 +35,7 @@ public class AdminStoreController {
         return ResponseEntity.ok(storeService.updateStore(id, request));
     }
 
-    @PutMapping("/{id}/toggle-status")
+    @RequestMapping(value = {"/{id}/toggle-status", "/{id}/toggle"}, method = {RequestMethod.PUT, RequestMethod.PATCH})
     public ResponseEntity<StoreResponse> toggleStoreStatus(@PathVariable UUID id) {
         return ResponseEntity.ok(storeService.toggleStoreStatus(id));
     }

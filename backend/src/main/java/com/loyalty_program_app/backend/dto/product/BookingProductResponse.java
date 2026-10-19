@@ -19,6 +19,7 @@ public class BookingProductResponse {
     private String volumeOrSize;
     private String image;
     private Double unitPrice;
+    private Double mrp;
     private Integer quantity;
     private Double totalPrice;
 }

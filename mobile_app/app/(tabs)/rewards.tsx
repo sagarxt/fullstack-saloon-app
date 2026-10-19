@@ -6,8 +6,11 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
 import { customerApi } from '../../api/client';
+import { useTheme } from '../../context/ThemeContext';
 import { Colors, Radius, Shadows, Spacing, Typography } from '../../theme/colors';
+import TopHeader from '../../components/TopHeader';
 
 const TIER_MILESTONES = [
   { name: 'SILVER', target: 0, color: Colors.silver, emoji: '🥈', multiplier: '1.0x', perks: 'Standard bookings & OTP receipts' },
@@ -18,6 +21,8 @@ const TIER_MILESTONES = [
 
 export default function RewardsScreen() {
   const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
+  const { isDark, colors } = useTheme();
   const [balance, setBalance] = useState<any>(null);
   const [ledger, setLedger] = useState<any[]>([]);
   const [rewards, setRewards] = useState<any[]>([]);
@@ -29,6 +34,11 @@ export default function RewardsScreen() {
   const [activeTab, setActiveTab] = useState<'overview' | 'redeem' | 'ledger' | 'vouchers'>('overview');
 
   const loadData = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
       const [balRes, ledgerRes, rewardRes, voucherRes] = await Promise.allSettled([
         customerApi.getRewardBalance(),
@@ -36,10 +46,14 @@ export default function RewardsScreen() {
         customerApi.getAvailableRewards(),
         customerApi.getMyVouchers(),
       ]);
+      let userRefCode = '';
       if (balRes.status === 'fulfilled') {
         const d = balRes.value.data;
         setBalance(d);
-        if (d?.referralCode) setReferralCode(d.referralCode);
+        if (d?.referralCode) {
+          userRefCode = d.referralCode;
+          setReferralCode(d.referralCode);
+        }
       }
       if (ledgerRes.status === 'fulfilled') {
         const d = ledgerRes.value.data;
@@ -53,8 +67,8 @@ export default function RewardsScreen() {
         const d = voucherRes.value.data;
         setVouchers(Array.isArray(d) ? d : d?.content || []);
       }
-      // Fallback referral
-      if (!balance?.referralCode) {
+      // Fallback referral only after sign in
+      if (!userRefCode) {
         try {
           const refRes = await customerApi.getReferralCode();
           if (refRes.data?.referralCode) setReferralCode(refRes.data.referralCode);
@@ -62,7 +76,7 @@ export default function RewardsScreen() {
       }
     } catch (_) {}
     finally { setLoading(false); setRefreshing(false); }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -71,7 +85,7 @@ export default function RewardsScreen() {
     loadData();
   }, [loadData]);
 
-  const handleRedeem = async (rewardId: number, cost: number) => {
+  const handleRedeem = async (rewardId: any, cost: number) => {
     const coins = balance?.points || 0;
     if (coins < cost) {
       Alert.alert('Insufficient Coins', `You need ${cost} Groom Coins. You have ${coins}.`);
@@ -120,24 +134,54 @@ export default function RewardsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingWrap}>
+      <View style={[styles.loadingWrap, { backgroundColor: colors.bg }]}>
         <ActivityIndicator size="large" color={Colors.orange} />
       </View>
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
+        {/* ─── UNIVERSAL TOP HEADER ─── */}
+        <TopHeader showBranchSelector={true} />
+
+        <View style={styles.guestContainer}>
+          <View style={styles.guestIconWrap}>
+            <Ionicons name="gift-outline" size={48} color={Colors.orange} />
+          </View>
+          <Text style={[styles.guestTitle, { color: colors.text }]}>Sign in for Rewards & Referral Code</Text>
+          <Text style={[styles.guestSubtitle, { color: colors.textMuted }]}>
+            Earn Groom Coins with every salon visit, level up through VIP tiers, and share your personal referral code to earn reward coins!
+          </Text>
+          <TouchableOpacity
+            style={styles.guestLoginBtn}
+            onPress={() => router.push('/(auth)/login' as any)}
+            activeOpacity={0.88}
+          >
+            <Ionicons name="log-in-outline" size={18} color={Colors.white} />
+            <Text style={styles.guestLoginText}>Login / Register to Continue</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <SafeAreaView style={[styles.root, { backgroundColor: colors.bg }]} edges={['top']}>
+      {/* ─── UNIVERSAL TOP HEADER ─── */}
+      <TopHeader showBranchSelector={true} />
+
       {/* Tabs */}
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
         {TABS.map((tab) => (
           <TouchableOpacity
             key={tab.id}
             style={[styles.tab, activeTab === tab.id && styles.tabActive]}
             onPress={() => setActiveTab(tab.id)}
           >
-            <Ionicons name={tab.icon as any} size={14} color={activeTab === tab.id ? Colors.orange : Colors.slateXLight} />
-            <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>{tab.label}</Text>
+            <Ionicons name={tab.icon as any} size={14} color={activeTab === tab.id ? Colors.orange : colors.textMuted} />
+            <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === tab.id && styles.tabTextActive]}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -177,45 +221,45 @@ export default function RewardsScreen() {
 
             {/* Progress to Next Tier */}
             {nextTierInfo && (
-              <View style={styles.progressCard}>
+              <View style={[styles.progressCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <View style={styles.progressHeader}>
-                  <Text style={styles.progressTitle}>Progress to {nextTierInfo.emoji} {nextTierInfo.name}</Text>
+                  <Text style={[styles.progressTitle, { color: colors.text }]}>Progress to {nextTierInfo.emoji} {nextTierInfo.name}</Text>
                   <Text style={styles.progressPercent}>{progressPercent}%</Text>
                 </View>
                 <View style={styles.progressBar}>
                   <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
                 </View>
-                <Text style={styles.progressSub}>
+                <Text style={[styles.progressSub, { color: colors.textMuted }]}>
                   {Math.max(0, nextTierInfo.target - lifetimeCoins)} more lifetime coins needed
                 </Text>
               </View>
             )}
 
             {/* Tier Benefits Grid */}
-            <Text style={styles.sectionTitle}>Tier Benefits</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Tier Benefits</Text>
             <View style={styles.tierGrid}>
               {TIER_MILESTONES.map((t) => (
-                <View key={t.name} style={[styles.tierCard, tier === t.name && styles.tierCardActive]}>
+                <View key={t.name} style={[styles.tierCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }, tier === t.name && styles.tierCardActive]}>
                   <Text style={styles.tierCardEmoji}>{t.emoji}</Text>
                   <Text style={[styles.tierCardName, { color: t.color }]}>{t.name}</Text>
-                  <Text style={styles.tierCardMultiplier}>{t.multiplier} Coins</Text>
-                  <Text style={styles.tierCardPerks}>{t.perks}</Text>
+                  <Text style={[styles.tierCardMultiplier, { color: colors.text }]}>{t.multiplier} Coins</Text>
+                  <Text style={[styles.tierCardPerks, { color: colors.textMuted }]}>{t.perks}</Text>
                   {t.target > 0 && <Text style={styles.tierCardTarget}>{t.target}+ coins</Text>}
                 </View>
               ))}
             </View>
 
             {/* Referral Banner */}
-            <View style={styles.referralCard}>
+            <View style={[styles.referralCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.referralContent}>
                 <View style={styles.referralLeft}>
-                  <Text style={styles.referralTitle}>🎁 Refer & Earn</Text>
-                  <Text style={styles.referralSub}>
+                  <Text style={[styles.referralTitle, { color: colors.text }]}>🎁 Refer & Earn</Text>
+                  <Text style={[styles.referralSub, { color: colors.textMuted }]}>
                     Share your code and earn <Text style={styles.referralHighlight}>10 Groom Coins</Text> for each friend who joins!
                   </Text>
                   {referralCode ? (
-                    <View style={styles.referralCodeWrap}>
-                      <Text style={styles.referralCodeLabel}>Your code:</Text>
+                    <View style={[styles.referralCodeWrap, { backgroundColor: colors.bg, borderColor: colors.cardBorder }]}>
+                      <Text style={[styles.referralCodeLabel, { color: colors.textMuted }]}>Your code:</Text>
                       <Text style={styles.referralCode}>{referralCode}</Text>
                     </View>
                   ) : null}
@@ -239,7 +283,7 @@ export default function RewardsScreen() {
               const cost = r.pointsRequired ?? r.costPoints ?? 0;
               const canAfford = coins >= cost;
               return (
-                <View key={r.id} style={[styles.rewardCard, !canAfford && styles.rewardCardDisabled]}>
+                <View key={r.id} style={[styles.rewardCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }, !canAfford && styles.rewardCardDisabled]}>
                   <View style={styles.rewardCardTop}>
                     <View style={styles.rewardBadge}>
                       <Text style={styles.rewardBadgeText}>
@@ -250,19 +294,19 @@ export default function RewardsScreen() {
                       <Text style={styles.rewardCostText}>🪙 {cost} Coins</Text>
                     </View>
                   </View>
-                  <Text style={styles.rewardTitle}>{r.title}</Text>
+                  <Text style={[styles.rewardTitle, { color: colors.text }]}>{r.title}</Text>
                   {r.serviceName && (
                     <View style={styles.rewardServiceBadge}>
                       <Ionicons name="cut-outline" size={12} color={Colors.orange} />
                       <Text style={styles.rewardServiceText}>For: {r.serviceName}</Text>
                     </View>
                   )}
-                  <Text style={styles.rewardDesc} numberOfLines={2}>
+                  <Text style={[styles.rewardDesc, { color: colors.textMuted }]} numberOfLines={2}>
                     {r.description || `Get ${r.title} on your next visit.`}
                   </Text>
                   {r.validityDays && (
-                    <Text style={styles.rewardValidity}>
-                      <Ionicons name="time-outline" size={11} color={Colors.slateXLight} /> Valid {r.validityDays} days after redeem
+                    <Text style={[styles.rewardValidity, { color: colors.textMuted }]}>
+                      <Ionicons name="time-outline" size={11} color={colors.textMuted} /> Valid {r.validityDays} days after redeem
                     </Text>
                   )}
                   <TouchableOpacity
@@ -282,9 +326,9 @@ export default function RewardsScreen() {
               );
             }) : (
               <View style={styles.empty}>
-                <Ionicons name="gift-outline" size={56} color={Colors.gray300} />
-                <Text style={styles.emptyTitle}>No Rewards Available</Text>
-                <Text style={styles.emptyText}>Check back soon for exclusive reward vouchers!</Text>
+                <Ionicons name="gift-outline" size={56} color={colors.textMuted} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No Rewards Available</Text>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>Check back soon for exclusive reward vouchers!</Text>
               </View>
             )}
           </>
@@ -293,11 +337,11 @@ export default function RewardsScreen() {
         {/* ── LEDGER ── */}
         {activeTab === 'ledger' && (
           <>
-            <Text style={styles.sectionTitle}>Groom Coins History</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Groom Coins History</Text>
             {ledger.length > 0 ? ledger.map((item: any, idx: number) => {
               const isEarn = item.type === 'EARN' || item.amount > 0;
               return (
-                <View key={item.id || idx} style={styles.ledgerItem}>
+                <View key={item.id || idx} style={[styles.ledgerItem, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                   <View style={[styles.ledgerIcon, { backgroundColor: isEarn ? Colors.greenLight : Colors.redLight }]}>
                     <Ionicons
                       name={isEarn ? 'arrow-down-outline' : 'arrow-up-outline'}
@@ -306,8 +350,8 @@ export default function RewardsScreen() {
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.ledgerDesc}>{item.description || item.reason || (isEarn ? 'Coins Earned' : 'Coins Redeemed')}</Text>
-                    <Text style={styles.ledgerDate}>
+                    <Text style={[styles.ledgerDesc, { color: colors.text }]}>{item.description || item.reason || (isEarn ? 'Coins Earned' : 'Coins Redeemed')}</Text>
+                    <Text style={[styles.ledgerDate, { color: colors.textMuted }]}>
                       {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
                     </Text>
                   </View>
@@ -318,9 +362,9 @@ export default function RewardsScreen() {
               );
             }) : (
               <View style={styles.empty}>
-                <Ionicons name="receipt-outline" size={56} color={Colors.gray300} />
-                <Text style={styles.emptyTitle}>No History Yet</Text>
-                <Text style={styles.emptyText}>Coins are credited after your bookings are confirmed.</Text>
+                <Ionicons name="receipt-outline" size={56} color={colors.textMuted} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No History Yet</Text>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>Coins are credited after your bookings are confirmed.</Text>
               </View>
             )}
           </>
@@ -329,27 +373,27 @@ export default function RewardsScreen() {
         {/* ── VOUCHERS ── */}
         {activeTab === 'vouchers' && (
           <>
-            <Text style={styles.sectionTitle}>My Vouchers</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>My Vouchers</Text>
             {vouchers.length > 0 ? vouchers.map((v: any, idx: number) => {
               const isExpired = v.expiresAt && new Date(v.expiresAt) < new Date();
               const isUsed = v.status === 'USED' || v.used;
               return (
-                <View key={v.id || idx} style={[styles.voucherCard, (isExpired || isUsed) && styles.voucherCardDim]}>
+                <View key={v.id || idx} style={[styles.voucherCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }, (isExpired || isUsed) && styles.voucherCardDim]}>
                   <View style={styles.voucherTop}>
                     <View style={styles.voucherCodeWrap}>
-                      <Text style={styles.voucherCodeLabel}>Code</Text>
+                      <Text style={[styles.voucherCodeLabel, { color: colors.textMuted }]}>Code</Text>
                       <Text style={styles.voucherCode}>{v.code || v.voucherCode || '––'}</Text>
                     </View>
                     <View style={[styles.voucherStatusBadge, isUsed ? styles.voucherUsed : isExpired ? styles.voucherExpired : styles.voucherActive]}>
                       <Text style={styles.voucherStatusText}>{isUsed ? 'Used' : isExpired ? 'Expired' : 'Active'}</Text>
                     </View>
                   </View>
-                  <Text style={styles.voucherTitle}>{v.title || v.rewardTitle || 'Voucher'}</Text>
+                  <Text style={[styles.voucherTitle, { color: colors.text }]}>{v.title || v.rewardTitle || 'Voucher'}</Text>
                   {v.discountPercent && (
                     <Text style={styles.voucherDiscount}>{v.discountPercent}% OFF</Text>
                   )}
                   {v.expiresAt && (
-                    <Text style={styles.voucherExpiry}>
+                    <Text style={[styles.voucherExpiry, { color: colors.textMuted }]}>
                       Expires: {new Date(v.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </Text>
                   )}
@@ -357,9 +401,9 @@ export default function RewardsScreen() {
               );
             }) : (
               <View style={styles.empty}>
-                <Ionicons name="ticket-outline" size={56} color={Colors.gray300} />
-                <Text style={styles.emptyTitle}>No Vouchers Yet</Text>
-                <Text style={styles.emptyText}>Redeem your Groom Coins for exclusive vouchers!</Text>
+                <Ionicons name="ticket-outline" size={56} color={colors.textMuted} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No Vouchers Yet</Text>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>Redeem your Groom Coins for exclusive vouchers!</Text>
                 <TouchableOpacity style={styles.bookNowBtn} onPress={() => setActiveTab('redeem')}>
                   <Text style={styles.bookNowBtnText}>Browse Rewards</Text>
                 </TouchableOpacity>
@@ -587,4 +631,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing['2xl'], paddingVertical: Spacing.md, marginTop: Spacing.xl, ...Shadows.orange,
   },
   bookNowBtnText: { fontSize: Typography.base, fontWeight: '700', color: Colors.white },
+  guestContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  guestIconWrap: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: Colors.orangeLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    ...Shadows.sm,
+  },
+  guestTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.slate,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  guestSubtitle: {
+    fontSize: 13,
+    color: Colors.slateLight,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  guestLoginBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.orange,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+    ...Shadows.orange,
+  },
+  guestLoginText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '800',
+  },
 });

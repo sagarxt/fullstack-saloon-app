@@ -3,18 +3,18 @@ import { Link } from "react-router-dom";
 
 export default function Footer() {
   return (
-    <footer className="bg-groomish-slate text-white border-t border-groomish-slateLight/30 mt-6 sm:mt-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+    <footer className="bg-groomish-slate text-white border-t border-groomish-slateLight/30 mt-4 sm:mt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
         {/* Brand */}
-        <div className="space-y-2">
-          <div className="flex items-center">
+        <div className="flex flex-row md:flex-col items-center md:items-start gap-3.5 sm:gap-4 md:gap-2.5 pb-4 md:pb-0 border-b border-white/10 md:border-b-0">
+          <div className="flex items-center shrink-0">
             <img
               src="https://res.cloudinary.com/dfdnljcyt/image/upload/v1792094666/groomish-logo-black-bg_et3gzt.png"
               alt="Groomish Now"
-              className="h-12 w-auto object-contain shrink-0"
+              className="h-10 sm:h-12 w-auto object-contain shrink-0"
             />
           </div>
-          <p className="text-xs text-gray-300 leading-normal max-w-xs">
+          <p className="text-[11px] sm:text-xs text-gray-300 leading-relaxed max-w-xs flex-1">
             Elevating your grooming lifestyle. Premium services, certified master stylists, and a rewarding VIP loyalty program.
           </p>
         </div>
@@ -54,30 +54,6 @@ export default function Footer() {
               <Link to="/customer/rewards" className="hover:text-groomish-orange transition block py-0.5">
                 VIP Rewards & Perks
               </Link>
-            </li>
-          </ul>
-        </div>
-
-        {/* Hours & Policy */}
-        <div>
-          <h4 className="text-groomish-orange font-heading font-bold text-xs uppercase tracking-wider mb-2">
-            Salon Hours
-          </h4>
-          <ul className="space-y-1 text-xs text-gray-300">
-            <li className="flex justify-between items-center py-0.5 border-b border-white/5">
-              <span>Mon – Fri:</span>
-              <span className="font-semibold text-white">9:00 AM – 9:00 PM</span>
-            </li>
-            <li className="flex justify-between items-center py-0.5 border-b border-white/5">
-              <span>Saturday:</span>
-              <span className="font-semibold text-white">8:30 AM – 9:30 PM</span>
-            </li>
-            <li className="flex justify-between items-center py-0.5 border-b border-white/5">
-              <span>Sunday:</span>
-              <span className="font-semibold text-white">10:00 AM – 8:00 PM</span>
-            </li>
-            <li className="pt-0.5 text-[10px] text-gray-400">
-              *Walk-ins welcomed; online booking recommended.
             </li>
           </ul>
         </div>

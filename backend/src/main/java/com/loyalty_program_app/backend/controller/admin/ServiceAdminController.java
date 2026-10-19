@@ -26,10 +26,10 @@ public class ServiceAdminController {
             @RequestParam UUID categoryId,
             @RequestParam(required = false) String description,
             @RequestParam(defaultValue = "UNISEX") String gender,
-            @RequestParam Double mrp,
-            @RequestParam Double price,
+            @RequestParam(required = false) Double mrp,
+            @RequestParam(required = false) Double price,
             @RequestParam(required = false) Integer rewards,
-            @RequestParam(defaultValue = "30") Integer durationMinutes,
+            @RequestParam(required = false) Integer durationMinutes,
             @RequestParam(required = false) MultipartFile image,
             @RequestParam(required = false) String imageUrl,
             @RequestParam(required = false) String subServicesJson

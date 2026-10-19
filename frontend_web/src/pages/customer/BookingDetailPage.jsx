@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -562,6 +562,51 @@ export default function BookingDetailPage() {
     booking?.items?.reduce((sum, it) => sum + (it.durationMinutes || 0), 0) || 0;
   const groupedServices = groupBookingServices(booking?.items || []);
 
+  const invoiceBreakdown = useMemo(() => {
+    if (!booking) return null;
+
+    // Services MRP sum
+    const servicesMrp = (booking.items || []).reduce((sum, item) => {
+      const price = Number(item.servicePriceSnapshot ?? item.price ?? item.service?.price ?? 0);
+      const rawMrp = Number(item.subServiceMrp ?? item.mrp ?? item.serviceMrp ?? item.service?.mrp ?? price);
+      const mrp = Math.max(rawMrp, price);
+      return sum + mrp;
+    }, 0);
+
+    // Products MRP sum
+    const productsMrp = (booking.products || []).reduce((sum, prod) => {
+      const price = Number(prod.unitPrice ?? 0);
+      const rawMrp = Number(prod.mrp ?? prod.productMrp ?? price);
+      const mrp = Math.max(rawMrp, price);
+      const qty = Number(prod.quantity ?? 1);
+      return sum + (mrp * qty);
+    }, 0);
+
+    const calculatedTotalMrp = servicesMrp + productsMrp;
+    const baseAmount = Number(booking.totalAmount ?? 0);
+    const subtotal = calculatedTotalMrp > baseAmount ? calculatedTotalMrp : baseAmount;
+    const mrpDiscount = Math.max(0, subtotal - baseAmount);
+
+    // Coupon or Voucher discount
+    const paid = Number(booking.pricePaid ?? baseAmount);
+    const codeDiscount = Math.max(0, baseAmount - paid);
+
+    const isVoucher = Boolean(
+      booking.couponApplied &&
+      (booking.couponApplied.toUpperCase().includes("VOUCH") ||
+       booking.couponApplied.toUpperCase().includes("VIP"))
+    );
+
+    return {
+      subtotal,
+      mrpDiscount,
+      couponOrVoucherCode: booking.couponApplied,
+      isVoucher,
+      codeDiscount,
+      finalPayable: paid,
+    };
+  }, [booking]);
+
   return (
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
       <Navbar />
@@ -848,13 +893,21 @@ export default function BookingDetailPage() {
                 {booking.items && booking.items.length > 0 ? (
                   groupBookingServices(booking.items).map((grp, idx) => (
                     <div
-                      key={grp.serviceId || grp.serviceName || idx}
+                      key={grp.key || `${grp.serviceId || ""}_${grp.serviceName || ""}_${idx}`}
                       className="py-2.5 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 px-2 rounded-lg"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-groomish-orange/10 text-groomish-orange font-bold flex items-center justify-center shrink-0 text-xs">
-                          #{idx + 1}
-                        </div>
+                        {grp.image ? (
+                          <img
+                            src={grp.image}
+                            alt={grp.serviceName}
+                            className="w-10 h-10 rounded-lg object-cover border border-groomish-slate/10 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-orange shrink-0">
+                            <Scissors className="w-5 h-5" />
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-sm font-bold text-groomish-slate truncate">
@@ -886,9 +939,16 @@ export default function BookingDetailPage() {
                       </div>
 
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-sm font-heading font-extrabold text-groomish-slate">
-                          ₹{grp.totalPrice}
-                        </span>
+                        <div className="text-right">
+                          <span className="text-sm font-heading font-extrabold text-groomish-slate block">
+                            ₹{grp.totalPrice}
+                          </span>
+                          {grp.totalMrp && grp.totalMrp > grp.totalPrice && (
+                            <span className="text-[11px] text-groomish-slate/40 line-through block">
+                              ₹{grp.totalMrp}
+                            </span>
+                          )}
+                        </div>
 
                         {isModifiable && booking.items.length > 1 && (
                           <button
@@ -952,12 +1012,24 @@ export default function BookingDetailPage() {
                           <p className="text-[11px] text-groomish-slate/50">
                             {prod.brand && <span>{prod.brand} • </span>}
                             <span>Qty: {prod.quantity} × ₹{prod.unitPrice}</span>
+                            {prod.mrp && prod.mrp > prod.unitPrice && (
+                              <span className="text-groomish-slate/40 line-through ml-1.5">
+                                (MRP ₹{prod.mrp})
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
 
-                      <div className="text-sm font-bold text-groomish-slate shrink-0">
-                        ₹{prod.totalPrice}
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-bold text-groomish-slate block">
+                          ₹{prod.totalPrice}
+                        </span>
+                        {prod.mrp && prod.mrp > prod.unitPrice && (
+                          <span className="text-[11px] text-groomish-slate/40 line-through block">
+                            ₹{prod.mrp * prod.quantity}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -974,19 +1046,44 @@ export default function BookingDetailPage() {
 
               <div className="space-y-2 text-xs text-groomish-slate/80">
                 <div className="flex justify-between py-1">
-                  <span>Gross Total</span>
-                  <span className="font-semibold">₹{booking.totalAmount}</span>
+                  <span>Subtotal</span>
+                  <span className="font-semibold">₹{invoiceBreakdown?.subtotal ?? booking.totalAmount}</span>
                 </div>
 
-                {booking.couponApplied && (
+                {invoiceBreakdown?.mrpDiscount > 0 && (
                   <div className="flex justify-between py-1 text-groomish-green font-semibold">
                     <span className="flex items-center gap-1.5">
                       <Tag className="w-3.5 h-3.5" />
-                      <span>Coupon Applied ({booking.couponApplied})</span>
+                      <span>Discount on MRP</span>
                     </span>
-                    <span>-₹{(booking.totalAmount - booking.pricePaid).toFixed(0)}</span>
+                    <span>-₹{invoiceBreakdown.mrpDiscount}</span>
                   </div>
                 )}
+
+                {invoiceBreakdown?.couponOrVoucherCode && !invoiceBreakdown.isVoucher && (
+                  <div className="flex justify-between py-1 text-groomish-green font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5" />
+                      <span>Coupon Applied ({invoiceBreakdown.couponOrVoucherCode})</span>
+                    </span>
+                    <span>-₹{invoiceBreakdown.codeDiscount}</span>
+                  </div>
+                )}
+
+                {invoiceBreakdown?.couponOrVoucherCode && invoiceBreakdown.isVoucher && (
+                  <div className="flex justify-between py-1 text-groomish-green font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5" />
+                      <span>Voucher Applied ({invoiceBreakdown.couponOrVoucherCode})</span>
+                    </span>
+                    <span>-₹{invoiceBreakdown.codeDiscount}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between py-1">
+                  <span className="text-groomish-slate/70">Salon Hygiene & Taxes</span>
+                  <span className="text-groomish-green font-bold text-[11px]">FREE</span>
+                </div>
 
                 {/* Payment Method & Status */}
                 <div className="flex justify-between items-center py-1">
@@ -1041,7 +1138,7 @@ export default function BookingDetailPage() {
                 )}
 
                 <div className="border-t border-dashed border-groomish-slate/15 pt-2 flex justify-between text-base font-heading font-extrabold text-groomish-slate">
-                  <span>Total Amount</span>
+                  <span>Final Payable</span>
                   <span className="text-groomish-orange">₹{booking.pricePaid}</span>
                 </div>
               </div>

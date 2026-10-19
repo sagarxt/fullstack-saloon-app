@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   getCouponsApi,
   createCouponApi,
@@ -12,7 +12,7 @@ import ModalWrapper from "../../components/modals/ModalWrapper";
 import CustomMultiSelect from "../../components/common/CustomMultiSelect";
 import CustomDatePicker from "../../components/common/CustomDatePicker";
 import { extractList } from "../../utils/dataHelper";
-import { showConfirm } from "../../context/ConfirmContext";
+import { showConfirm, showAlert } from "../../context/ConfirmContext";
 import {
   Tag,
   Plus,
@@ -33,6 +33,12 @@ import {
   ShieldAlert,
   Edit2,
   Power,
+  ChevronDown,
+  Search,
+  X,
+  Crown,
+  Award,
+  Gift,
 } from "lucide-react";
 
 const DEFAULT_GROUPS = [
@@ -49,6 +55,34 @@ const DEFAULT_GROUPS = [
   { id: "STUDENT", name: "Students Cohort", description: "Campus discounts" },
   { id: "CHURN_RISK", name: "Re-engagement (Winback)", description: "Inactive 60+ days" },
 ];
+
+const getGroupBadgeInfo = (groupId) => {
+  switch (groupId) {
+    case "NEW_USER":
+      return { icon: Sparkles, color: "text-[#FC6957]", bg: "bg-[#FC6957]/10", border: "border-[#FC6957]/20" };
+    case "GOLD":
+      return { icon: Crown, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" };
+    case "PLATINUM":
+      return { icon: Crown, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" };
+    case "SILVER":
+      return { icon: Award, color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-200" };
+    case "VIP":
+      return { icon: Crown, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" };
+    case "1_YEAR_PLUS":
+    case "2_YEAR_PLUS":
+      return { icon: Clock, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200" };
+    case "FREQUENT_VISITOR":
+      return { icon: RefreshCw, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" };
+    case "CHURN_RISK":
+      return { icon: AlertCircle, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" };
+    case "STUDENT":
+      return { icon: Users, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" };
+    case "BIRTHDAY_SPECIAL":
+      return { icon: Gift, color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-200" };
+    default:
+      return { icon: Users, color: "text-groomish-orange", bg: "bg-groomish-orange/10", border: "border-groomish-orange/20" };
+  }
+};
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState([]);
@@ -72,6 +106,21 @@ export default function CouponsPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState("");
   const [emailError, setEmailError] = useState("");
+
+  // Groomish-themed dropdown state & ref
+  const groupDropdownRef = useRef(null);
+  const [groupDropdownOpen, setGroupDropdownOpen] = useState(false);
+  const [groupSearchQuery, setGroupSearchQuery] = useState("");
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (groupDropdownRef.current && !groupDropdownRef.current.contains(e.target)) {
+        setGroupDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Coupon Form State
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -169,7 +218,11 @@ export default function CouponsPage() {
       await updateCouponApi(coupon.id, { active: nextActive });
       loadData();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update coupon status");
+      await showAlert({
+        title: "Action Failed",
+        message: err.response?.data?.message || "Failed to update coupon status",
+        variant: "danger",
+      });
     }
   };
 
@@ -235,7 +288,11 @@ export default function CouponsPage() {
       await forceDeleteCouponApi(id);
       loadData();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to force delete coupon");
+      await showAlert({
+        title: "Deletion Failed",
+        message: err.response?.data?.message || "Failed to force delete coupon",
+        variant: "danger",
+      });
     }
   };
 
@@ -256,6 +313,8 @@ export default function CouponsPage() {
         : "Hello from Groomish! We have exciting new services and seasonal privileges crafted exclusively for you.",
       couponCode: defaultCode,
     });
+    setGroupDropdownOpen(false);
+    setGroupSearchQuery("");
     setEmailSuccess("");
     setEmailError("");
     setEmailModalOpen(true);
@@ -290,6 +349,23 @@ export default function CouponsPage() {
   };
 
   const couponList = extractList(coupons);
+
+  const catalogList = Array.isArray(userGroupsCatalog) && userGroupsCatalog.length > 0 ? userGroupsCatalog : DEFAULT_GROUPS;
+  const filteredGroupOptions = catalogList.filter((g) => {
+    if (!groupSearchQuery.trim()) return true;
+    const q = groupSearchQuery.toLowerCase();
+    return (
+      g.name?.toLowerCase().includes(q) ||
+      g.id?.toLowerCase().includes(q) ||
+      g.description?.toLowerCase().includes(q)
+    );
+  });
+  const selectedGroupObj = catalogList.find((g) => g.id === emailForm.userGroup) || {
+    id: emailForm.userGroup,
+    name: emailForm.userGroup,
+  };
+  const currentBadge = getGroupBadgeInfo(emailForm.userGroup);
+  const CurrentGroupIcon = currentBadge.icon;
 
   const getValidityStatus = (coupon) => {
     if (coupon.active === false) {
@@ -842,23 +918,151 @@ export default function CouponsPage() {
           )}
 
           <form onSubmit={handleSendEmail} className="space-y-3.5">
-            <div>
-              <label className="block text-xs font-bold text-groomish-slate/80 mb-1">
-                Target Customer Group *
+            <div className="relative" ref={groupDropdownRef}>
+              <label className="block text-xs font-bold text-groomish-slate/80 mb-1 flex items-center justify-between">
+                <span>Target Customer Group *</span>
+                <span className="text-[10px] text-groomish-orange font-bold uppercase tracking-wide">
+                  {catalogList.length} Cohorts
+                </span>
               </label>
-              <select
-                value={emailForm.userGroup}
-                onChange={(e) => setEmailForm({ ...emailForm, userGroup: e.target.value })}
-                className="input-groomish font-semibold"
+
+              {/* Trigger Button */}
+              <button
+                type="button"
+                onClick={() => setGroupDropdownOpen((prev) => !prev)}
+                className={`w-full text-left p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 bg-white cursor-pointer ${
+                  groupDropdownOpen
+                    ? "border-groomish-orange ring-2 ring-groomish-orange/15 shadow-sm"
+                    : "border-groomish-slate/20 hover:border-groomish-orange/60 hover:bg-groomish-cream/20 shadow-2xs"
+                }`}
               >
-                {userGroupsCatalog.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name} ({g.id})
-                  </option>
-                ))}
-              </select>
-              <p className="text-[11px] text-groomish-slate/50 mt-1">
-                Emails will be dispatched to all customers currently in this group.
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${currentBadge.bg} ${currentBadge.color} ${currentBadge.border}`}
+                  >
+                    <CurrentGroupIcon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-groomish-slate text-sm">
+                        {selectedGroupObj?.name || selectedGroupObj?.label || emailForm.userGroup}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-groomish-slate/5 text-groomish-slate/70 font-bold border border-groomish-slate/10">
+                        {emailForm.userGroup}
+                      </span>
+                    </div>
+                    {selectedGroupObj?.description && (
+                      <p className="text-[11px] text-groomish-slate/50 truncate">
+                        {selectedGroupObj.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-groomish-slate/50 shrink-0 transition-transform duration-200 ${
+                    groupDropdownOpen ? "rotate-180 text-groomish-orange" : ""
+                  }`}
+                />
+              </button>
+
+              {/* Groomish Dropdown Menu */}
+              {groupDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-2xl border border-groomish-slate/15 shadow-xl shadow-groomish-slate/10 overflow-hidden animate-fade-in">
+                  {/* Search in Dropdown */}
+                  <div className="p-2 border-b border-groomish-slate/10 bg-groomish-cream/30">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-groomish-slate/40 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={groupSearchQuery}
+                        onChange={(e) => setGroupSearchQuery(e.target.value)}
+                        placeholder="Search cohort by name or code..."
+                        className="w-full bg-white pl-8 pr-3 py-1.5 text-xs rounded-xl border border-groomish-slate/15 focus:border-groomish-orange focus:outline-hidden text-groomish-slate placeholder:text-groomish-slate/40"
+                        autoFocus
+                      />
+                      {groupSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setGroupSearchQuery("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-groomish-slate/40 hover:text-groomish-slate text-xs cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* List */}
+                  <div className="max-h-60 overflow-y-auto p-1.5 space-y-1 scrollbar-thin">
+                    {filteredGroupOptions.map((g) => {
+                      const isSelected = emailForm.userGroup === g.id;
+                      const badge = getGroupBadgeInfo(g.id);
+                      const IconComp = badge.icon;
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => {
+                            setEmailForm((prev) => ({
+                              ...prev,
+                              userGroup: g.id,
+                              subject:
+                                g.id !== "ALL"
+                                  ? `Exclusive Privilege for Groomish ${g.name || g.label || g.id} Members`
+                                  : "Exclusive Update from Groomish Salon",
+                            }));
+                            setGroupDropdownOpen(false);
+                            setGroupSearchQuery("");
+                          }}
+                          className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between gap-2.5 cursor-pointer group ${
+                            isSelected
+                              ? "bg-groomish-orange/10 border border-groomish-orange/20 text-groomish-orange"
+                              : "hover:bg-groomish-cream/70 text-groomish-slate border border-transparent"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${badge.bg} ${badge.color} ${badge.border}`}
+                            >
+                              <IconComp className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`text-xs font-bold ${
+                                    isSelected
+                                      ? "text-groomish-orange"
+                                      : "text-groomish-slate group-hover:text-groomish-orange"
+                                  }`}
+                                >
+                                  {g.name || g.label}
+                                </span>
+                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-groomish-slate/5 text-groomish-slate/60">
+                                  {g.id}
+                                </span>
+                              </div>
+                              {g.description && (
+                                <p className="text-[10px] text-groomish-slate/50 truncate">
+                                  {g.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-groomish-orange shrink-0" />}
+                        </button>
+                      );
+                    })}
+                    {filteredGroupOptions.length === 0 && (
+                      <div className="py-6 text-center text-xs text-groomish-slate/50">
+                        No cohorts match "{groupSearchQuery}".
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[11px] text-groomish-slate/50 mt-1.5">
+                Emails will be dispatched to all customers currently enrolled in this cohort.
               </p>
             </div>
 

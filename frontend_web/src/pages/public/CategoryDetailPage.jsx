@@ -8,7 +8,7 @@ import CustomSelect from "../../components/common/CustomSelect";
 import { getCategories, getServices } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
-import { extractList } from "../../utils/dataHelper";
+import { extractList, getServicePriceRange, getServiceDurationRange, calculateGroomCoins } from "../../utils/dataHelper";
 import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import GroomCoinIcon from "../../components/common/GroomCoinIcon";
 import {
@@ -22,6 +22,7 @@ import {
   Home,
   Layers,
   ShoppingCart,
+  Eye,
 } from "lucide-react";
 
 export default function CategoryDetailPage() {
@@ -190,16 +191,16 @@ export default function CategoryDetailPage() {
         </div>
 
         {/* HERO BANNER */}
-        <section className="relative overflow-hidden bg-gradient-to-r from-groomish-slate via-groomish-slateDark to-groomish-slate text-white py-12 sm:py-16 border-b border-white/10">
+        <section className="relative overflow-hidden bg-gradient-to-r from-groomish-slate via-groomish-slateDark to-groomish-slate text-white py-6 sm:py-9 border-b border-white/10">
           {/* Subtle ambient blur glow in background */}
           {categoryImage && (
             <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-groomish-orange/15 blur-3xl pointer-events-none" />
           )}
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
               {/* Prominent Circular Category Artwork */}
-              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full overflow-hidden bg-white/10 border-4 border-white/20 shadow-2xl p-1 shrink-0 backdrop-blur-md flex items-center justify-center">
+              <div className="w-20 h-20 sm:w-26 sm:h-26 rounded-full overflow-hidden bg-white/10 border-3 border-white/20 shadow-xl p-1 shrink-0 backdrop-blur-md flex items-center justify-center">
                 {categoryImage ? (
                   <img
                     src={getOptimizedImageUrl(categoryImage, { width: 350 })}
@@ -209,28 +210,28 @@ export default function CategoryDetailPage() {
                     className="w-full h-full object-cover rounded-full"
                   />
                 ) : (
-                  <Layers className="w-12 h-12 text-groomish-gold" />
+                  <Layers className="w-9 h-9 text-groomish-gold" />
                 )}
               </div>
 
               {/* Category Info */}
-              <div className="space-y-3 text-center sm:text-left flex-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/10 text-groomish-gold backdrop-blur-md border border-white/15">
-                  <Layers className="w-3.5 h-3.5" />
+              <div className="space-y-1.5 sm:space-y-2 text-center sm:text-left flex-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-white/10 text-groomish-gold backdrop-blur-md border border-white/15">
+                  <Layers className="w-3 h-3" />
                   <span>Dedicated Salon Collection</span>
                 </span>
 
-                <h1 className="text-3xl sm:text-5xl font-heading font-extrabold tracking-tight">
+                <h1 className="text-2xl sm:text-4xl font-heading font-extrabold tracking-tight">
                   {categoryName} Services
                 </h1>
 
-                <p className="text-sm sm:text-base text-gray-300 leading-relaxed max-w-2xl">
+                <p className="text-xs sm:text-sm text-gray-300 leading-relaxed max-w-2xl">
                   {currentCategory?.description ||
                     "Indulge in certified salon therapies curated for the highest standard of grooming, styling, and hygiene."}
                 </p>
 
-                <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-semibold text-white/80">
-                  <span className="px-3 py-1 rounded-full bg-groomish-orange text-white font-bold shadow-xs">
+                <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs font-semibold text-white/80">
+                  <span className="px-2.5 py-0.5 rounded-full bg-groomish-orange text-white font-bold shadow-xs text-[11px]">
                     {categoryServices.length} Treatments Available
                   </span>
                   <span>• Certified Stylists</span>
@@ -242,12 +243,13 @@ export default function CategoryDetailPage() {
         </section>
 
         {/* FILTER BAR: GENDER TABS & SEARCH */}
-        <section className="bg-white/90 backdrop-blur-md border-b border-groomish-slate/10 sticky top-16 z-30 py-3 shadow-soft">
+        <section className="bg-white/90 backdrop-blur-md border-b border-groomish-slate/10 sticky top-16 z-30 py-2.5 shadow-soft">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-3">
             {/* Gender Filter Tabs (Male / Female / Unisex) */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-groomish-slate/60 hidden sm:inline flex items-center gap-1">
-                <Filter className="w-3.5 h-3.5" /> Gender:
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-groomish-slate/60 shrink-0">
+                <Filter className="w-3.5 h-3.5 shrink-0" />
+                <span>Gender:</span>
               </span>
               <div className="flex bg-groomish-cream p-1 rounded-2xl text-xs font-semibold">
                 {["ALL", "FEMALE", "MALE", "UNISEX"].map((g) => (
@@ -327,7 +329,7 @@ export default function CategoryDetailPage() {
                   service.image ||
                   defaultServiceImages[service.gender] ||
                   defaultServiceImages.UNISEX;
-                const pointsEarned = Math.floor(service.price / 100);
+                const pointsEarned = calculateGroomCoins(service.price, service.rewards);
 
                 return (
                   <div
@@ -357,7 +359,11 @@ export default function CategoryDetailPage() {
                         {/* Duration */}
                         <span className="absolute bottom-3 left-3 flex items-center gap-1 text-[11px] font-semibold text-white bg-black/40 backdrop-blur-sm px-2.5 py-0.5 rounded-full">
                           <Clock className="w-3 h-3 text-groomish-gold" />
-                          <span>{service.durationMinutes} mins</span>
+                          <span>
+                            {service.subServices && service.subServices.length > 0
+                              ? getServiceDurationRange(service)
+                              : `${service.durationMinutes} mins`}
+                          </span>
                         </span>
                       </div>
 
@@ -385,16 +391,27 @@ export default function CategoryDetailPage() {
                     <div className="p-5 pt-0 border-t border-groomish-slate/10 mt-2 flex items-center justify-between">
                       <div>
                         <div className="text-lg font-extrabold text-groomish-slate leading-none">
-                          ₹{service.price}
+                          {service.subServices && service.subServices.length > 0
+                            ? getServicePriceRange(service)
+                            : `₹${service.price}`}
                         </div>
-                        {service.mrp > service.price && (
+                        {(!service.subServices || service.subServices.length === 0) && service.mrp > service.price && (
                           <div className="text-[11px] text-groomish-slateLight line-through mt-0.5">
                             ₹{service.mrp}
                           </div>
                         )}
                       </div>
 
-                      {items?.some(
+                      {service.subServices && service.subServices.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/services/${service.id}`)}
+                          className="btn-primary text-xs px-3.5 py-2 flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View Options</span>
+                        </button>
+                      ) : items?.some(
                         (i) =>
                           (i.itemType === "SERVICE" || !i.itemType) &&
                           (i.serviceId === service.id || i.service?.id === service.id)
