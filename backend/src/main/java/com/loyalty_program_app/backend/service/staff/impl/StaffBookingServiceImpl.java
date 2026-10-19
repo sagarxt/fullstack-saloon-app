@@ -34,6 +34,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
     private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
     private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
     private final PointsLedgerRepository pointsLedgerRepository;
+    private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
 
     @Override
     public BookingResponse createBookingForCustomer(UUID staffId, StaffCreateBookingRequest request) {
@@ -130,24 +131,56 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     throw new RuntimeException("Coupon '" + coupon.getCode() + "' is exclusively reserved for members of: " + String.join(", ", coupon.getApplicableUserGroups()));
                 }
             }
-            if (totalAmount < (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
-                throw new RuntimeException("Minimum amount for coupon is: " + coupon.getMinAmount());
+            final java.util.List<String> eligibleCats = coupon.getEligibleCategories();
+            boolean hasSpecificCategories = eligibleCats != null && !eligibleCats.isEmpty()
+                    && eligibleCats.stream().noneMatch(ec -> ec.trim().equalsIgnoreCase("ALL"));
+
+            double discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
+            if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
+                discount = coupon.getMaxDiscount();
             }
 
-            final java.util.List<String> eligibleCats = coupon.getEligibleCategories();
-            if (eligibleCats != null && !eligibleCats.isEmpty()) {
+            if (hasSpecificCategories) {
+                double eligibleCategoryTotal = items.stream()
+                        .filter(item -> item.getService() != null && item.getService().getCategory() != null &&
+                                eligibleCats.stream().anyMatch(ec ->
+                                        ec.trim().equalsIgnoreCase(item.getService().getCategory().getName()) ||
+                                        (item.getService().getCategory().getId() != null && ec.trim().equalsIgnoreCase(item.getService().getCategory().getId().toString())) ||
+                                        item.getService().getCategory().getName().toLowerCase().contains(ec.trim().toLowerCase()) ||
+                                        ec.trim().toLowerCase().contains(item.getService().getCategory().getName().toLowerCase())
+                                )
+                        )
+                        .mapToDouble(item -> item.getService().getPrice() != null ? item.getService().getPrice() : 0.0)
+                        .sum();
+
                 boolean hasEligible = items.stream().anyMatch(item ->
-                    item.getService() != null && item.getService().getCategory() != null &&
-                    eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(item.getService().getCategory().getName()))
+                        item.getService() != null && item.getService().getCategory() != null &&
+                        eligibleCats.stream().anyMatch(ec ->
+                                ec.trim().equalsIgnoreCase(item.getService().getCategory().getName()) ||
+                                (item.getService().getCategory().getId() != null && ec.trim().equalsIgnoreCase(item.getService().getCategory().getId().toString())) ||
+                                item.getService().getCategory().getName().toLowerCase().contains(ec.trim().toLowerCase()) ||
+                                ec.trim().toLowerCase().contains(item.getService().getCategory().getName().toLowerCase())
+                        )
                 );
+
                 if (!hasEligible) {
                     throw new RuntimeException("Coupon '" + coupon.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
                 }
-            }
 
-            double discount = coupon.getDiscount();
-            if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
-                discount = coupon.getMaxDiscount();
+                if (coupon.getMinAmount() != null && eligibleCategoryTotal < coupon.getMinAmount()) {
+                    throw new RuntimeException("Combined total for eligible categories (" + String.join(", ", eligibleCats) + ") is ₹" + eligibleCategoryTotal + ", which does not meet coupon minimum of ₹" + coupon.getMinAmount());
+                }
+
+                if (discount > eligibleCategoryTotal) {
+                    discount = eligibleCategoryTotal;
+                }
+            } else {
+                if (totalAmount < (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
+                    throw new RuntimeException("Minimum amount for coupon is: ₹" + coupon.getMinAmount());
+                }
+                if (discount > totalAmount) {
+                    discount = totalAmount;
+                }
             }
 
             pricePaid = Math.max(totalAmount - discount, 0);
@@ -576,6 +609,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                 itDto.setPrice(it.getServicePriceSnapshot());
                 itDto.setDurationMinutes(it.getServiceDurationSnapshot());
                 itDto.setRewardCoins(it.getServiceRewardCoinsSnapshot() != null ? it.getServiceRewardCoinsSnapshot() : 0);
+                itDto.setImage(it.getService() != null ? it.getService().getImage() : null);
                 itDto.setStatus(it.getStatus() != null ? it.getStatus().name() : null);
                 return itDto;
             }).collect(Collectors.toList()));
@@ -593,6 +627,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
                     .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
                     .unitPrice(bp.getUnitPriceSnapshot())
+                    .mrp(bp.getProduct() != null && bp.getProduct().getMrp() != null ? bp.getProduct().getMrp() : bp.getUnitPriceSnapshot())
                     .quantity(bp.getQuantity())
                     .totalPrice(bp.getTotalPrice())
                     .build()).collect(Collectors.toList()));
@@ -670,13 +705,73 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             String displayCode = saved.getBookingCode() != null ? saved.getBookingCode() : "GN-" + saved.getId().toString().substring(0, 8).toUpperCase();
             Notification notif = Notification.builder()
                     .user(saved.getUser())
-                    .title("Appointment Confirmed")
-                    .message("Your appointment (" + displayCode + ") has been confirmed by salon stylist " + staff.getName() + ".")
+                    .title("Booking Confirmed")
+                    .message("Your booking (" + displayCode + ") has been confirmed by salon stylist " + staff.getName() + ".")
                     .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
                     .referenceId(saved.getId())
                     .link("/customer/bookings/" + saved.getId())
                     .build();
             notificationRepository.save(notif);
+        }
+
+        return toDto(saved);
+    }
+
+    @Override
+    public BookingResponse startBookingForCustomer(UUID staffId, UUID bookingId) {
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new RuntimeException("Cannot start a " + booking.getStatus() + " booking");
+        }
+
+        booking.setStatus(BookingStatus.IN_PROGRESS);
+        if (booking.getBookingItems() != null) {
+            for (BookingItem bi : booking.getBookingItems()) {
+                bi.setStatus(BookingStatus.IN_PROGRESS);
+                bookingItemRepository.save(bi);
+            }
+        }
+        booking.setBookedBy("IN_PROGRESS_BY_STAFF - " + staff.getName());
+
+        Booking saved = bookingRepository.save(booking);
+
+        bookingTimelineService.recordTimeline(
+                saved,
+                "IN_PROGRESS",
+                "Customer Checked In - Service In Progress",
+                "Customer visited salon. Booking marked In Progress by stylist " + staff.getName() + ".",
+                staff.getName(),
+                "STAFF",
+                staff.getEmail()
+        );
+
+        if (saved.getUser() != null) {
+            String displayCode = saved.getBookingCode() != null ? saved.getBookingCode() : "GN-" + saved.getId().toString().substring(0, 8).toUpperCase();
+            Notification notif = Notification.builder()
+                    .user(saved.getUser())
+                    .title("Service In Progress ✂️")
+                    .message("Welcome to Groomish Now! Your salon session (" + displayCode + ") is currently in progress with stylist " + staff.getName() + ".")
+                    .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
+                    .build();
+            notificationRepository.save(notif);
+
+            String serviceName = (saved.getBookingItems() != null && !saved.getBookingItems().isEmpty())
+                    ? saved.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Service";
+            emailService.sendBookingStatusEmail(
+                    saved.getUser().getEmail(),
+                    saved.getUser().getName(),
+                    displayCode,
+                    serviceName,
+                    "IN_PROGRESS",
+                    "Welcome to Groomish Now! Your stylist " + staff.getName() + " has checked you in and your booking is now in progress. Relax and enjoy your bespoke grooming treatments."
+            );
         }
 
         return toDto(saved);

@@ -56,6 +56,22 @@ public class StaffBookingController {
         return staffBookingService.confirmBookingForCustomer(getCurrentStaffId(request), id);
     }
 
+    @PostMapping("/{id}/start")
+    public BookingResponse startBookingForCustomer(
+            HttpServletRequest request,
+            @PathVariable UUID id
+    ) {
+        return staffBookingService.startBookingForCustomer(getCurrentStaffId(request), id);
+    }
+
+    @PostMapping("/{id}/in-progress")
+    public BookingResponse markBookingInProgress(
+            HttpServletRequest request,
+            @PathVariable UUID id
+    ) {
+        return staffBookingService.startBookingForCustomer(getCurrentStaffId(request), id);
+    }
+
     @GetMapping("/customer/{customerId}")
     public Page<BookingResponse> getCustomerBookings(
             @PathVariable UUID customerId,

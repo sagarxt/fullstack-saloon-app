@@ -24,7 +24,7 @@ export const storeApi = {
 
   updateStore: (id, data) => axiosClient.put(`/admin/stores/${id}`, data),
 
-  toggleStore: (id) => axiosClient.patch(`/admin/stores/${id}/toggle`),
+  toggleStore: (id) => axiosClient.put(`/admin/stores/${id}/toggle-status`),
 
   deleteStore: (id) => axiosClient.delete(`/admin/stores/${id}`),
 };

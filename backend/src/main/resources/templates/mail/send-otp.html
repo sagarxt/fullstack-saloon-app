@@ -7,19 +7,19 @@
 </head>
 <body style="margin:0; padding:0; background-color:#FAF6ED; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#373A43;">
 
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAF6ED; padding:32px 12px;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAF6ED; padding:40px 16px;">
     <tr>
         <td align="center">
 
             <!-- MAIN CONTAINER -->
             <table width="100%" cellpadding="0" cellspacing="0"
-                   style="max-width:500px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 30px rgba(55,58,67,0.08); border:1px solid rgba(55,58,67,0.08);">
+                   style="max-width:480px; background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 12px 40px rgba(55,58,67,0.08); border:1px solid rgba(55,58,67,0.08);">
 
                 <!-- HEADER -->
                 <tr>
-                    <td style="background: #111317; padding:24px 20px; text-align:center;">
-                        <img src="{{logoUrl}}" alt="Groomish Now" style="max-height:50px; max-width:200px; height:auto; width:auto; display:block; margin:0 auto; border:0; outline:none;" />
-                        <div style="font-size:11px; font-weight:600; color:#FED652; text-transform:uppercase; letter-spacing:2px; margin-top:8px;">
+                    <td style="background: #111317; padding:28px 24px; text-align:center;">
+                        <img src="{{logoUrl}}" alt="Groomish Now" style="max-height:52px; max-width:220px; height:auto; width:auto; display:block; margin:0 auto; border:0; outline:none;" />
+                        <div style="font-size:11px; font-weight:700; color:#FED652; text-transform:uppercase; letter-spacing:2px; margin-top:10px;">
                             Verification Code
                         </div>
                     </td>
@@ -27,48 +27,52 @@
 
                 <!-- ACCENT STRIP -->
                 <tr>
-                    <td height="4" style="background: linear-gradient(90deg, #FC6957 0%, #FED652 100%); font-size:0; line-height:0;">&nbsp;</td>
+                    <td height="4" style="background: linear-gradient(90deg, #FC6957 0%, #FED652 50%, #FA7B47 100%); font-size:0; line-height:0;">&nbsp;</td>
                 </tr>
 
                 <!-- BODY -->
                 <tr>
-                    <td style="padding:32px 28px; color:#373A43; font-size:14px; line-height:1.7;">
-                        <p style="margin-top:0; font-size:16px; font-weight:700; color:#373A43;">Hello,</p>
+                    <td style="padding:36px 32px; color:#373A43; font-size:14px; line-height:1.7;">
+                        <h2 style="margin:0 0 12px 0; font-size:20px; font-weight:800; color:#373A43;">Security Verification</h2>
 
-                        <p style="margin:0 0 16px 0; color:#5D616D;">
-                            Please use the following One-Time Password (OTP) to verify your identity and access your Groomish Now account:
+                        <p style="margin:0 0 20px 0; color:#5D616D; font-size:14px;">
+                            Please enter the following 6-digit One-Time Password (OTP) to authenticate your access to your Groomish Now account:
                         </p>
 
                         <!-- OTP BOX -->
                         <div style="
-                            background:#FAF6ED;
-                            padding:20px;
+                            background: linear-gradient(135deg, #FAF6ED 0%, #FFF8E7 100%);
+                            padding:24px 20px;
                             text-align:center;
-                            border-radius:12px;
+                            border-radius:16px;
                             margin:24px 0;
-                            border:1px dashed #FC6957;
+                            border:1.5px dashed #FC6957;
+                            box-shadow: 0 4px 12px rgba(252, 105, 87, 0.08);
                         ">
                             <span style="
-                                font-size:36px;
-                                font-weight:800;
+                                font-size:40px;
+                                font-weight:900;
                                 color:#FC6957;
-                                letter-spacing:8px;
+                                letter-spacing:10px;
                                 font-family: monospace;
                                 display:block;
+                                text-shadow: 0 1px 2px rgba(0,0,0,0.05);
                             ">
                                 {{otp}}
                             </span>
-                            <span style="font-size:11px; color:#7A7E89; display:block; margin-top:6px; font-weight:600;">
-                                VALID FOR 10 MINUTES
-                            </span>
+                            <div style="display:inline-block; margin-top:10px; padding:3px 10px; background:#FFE4D6; color:#C2410C; border-radius:12px; font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase;">
+                                ⏱️ Expires in 10 Minutes
+                            </div>
                         </div>
 
-                        <p style="margin:0 0 8px 0; font-size:13px; color:#7A7E89;">
-                            🔒 For your security, never share this verification code with anyone. Groomish Now staff will never ask for your code.
-                        </p>
+                        <div style="background:#FAF6ED; border-radius:10px; padding:12px 14px; margin:20px 0; border:1px solid rgba(55,58,67,0.06);">
+                            <p style="margin:0; font-size:12px; color:#7A7E89; line-height:1.5;">
+                                🔒 <strong>Security Notice:</strong> Never disclose this verification code to anyone. Groomish Now staff or technicians will never ask for your code.
+                            </p>
+                        </div>
 
-                        <p style="margin:0; font-size:13px; color:#7A7E89;">
-                            If you did not request this OTP, you can safely ignore this email.
+                        <p style="margin:0; font-size:12px; color:#A0A4AE;">
+                            If you did not request this OTP, you can safely disregard this email.
                         </p>
                     </td>
                 </tr>
@@ -77,13 +81,13 @@
                 <tr>
                     <td style="
                         background:#FAF6ED;
-                        padding:18px 24px;
+                        padding:20px 24px;
                         text-align:center;
                         font-size:11px;
                         color:#7A7E89;
                         border-top:1px solid rgba(55,58,67,0.08);
                     ">
-                        © 2026 Groomish Now. All rights reserved.
+                        © 2026 Groomish Now Luxury Salon & Spa. All rights reserved.
                     </td>
                 </tr>
 

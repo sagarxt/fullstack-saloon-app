@@ -79,12 +79,30 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
                     com.loyalty_program_app.backend.model.SubService sub = com.loyalty_program_app.backend.model.SubService.builder()
                             .service(s)
                             .name(subDto.getName().trim())
-                            .price(subDto.getPrice() != null ? subDto.getPrice() : price)
+                            .description(subDto.getDescription())
+                            .mrp(subDto.getMrp())
+                            .price(subDto.getPrice() != null ? subDto.getPrice() : (price != null ? price : 0.0))
                             .durationMinutes(subDto.getDurationMinutes() != null ? subDto.getDurationMinutes() : (durationMinutes != null ? durationMinutes : 30))
                             .active(subDto.getActive() != null ? subDto.getActive() : true)
                             .build();
                     s.getSubServices().add(sub);
                 }
+            }
+            if ((s.getPrice() == null || s.getPrice() == 0.0) && !s.getSubServices().isEmpty()) {
+                double minP = s.getSubServices().stream().mapToDouble(com.loyalty_program_app.backend.model.SubService::getPrice).min().orElse(0.0);
+                s.setPrice(minP);
+            }
+            if ((s.getMrp() == null || s.getMrp() == 0.0) && !s.getSubServices().isEmpty()) {
+                double minMrp = s.getSubServices().stream()
+                        .mapToDouble(sub -> sub.getMrp() != null ? sub.getMrp() : sub.getPrice())
+                        .min().orElse(s.getPrice() != null ? s.getPrice() : 0.0);
+                s.setMrp(minMrp);
+            }
+            if ((s.getDurationMinutes() == null || s.getDurationMinutes() == 0) && !s.getSubServices().isEmpty()) {
+                int minDur = s.getSubServices().stream()
+                        .mapToInt(sub -> sub.getDurationMinutes() != null ? sub.getDurationMinutes() : 30)
+                        .min().orElse(30);
+                s.setDurationMinutes(minDur);
             }
         }
 
@@ -149,11 +167,31 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
                     com.loyalty_program_app.backend.model.SubService sub = com.loyalty_program_app.backend.model.SubService.builder()
                             .service(s)
                             .name(subDto.getName().trim())
-                            .price(subDto.getPrice() != null ? subDto.getPrice() : s.getPrice())
-                            .durationMinutes(subDto.getDurationMinutes() != null ? subDto.getDurationMinutes() : s.getDurationMinutes())
+                            .description(subDto.getDescription())
+                            .mrp(subDto.getMrp())
+                            .price(subDto.getPrice() != null ? subDto.getPrice() : (s.getPrice() != null ? s.getPrice() : 0.0))
+                            .durationMinutes(subDto.getDurationMinutes() != null ? subDto.getDurationMinutes() : (s.getDurationMinutes() != null ? s.getDurationMinutes() : 30))
                             .active(subDto.getActive() != null ? subDto.getActive() : true)
                             .build();
                     s.getSubServices().add(sub);
+                }
+            }
+            if (!s.getSubServices().isEmpty()) {
+                if (s.getPrice() == null || s.getPrice() == 0.0) {
+                    double minP = s.getSubServices().stream().mapToDouble(com.loyalty_program_app.backend.model.SubService::getPrice).min().orElse(0.0);
+                    s.setPrice(minP);
+                }
+                if (s.getMrp() == null || s.getMrp() == 0.0) {
+                    double minMrp = s.getSubServices().stream()
+                            .mapToDouble(sub -> sub.getMrp() != null ? sub.getMrp() : sub.getPrice())
+                            .min().orElse(s.getPrice() != null ? s.getPrice() : 0.0);
+                    s.setMrp(minMrp);
+                }
+                if (s.getDurationMinutes() == null || s.getDurationMinutes() == 0) {
+                    int minDur = s.getSubServices().stream()
+                            .mapToInt(sub -> sub.getDurationMinutes() != null ? sub.getDurationMinutes() : 30)
+                            .min().orElse(30);
+                    s.setDurationMinutes(minDur);
                 }
             }
         }
@@ -232,6 +270,8 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
                     .map(sub -> com.loyalty_program_app.backend.dto.service.SubServiceDto.builder()
                             .id(sub.getId())
                             .name(sub.getName())
+                            .description(sub.getDescription())
+                            .mrp(sub.getMrp())
                             .price(sub.getPrice())
                             .durationMinutes(sub.getDurationMinutes())
                             .active(sub.isActive())

@@ -72,41 +72,41 @@ export default function PublicCategoriesPage() {
 
       <main className="flex-1">
         {/* HERO SECTION */}
-        <section className="bg-gradient-to-b from-white to-groomish-cream py-12 border-b border-groomish-slate/10">
+        <section className="bg-gradient-to-b from-white to-groomish-cream py-6 sm:py-10 border-b border-groomish-slate/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-groomish-orangeLight text-groomish-orange text-xs font-bold uppercase tracking-wider mb-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-groomish-orangeLight text-groomish-orange text-xs font-bold uppercase tracking-wider mb-2.5 sm:mb-3">
               <Layers className="w-3.5 h-3.5" />
               <span>Curated Salon Collections</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-groomish-slate tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-heading font-extrabold text-groomish-slate tracking-tight">
               Explore Salon Categories
             </h1>
-            <p className="text-sm sm:text-base text-groomish-slate/60 mt-3 leading-relaxed">
+            <p className="text-xs sm:text-sm text-groomish-slate/60 mt-2 leading-relaxed">
               Discover tailored treatments from master haircuts and bespoke beard styling to restorative facials, soothing spas, and luxury bridal packages.
             </p>
 
             {/* Search Box */}
-            <div className="mt-6 max-w-md mx-auto relative">
+            <div className="mt-4 sm:mt-6 max-w-md mx-auto relative">
               <Search className="w-4 h-4 text-groomish-slate/40 absolute left-4 top-3.5" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search category by name or service..."
-                className="input-groomish pl-11 shadow-soft bg-white"
+                className="input-groomish pl-11 shadow-soft bg-white text-xs sm:text-sm"
               />
             </div>
           </div>
         </section>
 
         {/* CATEGORIES GRID */}
-        <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="py-6 sm:py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {loading ? (
-            <div className="py-20 text-center">
-              <div className="w-10 h-10 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <div className="py-14 text-center">
+              <div className="w-9 h-9 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               <p className="text-xs text-groomish-slate/60 font-medium">Loading salon categories...</p>
             </div>
           ) : filteredCategories.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-groomish-slate/10 p-12 text-center max-w-md mx-auto shadow-soft">
+            <div className="bg-white rounded-3xl border border-groomish-slate/10 p-8 sm:p-12 text-center max-w-md mx-auto shadow-soft">
               <Layers className="w-10 h-10 text-groomish-slate/30 mx-auto mb-3" />
               <h3 className="font-heading font-bold text-base text-groomish-slate">
                 No Categories Found
@@ -118,7 +118,7 @@ export default function PublicCategoriesPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4.5">
               {filteredCategories.map((category) => {
                 const serviceCount = serviceList.filter((s) => s.categoryId === category.id).length;
                 const imgSrc =
@@ -129,21 +129,21 @@ export default function PublicCategoriesPage() {
                 return (
                   <div
                     key={category.id}
-                    className="group bg-white rounded-3xl border border-groomish-slate/10 overflow-hidden shadow-soft hover:shadow-card transition-all duration-300 flex flex-col justify-between"
+                    className="group bg-white rounded-2xl sm:rounded-3xl border border-groomish-slate/10 overflow-hidden shadow-soft hover:shadow-card transition-all duration-300 flex flex-col justify-between"
                   >
                     <div>
                       {/* Circular Image Showcase */}
                       <div
                         onClick={() => navigate(`/category/${category.id}`)}
-                        className="relative pt-8 pb-4 px-6 bg-gradient-to-b from-groomish-cream/80 to-white flex flex-col items-center justify-center cursor-pointer border-b border-groomish-slate/5"
+                        className="relative pt-4 sm:pt-5 pb-2.5 sm:pb-3 px-3 sm:px-4 bg-gradient-to-b from-groomish-cream/80 to-white flex flex-col items-center justify-center cursor-pointer border-b border-groomish-slate/5"
                       >
                         {/* Service count badge */}
-                        <span className="absolute top-4 right-4 text-[11px] font-bold px-3 py-1 rounded-full bg-white text-groomish-orange border border-groomish-orange/30 shadow-xs">
+                        <span className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-groomish-orange border border-groomish-orange/30 shadow-xs">
                           {serviceCount > 0 ? `${serviceCount} Services` : "Curated Care"}
                         </span>
 
                         {/* Circular Avatar */}
-                        <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-full overflow-hidden bg-white border-4 border-groomish-orange/25 shadow-md p-1 group-hover:border-groomish-orange group-hover:scale-105 group-hover:shadow-card transition-all duration-300 flex items-center justify-center">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full overflow-hidden bg-white border-2 sm:border-3 border-groomish-orange/25 shadow-md p-1 group-hover:border-groomish-orange group-hover:scale-105 group-hover:shadow-card transition-all duration-300 flex items-center justify-center">
                           <img
                             src={getOptimizedImageUrl(imgSrc, { width: 400 })}
                             alt={category.name}
@@ -153,20 +153,20 @@ export default function PublicCategoriesPage() {
                           />
                         </div>
 
-                        <h3 className="font-heading font-extrabold text-xl text-groomish-slate text-center mt-4 group-hover:text-groomish-orange transition-colors">
+                        <h3 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate text-center mt-2.5 sm:mt-3 group-hover:text-groomish-orange transition-colors">
                           {category.name}
                         </h3>
                       </div>
 
                       {/* Content */}
-                      <div className="p-6 space-y-3">
-                        <p className="text-xs text-groomish-slate/70 leading-relaxed line-clamp-3 text-center sm:text-left">
+                      <div className="p-3.5 sm:p-4 space-y-2">
+                        <p className="text-[11px] sm:text-xs text-groomish-slate/70 leading-relaxed line-clamp-2 text-center sm:text-left">
                           {category.description || "Indulge in our signature salon therapies delivered by master stylists using premium products."}
                         </p>
 
                         {/* Top Services preview */}
                         {serviceCount > 0 && (
-                          <div className="pt-2 flex flex-wrap gap-1.5">
+                          <div className="pt-1 flex flex-wrap gap-1">
                             {services
                               .filter((s) => s.categoryId === category.id)
                               .slice(0, 3)
@@ -174,7 +174,7 @@ export default function PublicCategoriesPage() {
                                 <span
                                   key={srv.id}
                                   onClick={() => navigate(`/services/${srv.id}`)}
-                                  className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-groomish-cream text-groomish-slate hover:text-groomish-orange cursor-pointer transition-colors"
+                                  className="text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-groomish-cream text-groomish-slate hover:text-groomish-orange cursor-pointer transition-colors"
                                 >
                                   {srv.name}
                                 </span>
@@ -185,13 +185,13 @@ export default function PublicCategoriesPage() {
                     </div>
 
                     {/* Action Button */}
-                    <div className="p-6 pt-0">
+                    <div className="p-3.5 sm:p-4 pt-0 sm:pt-0">
                       <button
                         onClick={() => navigate(`/category/${category.id}`)}
-                        className="w-full btn-primary text-xs py-3 flex items-center justify-center gap-2 group-hover:shadow-glowOrange"
+                        className="w-full btn-primary text-[11px] sm:text-xs py-2 sm:py-2.5 flex items-center justify-center gap-1.5 group-hover:shadow-glowOrange"
                       >
-                        <span>View {category.name} Services</span>
-                        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+                        <span>View {category.name}</span>
+                        <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
                       </button>
                     </div>
                   </div>

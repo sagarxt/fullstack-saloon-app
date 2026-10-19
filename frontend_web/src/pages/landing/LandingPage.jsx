@@ -15,6 +15,7 @@ import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import {
   Sparkles,
   Award,
+  Shield,
   ShieldCheck,
   CalendarCheck,
   Star,
@@ -50,7 +51,6 @@ export default function LandingPage() {
   // Branch hero slider states
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [branchSelectorOpen, setBranchSelectorOpen] = useState(false);
 
   const branchImages = (
     Array.isArray(selectedStore?.images) && selectedStore.images.length > 0
@@ -154,95 +154,21 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* HERO SECTION */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-white to-groomish-cream pt-12 pb-24 border-b border-groomish-slate/10">
+        <section className="relative overflow-hidden bg-gradient-to-b from-white to-groomish-cream pt-4 sm:pt-10 pb-8 sm:pb-16 border-b border-groomish-slate/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-              {/* Left Column: Copy & Actions */}
-              <div className="lg:col-span-6 space-y-6 text-center lg:text-left">
-                {/* Pill */}
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-groomish-orangeLight border border-groomish-orange/30 text-groomish-orange text-xs font-bold uppercase tracking-wider shadow-sm">
-                  <Sparkles className="w-3.5 h-3.5 text-groomish-orange fill-groomish-orange" />
-                  <span>Next-Gen Salon Experience & VIP Loyalty</span>
-                </div>
-
-                {/* Main Headline */}
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-groomish-slate tracking-tight leading-[1.12]">
-                  Look Sharp. <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-groomish-orange via-groomish-coral to-groomish-crimson">
-                    Earn Rewards Every Visit.
-                  </span>
-                </h1>
-
-                {/* Subtitle */}
-                <p className="text-base sm:text-lg text-groomish-slateLight max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
-                  Reserve certified salon specialists, luxurious grooming therapies, and unlock complimentary upgrades with Groomish Now Groom Coins.
-                </p>
-
-                {/* CTAs */}
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
-                  <a
-                    href="#services"
-                    className="btn-primary text-sm sm:text-base px-7 py-3.5 shadow-glowOrange w-full sm:w-auto"
-                  >
-                    <span>Explore Services</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </a>
-
-                  <a
-                    href="#rewards"
-                    className="btn-secondary text-sm sm:text-base px-6 py-3.5 w-full sm:w-auto flex items-center justify-center gap-2"
-                  >
-                    <Gift className="w-4 h-4 text-groomish-orange" />
-                    <span>View Loyalty Perks</span>
-                  </a>
-                </div>
-
-                {/* Trust Badges */}
-                <div className="pt-6 border-t border-groomish-slate/10 grid grid-cols-3 gap-4 max-w-lg mx-auto lg:mx-0 text-left">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-groomish-greenLight text-groomish-green flex items-center justify-center shrink-0">
-                      <ShieldCheck className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-groomish-slate">100% Verified</p>
-                      <p className="text-[11px] text-groomish-slateLight">Top Stylists</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-groomish-goldLight text-groomish-goldDark flex items-center justify-center shrink-0">
-                      <Star className="w-5 h-5 fill-groomish-gold text-groomish-goldDark" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-groomish-slate">4.9 / 5.0</p>
-                      <p className="text-[11px] text-groomish-slateLight">Client Rating</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-groomish-blueLight text-groomish-blue flex items-center justify-center shrink-0">
-                      <Zap className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-groomish-slate">Instant Points</p>
-                      <p className="text-[11px] text-groomish-slateLight">On Every Booking</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Interactive Branch Experience & Photos Slider */}
-              <div className="lg:col-span-6 relative">
+            <div className="grid lg:grid-cols-12 gap-6 lg:gap-12 items-center">
+              {/* Right Column (Branch Photos Slider): On Mobile order-1, on Desktop lg:order-2 */}
+              <div className="lg:col-span-6 relative order-1 lg:order-2">
                 <div className="relative mx-auto w-full max-w-xl">
                   {/* Decorative Ambient Glow */}
                   <div className="absolute -inset-4 bg-gradient-to-tr from-groomish-orange/20 via-groomish-gold/20 to-groomish-coral/20 rounded-3xl blur-2xl -z-10" />
 
                   {!selectedStore || branchImages.length === 0 ? (
-                    <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-card border border-groomish-slate/10 text-center space-y-4">
-                      <div className="w-16 h-16 rounded-2xl bg-groomish-cream text-groomish-orange flex items-center justify-center mx-auto border border-groomish-slate/10">
-                        <MapPin className="w-8 h-8" />
+                    <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-card border border-groomish-slate/10 text-center space-y-4">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-groomish-cream text-groomish-orange flex items-center justify-center mx-auto border border-groomish-slate/10">
+                        <MapPin className="w-7 h-7 sm:w-8 sm:h-8" />
                       </div>
-                      <h3 className="font-heading font-extrabold text-xl text-groomish-slate">
+                      <h3 className="font-heading font-extrabold text-lg sm:text-xl text-groomish-slate">
                         {selectedStore ? selectedStore.name : "Welcome to Groomish Now"}
                       </h3>
                       <p className="text-xs sm:text-sm text-groomish-slateLight max-w-md mx-auto leading-relaxed">
@@ -258,7 +184,7 @@ export default function LandingPage() {
                   ) : (
                     /* Main Showcase Container */
                     <div
-                      className="bg-white rounded-3xl p-3.5 sm:p-4 shadow-card border border-groomish-slate/10 space-y-3 relative group"
+                      className="bg-white rounded-3xl p-3 sm:p-4 shadow-card border border-groomish-slate/10 space-y-2.5 sm:space-y-3 relative group"
                       onMouseEnter={() => setIsPaused(true)}
                       onMouseLeave={() => setIsPaused(false)}
                     >
@@ -266,7 +192,7 @@ export default function LandingPage() {
                     <div className="flex items-center justify-between px-1.5 pt-0.5">
                       <div className="flex items-center gap-2.5 sm:gap-3">
                         {/* Branch Logo */}
-                        <div className="w-11 h-11 rounded-2xl bg-groomish-cream border border-groomish-slate/15 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-sm">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-groomish-cream border border-groomish-slate/15 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-sm">
                           {selectedStore?.logo ? (
                             <img
                               src={getOptimizedImageUrl(selectedStore.logo, { width: 120 })}
@@ -296,59 +222,11 @@ export default function LandingPage() {
                           </div>
                           <p className="text-[11px] text-groomish-slateLight flex items-center gap-1 mt-0.5">
                             <MapPin className="w-3 h-3 text-groomish-orange shrink-0" />
-                            <span className="truncate max-w-[190px] sm:max-w-[260px]">
+                            <span className="truncate max-w-[200px] sm:max-w-[280px]">
                               {selectedStore?.city ? `${selectedStore.city}, ` : ""}{selectedStore?.address || "Salon Lounge"}
                             </span>
                           </p>
                         </div>
-                      </div>
-
-                      {/* Proximity / Branch Selector Quick Pill */}
-                      <div className="relative shrink-0">
-                        {stores.length > 1 ? (
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => setBranchSelectorOpen((v) => !v)}
-                              className="text-[11px] font-bold text-groomish-orange bg-groomish-orangeLight border border-groomish-orange/30 px-2.5 py-1 rounded-xl hover:bg-groomish-orange hover:text-white transition flex items-center gap-1"
-                            >
-                              <span>Change Branch</span>
-                              <ChevronDown className="w-3 h-3" />
-                            </button>
-                            {branchSelectorOpen && (
-                              <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-groomish-slate/10 p-2 z-30 animate-in fade-in zoom-in-95">
-                                <p className="text-[10px] font-bold text-groomish-slateLight uppercase px-2 py-1">
-                                  Select Salon Branch
-                                </p>
-                                <div className="space-y-1 max-h-48 overflow-y-auto">
-                                  {stores.map((s) => (
-                                    <button
-                                      key={s.id}
-                                      type="button"
-                                      onClick={() => {
-                                        selectStore(s);
-                                        setBranchSelectorOpen(false);
-                                      }}
-                                      className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between transition ${
-                                        selectedStore?.id === s.id
-                                          ? "bg-groomish-orange text-white font-bold"
-                                          : "hover:bg-groomish-cream text-groomish-slate"
-                                      }`}
-                                    >
-                                      <span className="truncate">{s.name}</span>
-                                      {selectedStore?.id === s.id && <Check className="w-3.5 h-3.5" />}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-groomish-green bg-groomish-greenLight px-2.5 py-1 rounded-xl">
-                            <span className="w-2 h-2 rounded-full bg-groomish-green animate-pulse" />
-                            <span>Active Branch</span>
-                          </span>
-                        )}
                       </div>
                     </div>
 
@@ -474,6 +352,80 @@ export default function LandingPage() {
                   )}
                 </div>
               </div>
+
+              {/* Left Column: Copy & Actions (On Mobile order-2, on Desktop lg:order-1) */}
+              <div className="lg:col-span-6 space-y-4 sm:space-y-6 text-center lg:text-left order-2 lg:order-1">
+                {/* Pill */}
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-groomish-orangeLight border border-groomish-orange/30 text-groomish-orange text-xs font-bold uppercase tracking-wider shadow-xs">
+                  <Sparkles className="w-3.5 h-3.5 text-groomish-orange fill-groomish-orange" />
+                  <span>Next-Gen Salon Experience & VIP Loyalty</span>
+                </div>
+
+                {/* Main Headline */}
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-groomish-slate tracking-tight leading-[1.12]">
+                  Look Sharp. <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-groomish-orange via-groomish-coral to-groomish-crimson">
+                    Earn Rewards Every Visit.
+                  </span>
+                </h1>
+
+                {/* Subtitle */}
+                <p className="text-sm sm:text-base lg:text-lg text-groomish-slateLight max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                  Reserve certified salon specialists, luxurious grooming therapies, and unlock complimentary upgrades with Groomish Now Groom Coins.
+                </p>
+
+                {/* CTAs */}
+                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-1">
+                  <a
+                    href="#services"
+                    className="btn-primary text-sm sm:text-base px-6 sm:px-7 py-3 sm:py-3.5 shadow-glowOrange w-full sm:w-auto"
+                  >
+                    <span>Explore Services</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+
+                  <a
+                    href="#rewards"
+                    className="btn-secondary text-sm sm:text-base px-5 sm:px-6 py-3 sm:py-3.5 w-full sm:w-auto flex items-center justify-center gap-2"
+                  >
+                    <Gift className="w-4 h-4 text-groomish-orange" />
+                    <span>View Loyalty Perks</span>
+                  </a>
+                </div>
+
+                {/* Trust Badges - Hidden on mobile view */}
+                <div className="hidden sm:grid pt-5 sm:pt-6 border-t border-groomish-slate/10 grid-cols-3 gap-4 max-w-lg mx-auto lg:mx-0 text-left">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-groomish-greenLight text-groomish-green flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-groomish-slate">100% Verified</p>
+                      <p className="text-[11px] text-groomish-slateLight">Top Stylists</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-groomish-goldLight text-groomish-goldDark flex items-center justify-center shrink-0">
+                      <Star className="w-5 h-5 fill-groomish-gold text-groomish-goldDark" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-groomish-slate">4.9 / 5.0</p>
+                      <p className="text-[11px] text-groomish-slateLight">Client Rating</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-groomish-blueLight text-groomish-blue flex items-center justify-center shrink-0">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-groomish-slate">Instant Points</p>
+                      <p className="text-[11px] text-groomish-slateLight">On Every Booking</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -494,142 +446,91 @@ export default function LandingPage() {
         />
 
         {/* VIP LOYALTY PERKS SECTION */}
-        <section id="rewards" className="py-20 bg-white border-t border-groomish-slate/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto mb-14">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-groomish-goldLight text-groomish-goldDark mb-3">
-                <Award className="w-3.5 h-3.5" />
-                Loyalty Tiers
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-heading font-extrabold text-groomish-slate">
-                How Our Rewards Program Works
-              </h2>
-              <p className="mt-2 text-sm text-groomish-slateLight">
-                Every rupee spent translates directly into redeemable rewards. Unlock higher tiers as you visit.
-              </p>
+        <section id="rewards" className="py-8 sm:py-14 bg-white border-t border-groomish-slate/10">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-groomish-slate">
+                  VIP Loyalty &amp; Tier Privileges
+                </h2>
+                <p className="text-xs sm:text-sm text-groomish-slateLight mt-0.5">
+                  Why Join Us: Earn Groom Coins with every cut and treatment
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate("/customer/rewards")}
+                className="text-sm sm:text-base font-bold text-groomish-orange hover:text-groomish-coral transition shrink-0"
+              >
+                Explore
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Silver */}
-              <div className="card-groomish p-6 bg-white border-groomish-slate/10 flex flex-col justify-between hover:shadow-card transition duration-300">
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500 font-extrabold mb-4 text-base">
-                    Ag
+            {/* Compact Row-Wise Tier Cards */}
+            <div className="space-y-3 sm:space-y-4">
+              {/* Silver Tier */}
+              <div className="rounded-2xl border border-slate-200/90 bg-[#F4F7FB] p-4 sm:p-5 transition hover:shadow-soft">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-400 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Shield className="w-5 h-5 fill-white/20" />
                   </div>
-                  <h3 className="text-xl font-bold text-groomish-slate">Silver Tier</h3>
-                  <p className="text-xs text-groomish-slateLight mt-1">Starting level for all members</p>
-                  
-                  <div className="my-4 py-2 px-3 rounded-xl bg-gray-50 border border-gray-100">
-                    <span className="text-xs font-extrabold text-groomish-slate">1 pt per ₹100</span>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-500">Silver Tier</h3>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-800">1x Coins</p>
                   </div>
-
-                  <ul className="space-y-2.5 text-xs text-groomish-slate">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
-                      <span>Standard online bookings & OTP receipts.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
-                      <span>Welcome salon perks & referral points</span>
-                    </li>
-                  </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-groomish-slate/10 text-xs font-bold text-groomish-slateLight flex items-center justify-between">
-                  <span>Entry Milestone</span>
-                  <span className="text-groomish-slate font-extrabold">0 Points</span>
-                </div>
+                <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  Earn 1 Groom Coin for every ₹10 spent. Free birthday hair consultation.
+                </p>
               </div>
 
-              {/* Gold */}
-              <div className="card-groomish p-6 bg-gradient-to-b from-white to-groomish-goldLight/30 border-groomish-gold/40 relative shadow-glowGold flex flex-col justify-between hover:scale-[1.02] transition duration-300">
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-groomish-goldLight flex items-center justify-center text-groomish-goldDark font-extrabold mb-4 text-base">
-                    Au
+              {/* Gold Tier */}
+              <div className="rounded-2xl border border-[#FBEAC4] bg-[#FDF9ED] p-4 sm:p-5 transition hover:shadow-soft">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#E5A93C] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Star className="w-5 h-5 fill-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-groomish-slate">Gold Tier</h3>
-                  <p className="text-xs text-groomish-slateLight mt-1">For regular salon enthusiasts</p>
-
-                  <div className="my-4 py-2 px-3 rounded-xl bg-groomish-goldLight/60 border border-groomish-gold/30">
-                    <span className="text-xs font-extrabold text-groomish-goldDark">1.25x Points Multiplier</span>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-[#C2821E]">Gold Tier</h3>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-800">1.5x Coins</p>
                   </div>
-
-                  <ul className="space-y-2.5 text-xs text-groomish-slate">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
-                      <span>Complimentary scalp analysis & priority slots.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
-                      <span>1.25x point boost on all services</span>
-                    </li>
-                  </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-groomish-gold/30 text-xs font-bold text-groomish-goldDark flex items-center justify-between">
-                  <span>Requirement</span>
-                  <span className="font-extrabold">50 Points</span>
-                </div>
+                <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  50% faster coin accumulation. Dedicated master stylist priority slots.
+                </p>
               </div>
 
-              {/* Platinum */}
-              <div className="card-groomish p-6 bg-gradient-to-b from-white to-groomish-blueLight/30 border-groomish-blue/40 flex flex-col justify-between hover:scale-[1.02] transition duration-300">
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-groomish-blueLight flex items-center justify-center text-groomish-blue font-extrabold mb-4 text-base">
-                    Pt
+              {/* Platinum Tier */}
+              <div className="rounded-2xl border border-[#CCE0FF] bg-[#F0F5FF] p-4 sm:p-5 transition hover:shadow-soft">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#3B82F6] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Award className="w-5 h-5" />
                   </div>
-                  <h3 className="text-xl font-bold text-groomish-slate">Platinum Tier</h3>
-                  <p className="text-xs text-groomish-slateLight mt-1">Elite VIP luxury styling</p>
-
-                  <div className="my-4 py-2 px-3 rounded-xl bg-groomish-blueLight/60 border border-groomish-blue/30">
-                    <span className="text-xs font-extrabold text-groomish-blue">1.5x Points Multiplier</span>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-[#2563EB]">Platinum Tier</h3>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-800">2x Coins</p>
                   </div>
-
-                  <ul className="space-y-2.5 text-xs text-groomish-slate">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-blue shrink-0 mt-0.5" />
-                      <span>Senior stylist preference & birthday gift.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-blue shrink-0 mt-0.5" />
-                      <span>1.5x point boost on all bookings</span>
-                    </li>
-                  </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-groomish-blue/30 text-xs font-bold text-groomish-blue flex items-center justify-between">
-                  <span>Requirement</span>
-                  <span className="font-extrabold">150 Points</span>
-                </div>
+                <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  Double coin earnings, complimentary scalp detox every quarter &amp; zero cancellation fees.
+                </p>
               </div>
 
-              {/* Diamond */}
-              <div className="card-groomish p-6 bg-gradient-to-br from-groomish-slate via-groomish-slateDark to-black text-white border-groomish-coral/40 relative shadow-card flex flex-col justify-between hover:scale-[1.02] transition duration-300">
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-groomish-coral font-extrabold mb-4 text-base border border-white/10">
-                    <Gem className="w-6 h-6 text-groomish-coral" />
+              {/* Diamond Tier */}
+              <div className="rounded-2xl border border-[#FFD9CE] bg-[#FFF5F2] p-4 sm:p-5 transition hover:shadow-soft">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#F05A28] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Gem className="w-5 h-5" />
                   </div>
-                  <h3 className="text-xl font-bold text-white flex items-center gap-1.5">
-                    Diamond Tier
-                  </h3>
-                  <p className="text-xs text-gray-300 mt-1">Supreme concierge & prestige</p>
-
-                  <div className="my-4 py-2 px-3 rounded-xl bg-white/10 border border-white/10">
-                    <span className="text-xs font-extrabold text-groomish-coral">2.0x Points Multiplier</span>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-[#E05020]">Diamond Tier</h3>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-800">3x Coins</p>
                   </div>
-
-                  <ul className="space-y-2.5 text-xs text-gray-200">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-coral shrink-0 mt-0.5" />
-                      <span>Complimentary head massage & concierge.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-groomish-coral shrink-0 mt-0.5" />
-                      <span>2.0x double point boost & VIP lounge</span>
-                    </li>
-                  </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-white/10 text-xs font-bold text-groomish-coral flex items-center justify-between">
-                  <span>Requirement</span>
-                  <span className="font-extrabold">300 Points</span>
-                </div>
+                <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  Triple coins on all services &amp; retail care, VIP private suite access &amp; personal styling concierge.
+                </p>
               </div>
             </div>
           </div>

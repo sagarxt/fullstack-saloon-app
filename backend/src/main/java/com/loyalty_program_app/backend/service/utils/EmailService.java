@@ -1,6 +1,7 @@
 package com.loyalty_program_app.backend.service.utils;
 
 import com.loyalty_program_app.backend.dto.mail.BillItemDto;
+import com.loyalty_program_app.backend.dto.mail.BookingEmailDto;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -10,7 +11,18 @@ public interface EmailService {
 
     void sendWelcomeEmail(String to, String name, String referralCode);
 
+    // Rich Booking emails
+    void sendBookingConfirmationEmail(BookingEmailDto dto);
+
     void sendBookingConfirmationEmail(String to, String name, String bookingId, String serviceName, LocalDateTime scheduledAt, Double pricePaid);
+
+    void sendBookingStartingSoonEmail(BookingEmailDto dto);
+
+    void sendBookingModifiedEmail(BookingEmailDto dto, boolean isAdminOverride);
+
+    void sendBookingAttentionRequiredEmail(BookingEmailDto dto);
+
+    void sendBookingCompletedEmail(BookingEmailDto dto);
 
     void sendBookingStatusEmail(String to, String name, String bookingId, String serviceName, String status, String note);
 
@@ -30,6 +42,17 @@ public interface EmailService {
     );
 
     void sendRewardRedeemedEmail(String to, String name, String rewardTitle, int pointsSpent, int remainingPoints);
+
+    void sendVoucherClaimedEmail(
+            String to,
+            String name,
+            String voucherCode,
+            String title,
+            String description,
+            Integer discountPercent,
+            LocalDateTime expiresAt,
+            String eligibleDetails
+    );
 
     void sendPasswordChangedEmail(String to, String name);
 

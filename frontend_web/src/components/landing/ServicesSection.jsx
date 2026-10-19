@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
-import { Clock, Sparkles, Search, Scissors, ArrowRight, Star, ShoppingCart } from "lucide-react";
+import { Clock, Sparkles, Search, Scissors, ArrowRight, Star, ShoppingCart, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { extractList } from "../../utils/dataHelper";
+import { extractList, getServicePriceRange, getServiceDurationRange } from "../../utils/dataHelper";
 import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import { useGroomCoin } from "../../context/GroomCoinContext";
 import GroomCoinIcon from "../common/GroomCoinIcon";
@@ -56,25 +56,25 @@ export default function ServicesSection({
   };
 
   return (
-    <section id="services" className="bg-groomish-cream py-16 border-t border-groomish-slate/10">
+    <section id="services" className="bg-groomish-cream py-8 sm:py-14 border-t border-groomish-slate/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 mb-5 sm:mb-8">
           <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-groomish-orangeLight text-groomish-orange mb-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-groomish-orangeLight text-groomish-orange mb-2 sm:mb-3">
               <Scissors className="w-3.5 h-3.5" />
               Featured Treatments
             </span>
-            <h2 className="text-3xl sm:text-4xl font-heading font-extrabold text-groomish-slate">
+            <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-groomish-slate">
               Our Signature Services
             </h2>
-            <p className="mt-1 text-sm text-groomish-slateLight">
+            <p className="mt-1 text-xs sm:text-sm text-groomish-slateLight">
               Click any treatment to view full service details, customer ratings, and book your visit.
             </p>
           </div>
 
           {/* Search & Direct Link to Dedicated Services Page */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 w-full md:w-auto">
             <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-groomish-slateLight" />
               <input
@@ -97,13 +97,13 @@ export default function ServicesSection({
         </div>
 
         {/* Filters Bar: Gender Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-groomish-slate/10">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-groomish-slate/10">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 max-w-full">
             {["ALL", "MALE", "FEMALE", "UNISEX"].map((g) => (
               <button
                 key={g}
                 onClick={() => setGenderFilter(g)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition ${
+                className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${
                   genderFilter === g
                     ? "bg-groomish-slate text-white shadow-sm"
                     : "bg-white text-groomish-slate border border-groomish-slate/10 hover:border-groomish-slate/30"
@@ -181,7 +181,9 @@ export default function ServicesSection({
                       {/* Duration */}
                       <span className="absolute bottom-3 left-3 flex items-center gap-1 text-[11px] font-semibold text-white bg-black/40 backdrop-blur-sm px-2.5 py-0.5 rounded-full">
                         <Clock className="w-3 h-3 text-groomish-gold" />
-                        {service.durationMinutes} mins
+                        {service.subServices && service.subServices.length > 0
+                          ? getServiceDurationRange(service)
+                          : `${service.durationMinutes} mins`}
                       </span>
                     </div>
 
@@ -219,9 +221,11 @@ export default function ServicesSection({
                   <div className="p-5 pt-0 border-t border-groomish-slate/10 mt-2 flex items-center justify-between">
                     <div>
                       <div className="text-lg font-extrabold text-groomish-slate leading-none">
-                        ₹{service.price}
+                        {service.subServices && service.subServices.length > 0
+                          ? getServicePriceRange(service)
+                          : `₹${service.price}`}
                       </div>
-                      {service.mrp > service.price && (
+                      {(!service.subServices || service.subServices.length === 0) && service.mrp > service.price && (
                         <div className="text-[11px] text-groomish-slateLight line-through mt-0.5">
                           ₹{service.mrp}
                         </div>
@@ -231,12 +235,25 @@ export default function ServicesSection({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onBook(service);
+                        if (service.subServices && service.subServices.length > 1) {
+                          navigate(`/services/${service.id}`);
+                        } else {
+                          onBook(service);
+                        }
                       }}
                       className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
                     >
-                      <ShoppingCart className="w-3.5 h-3.5" />
-                      <span>Add Service</span>
+                      {service.subServices && service.subServices.length > 1 ? (
+                        <>
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>View Options</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          <span>Add Service</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

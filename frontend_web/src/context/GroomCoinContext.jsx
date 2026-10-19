@@ -51,7 +51,9 @@ export const GroomCoinProvider = ({ children }) => {
   const calculateCoins = useCallback(
     (amount, extraBonus = 0) => {
       const spendRate = config.spendAmountPerCoin > 0 ? config.spendAmountPerCoin : 100;
-      const base = Math.floor((Number(amount) || 0) / spendRate);
+      const num = Number(amount) || 0;
+      if (num <= 0) return Number(extraBonus) || 0;
+      const base = Math.round(num / spendRate);
       const bonus = Number(extraBonus) || 0;
       return Math.max(1, base + bonus);
     },
@@ -87,8 +89,11 @@ export const useGroomCoin = () => {
       loading: false,
       refreshConfig: () => {},
       updateConfig: async () => {},
-      calculateCoins: (amount, extraBonus = 0) =>
-        Math.max(1, Math.floor((Number(amount) || 0) / 100) + (Number(extraBonus) || 0)),
+      calculateCoins: (amount, extraBonus = 0) => {
+        const num = Number(amount) || 0;
+        if (num <= 0) return Number(extraBonus) || 0;
+        return Math.max(1, Math.round(num / 100) + (Number(extraBonus) || 0));
+      },
     };
   }
   return context;

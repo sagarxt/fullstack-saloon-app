@@ -127,23 +127,57 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     throw new RuntimeException("Coupon '" + coupon.getCode() + "' is exclusively reserved for members of: " + String.join(", ", coupon.getApplicableUserGroups()));
                 }
             }
-            if (servicesTotal < (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
-                throw new RuntimeException("Minimum amount for coupon is: ₹" + coupon.getMinAmount());
-            }
-
             final List<String> eligibleCats = coupon.getEligibleCategories();
-            if (eligibleCats != null && !eligibleCats.isEmpty()) {
+            boolean hasSpecificCategories = eligibleCats != null && !eligibleCats.isEmpty()
+                    && eligibleCats.stream().noneMatch(ec -> ec.trim().equalsIgnoreCase("ALL"));
+
+            if (hasSpecificCategories) {
+                double eligibleCategoryTotal = services.stream()
+                        .filter(s -> s.getCategory() != null && eligibleCats.stream().anyMatch(ec ->
+                                ec.trim().equalsIgnoreCase(s.getCategory().getName()) ||
+                                (s.getCategory().getId() != null && ec.trim().equalsIgnoreCase(s.getCategory().getId().toString())) ||
+                                s.getCategory().getName().toLowerCase().contains(ec.trim().toLowerCase()) ||
+                                ec.trim().toLowerCase().contains(s.getCategory().getName().toLowerCase())
+                        ))
+                        .mapToDouble(s -> s.getPrice() != null ? s.getPrice() : 0.0)
+                        .sum();
+
                 boolean hasEligibleService = services.stream().anyMatch(s ->
-                    s.getCategory() != null && eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(s.getCategory().getName()))
+                        s.getCategory() != null && eligibleCats.stream().anyMatch(ec ->
+                                ec.trim().equalsIgnoreCase(s.getCategory().getName()) ||
+                                (s.getCategory().getId() != null && ec.trim().equalsIgnoreCase(s.getCategory().getId().toString())) ||
+                                s.getCategory().getName().toLowerCase().contains(ec.trim().toLowerCase()) ||
+                                ec.trim().toLowerCase().contains(s.getCategory().getName().toLowerCase())
+                        )
                 );
+
                 if (!hasEligibleService) {
                     throw new RuntimeException("Coupon '" + coupon.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
                 }
-            }
 
-            discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
-            if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
-                discount = coupon.getMaxDiscount();
+                if (coupon.getMinAmount() != null && eligibleCategoryTotal < coupon.getMinAmount()) {
+                    throw new RuntimeException("Combined total for eligible categories (" + String.join(", ", eligibleCats) + ") is ₹" + eligibleCategoryTotal + ", which does not meet coupon minimum of ₹" + coupon.getMinAmount());
+                }
+
+                discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
+                if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
+                    discount = coupon.getMaxDiscount();
+                }
+                if (discount > eligibleCategoryTotal) {
+                    discount = eligibleCategoryTotal;
+                }
+            } else {
+                if (servicesTotal < (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
+                    throw new RuntimeException("Minimum amount for coupon is: ₹" + coupon.getMinAmount());
+                }
+
+                discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
+                if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
+                    discount = coupon.getMaxDiscount();
+                }
+                if (discount > servicesTotal) {
+                    discount = servicesTotal;
+                }
             }
         }
 
@@ -257,11 +291,11 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
 
         // In-app Notification
         String notifMsg = initialStatus == BookingStatus.CONFIRMED
-                ? "Your appointment for " + serviceNames + " on " + booking.getScheduledAt() + " is confirmed. Booking ID: " + booking.getBookingCode()
-                : "Your appointment for " + serviceNames + " on " + booking.getScheduledAt() + " is reserved. Complete online payment to confirm your booking. Booking ID: " + booking.getBookingCode();
+                ? "Your booking for " + serviceNames + " on " + booking.getScheduledAt() + " is confirmed. Booking ID: " + booking.getBookingCode()
+                : "Your booking for " + serviceNames + " on " + booking.getScheduledAt() + " is reserved. Complete online payment to confirm your booking. Booking ID: " + booking.getBookingCode();
         Notification notification = Notification.builder()
                 .user(user)
-                .title(initialStatus == BookingStatus.CONFIRMED ? "Appointment Confirmed" : "Appointment Reserved")
+                .title(initialStatus == BookingStatus.CONFIRMED ? "Booking Confirmed" : "Booking Reserved")
                 .message(notifMsg)
                 .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
                 .referenceId(booking.getId())
@@ -271,14 +305,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
 
         // Real-time Gmail Email (Sent only if booking is confirmed, e.g. Pay at Salon)
         if (initialStatus == BookingStatus.CONFIRMED) {
-            emailService.sendBookingConfirmationEmail(
-                    user.getEmail(),
-                    user.getName(),
-                    booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString(),
-                    serviceNames,
-                    booking.getScheduledAt(),
-                    booking.getPricePaid()
-            );
+            com.loyalty_program_app.backend.dto.mail.BookingEmailDto emailDto = com.loyalty_program_app.backend.dto.mail.BookingEmailDto.fromBooking(booking);
+            emailService.sendBookingConfirmationEmail(emailDto);
         }
 
         BookingResponse response = toBookingResponse(booking);
@@ -319,30 +347,49 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     coupon.getApplicableUserGroups().contains("ALL") ||
                     coupon.getApplicableUserGroups().stream().anyMatch(g -> g.equalsIgnoreCase("ALL"));
 
-            if (coupon.isActive() &&
-                    dateActive &&
-                    groupMatch &&
-                    totalAmount >= (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
-
+            if (coupon.isActive() && dateActive && groupMatch) {
                 final List<String> eligibleCats = coupon.getEligibleCategories();
-                if (eligibleCats != null && !eligibleCats.isEmpty()) {
+                boolean hasSpecificCategories = eligibleCats != null && !eligibleCats.isEmpty()
+                        && eligibleCats.stream().noneMatch(ec -> ec.trim().equalsIgnoreCase("ALL"));
+
+                if (hasSpecificCategories) {
+                    double eligibleCategoryTotal = services.stream()
+                            .filter(s -> s.getCategory() != null && eligibleCats.stream().anyMatch(ec ->
+                                    ec.trim().equalsIgnoreCase(s.getCategory().getName()) ||
+                                    (s.getCategory().getId() != null && ec.trim().equalsIgnoreCase(s.getCategory().getId().toString())) ||
+                                    s.getCategory().getName().toLowerCase().contains(ec.trim().toLowerCase()) ||
+                                    ec.trim().toLowerCase().contains(s.getCategory().getName().toLowerCase())
+                            ))
+                            .mapToDouble(s -> s.getPrice() != null ? s.getPrice() : 0.0)
+                            .sum();
+
                     boolean hasEligibleService = services.stream().anyMatch(s ->
-                        s.getCategory() != null && eligibleCats.stream().anyMatch(ec -> ec.equalsIgnoreCase(s.getCategory().getName()))
+                            s.getCategory() != null && eligibleCats.stream().anyMatch(ec ->
+                                    ec.trim().equalsIgnoreCase(s.getCategory().getName()) ||
+                                    (s.getCategory().getId() != null && ec.trim().equalsIgnoreCase(s.getCategory().getId().toString())) ||
+                                    s.getCategory().getName().toLowerCase().contains(ec.trim().toLowerCase()) ||
+                                    ec.trim().toLowerCase().contains(s.getCategory().getName().toLowerCase())
+                            )
                     );
-                    if (!hasEligibleService) {
-                        discount = 0.0;
-                    } else {
+
+                    if (hasEligibleService && (coupon.getMinAmount() == null || eligibleCategoryTotal >= coupon.getMinAmount())) {
                         discount = coupon.getDiscount();
-                        if (coupon.getMaxDiscount() != null &&
-                                discount > coupon.getMaxDiscount()) {
+                        if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
                             discount = coupon.getMaxDiscount();
                         }
+                        if (discount > eligibleCategoryTotal) {
+                            discount = eligibleCategoryTotal;
+                        }
+                    } else {
+                        discount = 0.0;
                     }
-                } else {
+                } else if (totalAmount >= (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {
                     discount = coupon.getDiscount();
-                    if (coupon.getMaxDiscount() != null &&
-                            discount > coupon.getMaxDiscount()) {
+                    if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
                         discount = coupon.getMaxDiscount();
+                    }
+                    if (discount > totalAmount) {
+                        discount = totalAmount;
                     }
                 }
             }
@@ -547,8 +594,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         bookingTimelineService.recordTimeline(
                 saved,
                 "RESCHEDULED",
-                "Appointment Rescheduled by Client",
-                "Client rescheduled appointment to " + newStart + (request.getNote() != null ? ". Note: " + request.getNote() : "."),
+                "Booking Rescheduled by Client",
+                "Client rescheduled booking to " + newStart + (request.getNote() != null ? ". Note: " + request.getNote() : "."),
                 booking.getUser() != null ? booking.getUser().getName() : "Customer",
                 "CUSTOMER",
                 booking.getUser() != null ? booking.getUser().getEmail() : null
@@ -557,8 +604,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         // In-app Notification
         Notification rescheduleNotif = Notification.builder()
                 .user(booking.getUser())
-                .title("Appointment Rescheduled")
-                .message("Your appointment has been rescheduled to " + newStart + ". Booking ID: " + (booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString()))
+                .title("Booking Rescheduled")
+                .message("Your booking has been rescheduled to " + newStart + ". Booking ID: " + (booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString()))
                 .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
                 .referenceId(booking.getId())
                 .link("/customer/bookings/" + booking.getId())
@@ -566,17 +613,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         notificationRepository.save(rescheduleNotif);
 
         // Real-time Email
-        String sName = (booking.getBookingItems() != null && !booking.getBookingItems().isEmpty())
-                ? booking.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Appointment";
-        String displayCode = booking.getBookingCode() != null ? booking.getBookingCode() : booking.getId().toString();
-        emailService.sendBookingStatusEmail(
-                booking.getUser().getEmail(),
-                booking.getUser().getName(),
-                displayCode,
-                sName,
-                "RESCHEDULED",
-                "Your appointment has been rescheduled to " + newStart
-        );
+        com.loyalty_program_app.backend.dto.mail.BookingEmailDto emailDto = com.loyalty_program_app.backend.dto.mail.BookingEmailDto.fromBooking(saved);
+        emailService.sendBookingModifiedEmail(emailDto, false);
 
         return toBookingResponse(booking);
     }
@@ -665,8 +703,19 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         dto.setCouponId(
                 b.getCoupon() != null ? b.getCoupon().getId() : null
         );
-        dto.setTotalAmount(b.getTotalAmount());
-        dto.setPricePaid(b.getPricePaid());
+        Double total = b.getTotalAmount();
+        Double paid = b.getPricePaid();
+        if ((total == null || total == 0.0) && b.getBookingItems() != null && !b.getBookingItems().isEmpty()) {
+            total = b.getBookingItems().stream()
+                    .mapToDouble(it -> it.getServicePriceSnapshot() != null && it.getServicePriceSnapshot() > 0 ? it.getServicePriceSnapshot()
+                            : (it.getService() != null && it.getService().getPrice() != null ? it.getService().getPrice() : 0.0))
+                    .sum();
+            if (paid == null || paid == 0.0) {
+                paid = total;
+            }
+        }
+        dto.setTotalAmount(total != null ? total : 0.0);
+        dto.setPricePaid(paid != null ? paid : (total != null ? total : 0.0));
         dto.setStatus(b.getStatus().name());
 
         if (b.getPayment() != null) {
@@ -742,9 +791,13 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
                     .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
                     .unitPrice(bp.getUnitPriceSnapshot())
+                    .mrp(bp.getProduct() != null && bp.getProduct().getMrp() != null ? bp.getProduct().getMrp() : bp.getUnitPriceSnapshot())
                     .quantity(bp.getQuantity())
                     .totalPrice(bp.getTotalPrice())
                     .build()).collect(Collectors.toList()));
+            if (dto.getServiceName() == null || dto.getServiceName().isBlank()) {
+                dto.setServiceName(prods.get(0).getProductNameSnapshot());
+            }
         } else {
             dto.setProducts(new ArrayList<>());
         }
@@ -1039,8 +1092,19 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             dto.setStoreAddress(booking.getStoreAddressSnapshot());
         }
 
-        dto.setTotalAmount(booking.getTotalAmount());
-        dto.setPricePaid(booking.getPricePaid());
+        Double totalAmount = booking.getTotalAmount();
+        Double pricePaid = booking.getPricePaid();
+        if ((totalAmount == null || totalAmount == 0.0) && booking.getBookingItems() != null && !booking.getBookingItems().isEmpty()) {
+            totalAmount = booking.getBookingItems().stream()
+                    .mapToDouble(it -> it.getServicePriceSnapshot() != null && it.getServicePriceSnapshot() > 0 ? it.getServicePriceSnapshot()
+                            : (it.getService() != null && it.getService().getPrice() != null ? it.getService().getPrice() : 0.0))
+                    .sum();
+            if (pricePaid == null || pricePaid == 0.0) {
+                pricePaid = totalAmount;
+            }
+        }
+        dto.setTotalAmount(totalAmount != null ? totalAmount : 0.0);
+        dto.setPricePaid(pricePaid != null ? pricePaid : (totalAmount != null ? totalAmount : 0.0));
 
         dto.setCouponApplied(
                 booking.getCoupon() != null
@@ -1110,6 +1174,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
                     .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
                     .unitPrice(bp.getUnitPriceSnapshot())
+                    .mrp(bp.getProduct() != null && bp.getProduct().getMrp() != null ? bp.getProduct().getMrp() : bp.getUnitPriceSnapshot())
                     .quantity(bp.getQuantity())
                     .totalPrice(bp.getTotalPrice())
                     .build()).collect(Collectors.toList()));
@@ -1152,9 +1217,16 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         dto.setServiceId(item.getService() != null ? item.getService().getId() : null);
         String name = item.getServiceNameSnapshot() != null ? item.getServiceNameSnapshot() : (item.getService() != null ? item.getService().getName() : "Salon Service");
         dto.setServiceName(name);
-        dto.setPrice(item.getServicePriceSnapshot());
+        Double itemPrice = item.getServicePriceSnapshot();
+        if ((itemPrice == null || itemPrice == 0.0) && item.getService() != null && item.getService().getPrice() != null) {
+            itemPrice = item.getService().getPrice();
+        }
+        dto.setPrice(itemPrice != null ? itemPrice : 0.0);
+        Double itemMrp = item.getService() != null ? item.getService().getMrp() : null;
+        dto.setMrp(itemMrp != null ? itemMrp : dto.getPrice());
         dto.setDurationMinutes(item.getServiceDurationSnapshot());
         dto.setRewardCoins(item.getServiceRewardCoinsSnapshot() != null ? item.getServiceRewardCoinsSnapshot() : 0);
+        dto.setImage(item.getService() != null ? item.getService().getImage() : null);
         dto.setStatus(item.getStatus() != null ? item.getStatus().name() : null);
         return dto;
     }

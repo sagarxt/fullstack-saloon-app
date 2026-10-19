@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { publicApi, customerApi } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, Radius, Shadows, Spacing, Typography } from '../../theme/colors';
+import TopHeader from '../../components/TopHeader';
 
 // ─── Cart State (simple in-memory for demo; replace with CartContext for full app) ───
 type CartItem = {
@@ -198,8 +199,11 @@ export default function ShopScreen() {
       return 0;
     });
 
-  const spendPerCoin = groomCoinConfig?.spendAmountPerCoin || 100;
-  const calculateCoins = (price: number) => Math.floor(price / spendPerCoin);
+  const spendPerCoin = 100;
+  const calculateCoins = (price: number) => {
+    if (!price || price <= 0) return 0;
+    return Math.max(1, Math.round(price / spendPerCoin));
+  };
 
   const activeFilterCount = [selectedCategory, selectedBrand, sortBy !== 'default'].filter(Boolean).length;
 
@@ -214,8 +218,12 @@ export default function ShopScreen() {
     return (
       <TouchableOpacity
         style={styles.productCard}
-        activeOpacity={0.9}
-        onPress={() => setSelectedProduct(product)}
+        onPress={() =>
+          router.push({
+            pathname: '/(tabs)/product/[id]',
+            params: { id: String(product.id) },
+          } as any)
+        }
       >
         {/* Image Area */}
         <View style={styles.productImageWrap}>
@@ -302,6 +310,9 @@ export default function ShopScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
+      {/* ─── Universal Top Navbar ─── */}
+      <TopHeader showBranchSelector={true} />
+
       {/* ─── Header ─── */}
       <View style={styles.header}>
         <View>

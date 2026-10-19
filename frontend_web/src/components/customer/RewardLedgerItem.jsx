@@ -14,27 +14,39 @@ export default function RewardLedgerItem({ item }) {
     : "Recent";
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-groomish-cream/40 transition gap-3">
-      <div className="flex items-start gap-3">
+    <div className="flex items-center justify-between p-3.5 sm:p-4 hover:bg-groomish-cream/40 transition gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <div
-          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${
             isCredit
               ? "bg-groomish-greenLight text-groomish-green"
               : "bg-groomish-crimsonLight text-groomish-crimson"
           }`}
         >
           {isCredit ? (
-            <ArrowDownLeft className="w-4 h-4" />
+            <ArrowDownLeft className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           ) : (
-            <ArrowUpRight className="w-4 h-4" />
+            <ArrowUpRight className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           )}
         </div>
 
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-xs text-groomish-slate">
+        <div className="min-w-0 space-y-0.5 sm:space-y-1">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="font-bold text-xs sm:text-sm text-groomish-slate leading-tight">
               {item.reason ? item.reason.replaceAll("_", " ") : "Points Activity"}
             </span>
+
+            {/* Tracked Order / Booking ID */}
+            {item.bookingCode && (
+              <Link
+                to={`/customer/bookings/${item.bookingId || item.relatedId}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-extrabold bg-groomish-orange/15 text-groomish-orange hover:bg-groomish-orange/25 transition border border-groomish-orange/20"
+                title="View full booking invoice"
+              >
+                <span>Order: {item.bookingCode}</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </Link>
+            )}
 
             {/* Referral Tag */}
             {item.reason === "REFERRAL_BONUS" && (
@@ -42,18 +54,6 @@ export default function RewardLedgerItem({ item }) {
                 <Gift className="w-2.5 h-2.5" />
                 <span>Friend Referral Reward</span>
               </span>
-            )}
-
-            {/* Tracked Order / Booking ID */}
-            {item.bookingCode && (
-              <Link
-                to={`/customer/bookings/${item.bookingId || item.relatedId}`}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-orange/15 text-groomish-orange hover:bg-groomish-orange/25 transition border border-groomish-orange/20"
-                title="View full booking invoice"
-              >
-                <span>Order: {item.bookingCode}</span>
-                <ExternalLink className="w-2.5 h-2.5" />
-              </Link>
             )}
 
             {/* Tracked Voucher Code */}
@@ -69,32 +69,14 @@ export default function RewardLedgerItem({ item }) {
             )}
           </div>
 
-          {/* Service Name & Bill Amount details */}
-          {(item.serviceName || item.orderAmount !== undefined || item.note) && (
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-groomish-slateLight">
-              {item.note && (
-                <span className="flex items-center gap-1 text-groomish-slate font-semibold bg-groomish-cream px-2 py-0.5 rounded-md border border-groomish-slate/10">
-                  <Sparkles className="w-3 h-3 text-groomish-gold shrink-0" />
-                  <span>{item.note}</span>
-                </span>
-              )}
-
-              {item.serviceName && !item.serviceName.startsWith("Friend Referral") && (
-                <span className="flex items-center gap-1 text-groomish-slate font-medium">
-                  <Scissors className="w-3 h-3 text-groomish-orange shrink-0" />
-                  <span className="line-clamp-1">{item.serviceName}</span>
-                </span>
-              )}
-
-              {item.orderAmount !== undefined && item.orderAmount !== null && (
-                <span className="font-bold text-groomish-slate">
-                  • Bill: ₹{Number(item.orderAmount).toLocaleString()}
-                </span>
-              )}
-            </div>
+          {/* Referral note if applicable */}
+          {item.note && item.reason === "REFERRAL_BONUS" && (
+            <p className="text-[11px] text-groomish-slate/70 font-medium">
+              {item.note}
+            </p>
           )}
 
-          <p className="text-[10px] text-groomish-slate/40">
+          <p className="text-[10px] sm:text-[11px] text-groomish-slate/40">
             {formattedDate}
             {!item.bookingCode && !item.voucherCode && item.relatedId && ` • Ref: ${item.relatedId.slice(0, 8)}`}
           </p>
@@ -102,7 +84,7 @@ export default function RewardLedgerItem({ item }) {
       </div>
 
       <div
-        className={`font-extrabold text-sm flex items-center sm:justify-end gap-1 shrink-0 ${
+        className={`font-extrabold text-xs sm:text-sm flex items-center justify-end gap-1 shrink-0 ${
           isCredit ? "text-groomish-green" : "text-groomish-crimson"
         }`}
       >
@@ -111,7 +93,7 @@ export default function RewardLedgerItem({ item }) {
           {amount}
         </span>
         <GroomCoinIcon className="w-3.5 h-3.5" />
-        <span className="text-[11px] font-semibold text-groomish-slate/60">
+        <span className="text-[10px] sm:text-[11px] font-semibold text-groomish-slate/60">
           Coins
         </span>
       </div>

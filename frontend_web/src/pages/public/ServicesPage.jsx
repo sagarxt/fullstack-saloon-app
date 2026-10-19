@@ -11,7 +11,7 @@ import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
 import { useGroomCoin } from "../../context/GroomCoinContext";
 import GroomCoinIcon from "../../components/common/GroomCoinIcon";
-import { extractList } from "../../utils/dataHelper";
+import { extractList, getServicePriceRange, getServiceDurationRange, formatServiceName } from "../../utils/dataHelper";
 import { getOptimizedImageUrl } from "../../utils/imageHelper";
 import {
   Scissors,
@@ -23,6 +23,7 @@ import {
   ArrowRight,
   Star,
   ShoppingCart,
+  Eye,
 } from "lucide-react";
 
 export default function PublicServicesPage() {
@@ -117,11 +118,12 @@ export default function PublicServicesPage() {
     }
     const hasSub = srv.subServices && srv.subServices.length > 0;
     const chosenSub = selectedSubServiceByServiceId[srv.id] || (hasSub ? srv.subServices[0] : null);
+    const formattedName = formatServiceName(srv.name, chosenSub ? chosenSub.name : null);
 
     await addItem({
       itemType: "SERVICE",
       serviceId: srv.id,
-      name: srv.name,
+      name: formattedName,
       subServiceName: chosenSub ? chosenSub.name : null,
       subServicePrice: chosenSub ? chosenSub.price : srv.price,
       subServiceDuration: chosenSub ? chosenSub.durationMinutes : srv.durationMinutes,
@@ -173,40 +175,40 @@ export default function PublicServicesPage() {
 
       <main className="flex-1">
         {/* HERO HEADER */}
-        <section className="bg-gradient-to-b from-white to-groomish-cream py-10 border-b border-groomish-slate/10">
+        <section className="bg-gradient-to-b from-white to-groomish-cream py-5 sm:py-8 border-b border-groomish-slate/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-groomish-orangeLight text-groomish-orange text-xs font-bold uppercase tracking-wider mb-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-groomish-orangeLight text-groomish-orange text-xs font-bold uppercase tracking-wider mb-2.5 sm:mb-3">
               <Scissors className="w-3.5 h-3.5" />
               <span>Full Salon Catalog</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-groomish-slate tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-heading font-extrabold text-groomish-slate tracking-tight">
               Salon Services & Treatments
             </h1>
-            <p className="text-sm sm:text-base text-groomish-slate/60 mt-3 leading-relaxed">
+            <p className="text-xs sm:text-sm text-groomish-slate/60 mt-1.5 sm:mt-2 leading-relaxed">
               Explore bespoke haircutting, facial therapies, beard sculpting, and hair wellness. Earn Groom Coins on every confirmed appointment.
             </p>
 
             {/* Live Search Bar */}
-            <div className="mt-6 max-w-md mx-auto relative">
+            <div className="mt-3.5 sm:mt-5 max-w-md mx-auto relative">
               <Search className="w-4 h-4 text-groomish-slate/40 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search services (e.g. Keratin, Beard Trim, Facial)..."
-                className="input-groomish pl-11 shadow-soft bg-white"
+                className="input-groomish pl-11 shadow-soft bg-white text-xs sm:text-sm"
               />
             </div>
           </div>
         </section>
 
         {/* CONTROLS BAR: CATEGORIES & FILTERS */}
-        <section className="bg-white/80 backdrop-blur-md border-b border-groomish-slate/10 sticky top-16 z-30 py-3">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <section className="bg-white/80 backdrop-blur-md border-b border-groomish-slate/10 sticky top-16 z-30 py-2 sm:py-2.5">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
             {/* Category Pills (horizontal scrollable) */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
               <button
                 onClick={() => handleCategorySelect("ALL")}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${selectedCategory === "ALL"
+                className={`px-3.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${selectedCategory === "ALL"
                   ? "bg-groomish-orange text-white shadow-glowOrange"
                   : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
                   }`}
@@ -217,7 +219,7 @@ export default function PublicServicesPage() {
                 <button
                   key={c.id}
                   onClick={() => handleCategorySelect(c.id)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${selectedCategory === c.id
+                  className={`px-3.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${selectedCategory === c.id
                     ? "bg-groomish-orange text-white shadow-glowOrange"
                     : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
                     }`}
@@ -228,7 +230,7 @@ export default function PublicServicesPage() {
             </div>
 
             {/* Gender Filter & Sorting */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 justify-between sm:justify-end w-full md:w-auto">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 justify-between sm:justify-end w-full md:w-auto">
               {/* Gender selector */}
               <div className="flex bg-groomish-cream p-1 rounded-xl text-xs font-semibold shrink-0">
                 {["ALL", "FEMALE", "MALE", "UNISEX"].map((g) => (
@@ -262,9 +264,9 @@ export default function PublicServicesPage() {
         </section>
 
         {/* SERVICES GRID */}
-        <section className="py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="py-6 sm:py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {loading ? (
-            <div className="py-20 text-center">
+            <div className="py-16 text-center">
               <div className="w-10 h-10 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               <p className="text-xs text-groomish-slate/60 font-medium">Loading salon services...</p>
             </div>
@@ -306,15 +308,18 @@ export default function PublicServicesPage() {
                       defaultServiceImages.UNISEX;
 
                     const hasSubServices = service.subServices && service.subServices.length > 0;
-                    const activeSub =
-                      selectedSubServiceByServiceId[service.id] || (hasSubServices ? service.subServices[0] : null);
-                    const displayPrice = activeSub ? activeSub.price : service.price;
-                    const displayDuration = activeSub ? activeSub.durationMinutes : service.durationMinutes;
-                    const coinsEarned = calculateCoins(displayPrice, service.rewards);
+                    const hasMultipleSubs = service.subServices && service.subServices.length > 1;
+                    const activeSub = !hasMultipleSubs && hasSubServices ? (selectedSubServiceByServiceId[service.id] || service.subServices[0]) : null;
+                    const priceRange = getServicePriceRange(service);
+                    const durationRange = getServiceDurationRange(service);
+                    const displayPrice = hasMultipleSubs ? priceRange : (activeSub ? `₹${activeSub.price}` : `₹${service.price}`);
+                    const displayDuration = hasMultipleSubs ? durationRange : (activeSub ? `${activeSub.durationMinutes} mins` : `${service.durationMinutes || 30} mins`);
+                    const coinsEarned = calculateCoins(activeSub ? activeSub.price : service.price, service.rewards);
                     const isInCart = items?.some(
                       (i) =>
                         (i.itemType === "SERVICE" || !i.itemType) &&
-                        (i.serviceId === service.id || i.service?.id === service.id)
+                        (i.serviceId === service.id || i.service?.id === service.id) &&
+                        (!activeSub || !i.subServiceName || i.subServiceName === activeSub.name)
                     );
 
                     return (
@@ -349,7 +354,7 @@ export default function PublicServicesPage() {
 
                             <div className="absolute bottom-3 left-3 text-white flex items-center gap-1 text-xs font-semibold">
                               <Clock className="w-3.5 h-3.5 text-groomish-gold" />
-                              <span>{displayDuration} mins</span>
+                              <span>{displayDuration}</span>
                             </div>
                           </div>
 
@@ -366,12 +371,14 @@ export default function PublicServicesPage() {
                               {service.description || "Signature styling delivered by master salon specialists."}
                             </p>
 
-                            {/* Sub-Service Toggle Options */}
-                            {hasSubServices && (
+                            {/* Sub-Service Toggle Options (Hidden if more than one sub-service, user views options on detail page) */}
+                            {hasSubServices && !hasMultipleSubs && (
                               <div className="pt-2 border-t border-groomish-slate/10 space-y-1.5">
                                 <div className="flex items-center justify-between text-[11px]">
                                   <span className="font-bold text-groomish-slate/60">Choose Option:</span>
-                                  <span className="font-extrabold text-groomish-orange">{activeSub?.name}</span>
+                                  <span className="font-extrabold text-groomish-orange">
+                                    {activeSub ? activeSub.name : "Select option"}
+                                  </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                                   {service.subServices.map((sub, sIdx) => {
@@ -406,16 +413,6 @@ export default function PublicServicesPage() {
                               </div>
                             )}
 
-                            {/* Highlighted Extra Coin Section if service has rewards */}
-                            {/* {service.rewards > 0 && (
-                          <div className="mt-2 p-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-amber-500/10 border border-amber-300/70 text-amber-900 flex items-center gap-2 shadow-xs">
-                            <GroomCoinIcon className="w-4 h-4 shrink-0" />
-                            <span className="text-[11px] font-extrabold leading-tight">
-                              Special Perk: +{service.rewards} Extra Groom Coins received!
-                            </span>
-                          </div>
-                        )} */}
-
                             {/* Groom Coins reward badge */}
                             <div className="pt-1 flex items-center gap-1.5 text-[11px] font-bold text-groomish-slate">
                               <GroomCoinIcon className="w-3.5 h-3.5" />
@@ -428,16 +425,31 @@ export default function PublicServicesPage() {
                         <div className="p-4 pt-0 border-t border-groomish-slate/10 mt-3 flex items-center justify-between">
                           <div>
                             <div className="text-lg font-extrabold text-groomish-slate">
-                              ₹{displayPrice}
+                              {displayPrice}
                             </div>
-                            {service.mrp > displayPrice && (
+                            {activeSub?.mrp > activeSub?.price ? (
                               <div className="text-[11px] text-groomish-slate/40 line-through">
-                                ₹{service.mrp}
+                                ₹{activeSub.mrp}
                               </div>
+                            ) : (
+                              !hasSubServices && service.mrp > service.price && (
+                                <div className="text-[11px] text-groomish-slate/40 line-through">
+                                  ₹{service.mrp}
+                                </div>
+                              )
                             )}
                           </div>
 
-                          {isInCart ? (
+                          {hasMultipleSubs ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/services/${service.id}`)}
+                              className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>View Options</span>
+                            </button>
+                          ) : isInCart ? (
                             <button
                               type="button"
                               onClick={() => navigate("/cart")}

@@ -15,6 +15,7 @@ import java.util.List;
 public class PublicHomeController {
 
     private final PublicHomeService homeService;
+    private final com.loyalty_program_app.backend.service.ServiceService serviceService;
 
     /* ===============================
        Public Home (Landing Page)
@@ -32,11 +33,24 @@ public class PublicHomeController {
         return homeService.getPublicServices();
     }
 
+    @GetMapping("/services/{id}")
+    public ServiceResponse getServiceById(@PathVariable java.util.UUID id) {
+        return serviceService.getServiceById(id);
+    }
+
     /* ===============================
        Public Categories
        =============================== */
     @GetMapping("/categories")
     public List<CategoryResponse> getCategories() {
         return homeService.getPublicCategories();
+    }
+
+    @GetMapping("/categories/{id}")
+    public CategoryResponse getCategoryById(@PathVariable java.util.UUID id) {
+        return homeService.getPublicCategories().stream()
+                .filter(c -> c.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Category not found"));
     }
 }

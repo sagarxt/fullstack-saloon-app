@@ -14,6 +14,7 @@ import {
 import { updateCustomerByStaff } from "../../api/staff";
 import { extractList } from "../../utils/dataHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
+import { showAlert } from "../../context/ConfirmContext";
 import {
   User,
   Users,
@@ -146,7 +147,11 @@ export default function CustomerProfileModal({
       }
       setTimeout(() => setGroupSuccessMsg(""), 3000);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update user groups");
+      await showAlert({
+        title: "Action Failed",
+        message: err.response?.data?.message || "Failed to update user groups",
+        variant: "danger",
+      });
     } finally {
       setSavingGroups(false);
     }
@@ -169,6 +174,11 @@ export default function CustomerProfileModal({
       }
     } catch (err) {
       console.error("Failed to toggle customer status:", err);
+      await showAlert({
+        title: "Action Failed",
+        message: err.response?.data?.message || "Failed to toggle customer account status",
+        variant: "danger",
+      });
     } finally {
       setTogglingStatus(false);
     }

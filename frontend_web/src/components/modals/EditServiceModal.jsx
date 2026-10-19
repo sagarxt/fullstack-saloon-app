@@ -33,6 +33,8 @@ export default function EditServiceModal({
         subs.map((s) => ({
           id: s.id,
           name: s.name,
+          description: s.description || "",
+          mrp: s.mrp ?? "",
           price: s.price,
           durationMinutes: s.durationMinutes,
         }))
@@ -55,6 +57,8 @@ export default function EditServiceModal({
       ...prev,
       {
         name: "",
+        description: "",
+        mrp: form.mrp || "",
         price: form.price || "",
         durationMinutes: form.durationMinutes || "30",
       },
@@ -79,6 +83,17 @@ export default function EditServiceModal({
       setError("Service name is required.");
       return;
     }
+    if (!enableSubServices && !form.price) {
+      setError("Please specify the service price.");
+      return;
+    }
+    if (enableSubServices) {
+      const validSubs = subServices.filter((s) => s.name && s.name.trim() && s.price);
+      if (validSubs.length === 0) {
+        setError("Please add at least one sub-service option with a name and price.");
+        return;
+      }
+    }
 
     setLoading(true);
     setError("");
@@ -90,20 +105,30 @@ export default function EditServiceModal({
           .map((s) => ({
             id: s.id || null,
             name: s.name.trim(),
-            price: parseFloat(s.price || form.price || 0),
+            description: s.description ? s.description.trim() : null,
+            mrp: s.mrp ? parseFloat(s.mrp) : (s.price ? parseFloat(s.price) : null),
+            price: parseFloat(s.price || 0),
             durationMinutes: s.durationMinutes
               ? parseInt(s.durationMinutes, 10)
-              : parseInt(form.durationMinutes || "30", 10),
+              : 30,
             active: true,
           }))
         : [];
 
+      const minSubPrice = validSubServices.length > 0 ? Math.min(...validSubServices.map(s => s.price)) : 0;
+      const minSubMrp = validSubServices.length > 0 ? Math.min(...validSubServices.map(s => s.mrp || s.price)) : 0;
+      const minSubDuration = validSubServices.length > 0 ? Math.min(...validSubServices.map(s => s.durationMinutes || 30)) : 30;
+
+      const finalPrice = form.price ? parseFloat(form.price) : (validSubServices.length > 0 ? minSubPrice : 0);
+      const finalMrp = form.mrp ? parseFloat(form.mrp) : (form.price ? parseFloat(form.price) : (validSubServices.length > 0 ? minSubMrp : finalPrice));
+      const finalDuration = form.durationMinutes ? parseInt(form.durationMinutes, 10) : (validSubServices.length > 0 ? minSubDuration : 30);
+
       const payload = {
         ...form,
         active: form.active !== undefined ? Boolean(form.active) : true,
-        mrp: form.mrp ? parseFloat(form.mrp) : parseFloat(form.price),
-        price: parseFloat(form.price),
-        durationMinutes: parseInt(form.durationMinutes || "30", 10),
+        mrp: finalMrp,
+        price: finalPrice,
+        durationMinutes: finalDuration,
         rewards: form.rewards ? parseInt(form.rewards, 10) : 0,
         subServices: validSubServices,
       };
@@ -197,40 +222,43 @@ export default function EditServiceModal({
 
             <div>
               <label className="block text-xs font-bold text-groomish-slate mb-1">
-                MRP (₹)
+                MRP (₹) {enableSubServices && <span className="text-[10px] font-normal text-groomish-slate/50">(Optional)</span>}
               </label>
               <input
                 type="number"
                 name="mrp"
                 value={form.mrp ?? ""}
                 onChange={handleChange}
+                placeholder={enableSubServices ? "From options" : "1499"}
                 className="w-full px-3 py-2 rounded-xl border border-groomish-slate/15 bg-white text-xs text-groomish-slate focus:outline-none focus:ring-2 focus:ring-groomish-orange/40"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-groomish-slate mb-1">
-                Price (₹) <span className="text-groomish-crimson">*</span>
+                Price (₹) {!enableSubServices ? <span className="text-groomish-crimson">*</span> : <span className="text-[10px] font-normal text-groomish-slate/50">(Optional)</span>}
               </label>
               <input
                 type="number"
                 name="price"
                 value={form.price ?? ""}
                 onChange={handleChange}
-                required
+                placeholder={enableSubServices ? "From options" : "999"}
+                required={!enableSubServices}
                 className="w-full px-3 py-2 rounded-xl border border-groomish-slate/15 bg-white text-xs text-groomish-slate focus:outline-none focus:ring-2 focus:ring-groomish-orange/40"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-groomish-slate mb-1">
-                Duration (mins)
+                Duration (mins) {enableSubServices && <span className="text-[10px] font-normal text-groomish-slate/50">(Optional)</span>}
               </label>
               <input
                 type="number"
                 name="durationMinutes"
                 value={form.durationMinutes ?? ""}
                 onChange={handleChange}
+                placeholder={enableSubServices ? "From options" : "30"}
                 className="w-full px-3 py-2 rounded-xl border border-groomish-slate/15 bg-white text-xs text-groomish-slate focus:outline-none focus:ring-2 focus:ring-groomish-orange/40"
               />
             </div>
@@ -348,15 +376,7 @@ export default function EditServiceModal({
             </div>
 
             {enableSubServices && (
-              <div className="space-y-2 bg-groomish-cream/50 p-3 rounded-2xl border border-groomish-slate/10 max-h-56 overflow-y-auto">
-                <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-groomish-slate/50 uppercase px-1">
-                  <span className="col-span-1 text-center">#</span>
-                  <span className="col-span-5">Sub-Service Name</span>
-                  <span className="col-span-3">Price (₹)</span>
-                  <span className="col-span-2">Time (m)</span>
-                  <span className="col-span-1 text-center">Del</span>
-                </div>
-
+              <div className="space-y-2.5 bg-groomish-cream/50 p-3 rounded-2xl border border-groomish-slate/10 max-h-72 overflow-y-auto">
                 {subServices.length === 0 ? (
                   <p className="text-xs text-groomish-slate/50 text-center py-2">
                     No options added yet. Click "+ Add Option" to create variations.
@@ -365,50 +385,91 @@ export default function EditServiceModal({
                   subServices.map((sub, idx) => (
                     <div
                       key={idx}
-                      className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-groomish-slate/10 shadow-2xs"
+                      className="bg-white p-3 rounded-xl border border-groomish-slate/10 shadow-2xs space-y-2"
                     >
-                      <span className="col-span-1 text-center text-xs font-bold text-groomish-slate/40">
-                        {idx + 1}
-                      </span>
-                      <div className="col-span-5">
-                        <input
-                          type="text"
-                          value={sub.name}
-                          onChange={(e) => updateSubService(idx, "name", e.target.value)}
-                          placeholder="e.g. Full color, Highlight"
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
-                        />
-                      </div>
-                      <div className="col-span-3">
-                        <input
-                          type="number"
-                          value={sub.price}
-                          onChange={(e) => updateSubService(idx, "price", e.target.value)}
-                          placeholder="Price ₹"
-                          min="0"
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <input
-                          type="number"
-                          value={sub.durationMinutes}
-                          onChange={(e) => updateSubService(idx, "durationMinutes", e.target.value)}
-                          placeholder="Mins"
-                          min="5"
-                          step="5"
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
-                        />
-                      </div>
-                      <div className="col-span-1 flex justify-center">
+                      <div className="flex items-center justify-between pb-1 border-b border-groomish-slate/10">
+                        <span className="text-[11px] font-extrabold text-groomish-orange">
+                          Variation #{idx + 1}
+                        </span>
                         <button
                           type="button"
                           onClick={() => removeSubService(idx)}
-                          className="p-1 rounded-lg text-groomish-slate/40 hover:text-groomish-crimson hover:bg-groomish-crimson/10 transition"
+                          className="px-2 py-0.5 rounded-lg text-groomish-slate/40 hover:text-groomish-crimson hover:bg-groomish-crimson/10 transition flex items-center gap-1 text-[10px] font-bold"
                           title="Remove option"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remove</span>
                         </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-groomish-slate/70 mb-0.5">
+                            Sub-Service Name <span className="text-groomish-crimson">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={sub.name}
+                            onChange={(e) => updateSubService(idx, "name", e.target.value)}
+                            placeholder="e.g. Beard Trim & Shape"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-groomish-slate/70 mb-0.5">
+                            Description <span className="text-[9px] font-normal text-groomish-slate/40">(Optional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={sub.description || ""}
+                            onChange={(e) => updateSubService(idx, "description", e.target.value)}
+                            placeholder="e.g. Precision shaping with hot towel"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-groomish-slate/70 mb-0.5">
+                            MRP (₹)
+                          </label>
+                          <input
+                            type="number"
+                            value={sub.mrp ?? ""}
+                            onChange={(e) => updateSubService(idx, "mrp", e.target.value)}
+                            placeholder="1499"
+                            min="0"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-groomish-slate/70 mb-0.5">
+                            Price (₹) <span className="text-groomish-crimson">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            value={sub.price}
+                            onChange={(e) => updateSubService(idx, "price", e.target.value)}
+                            placeholder="999"
+                            min="0"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-groomish-slate/70 mb-0.5">
+                            Duration (mins)
+                          </label>
+                          <input
+                            type="number"
+                            value={sub.durationMinutes}
+                            onChange={(e) => updateSubService(idx, "durationMinutes", e.target.value)}
+                            placeholder="30"
+                            min="5"
+                            step="5"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-groomish-slate/15 text-xs text-groomish-slate focus:outline-none focus:ring-1 focus:ring-groomish-orange"
+                          />
+                        </div>
                       </div>
                     </div>
                   ))

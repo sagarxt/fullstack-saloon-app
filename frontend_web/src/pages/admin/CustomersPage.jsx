@@ -11,6 +11,7 @@ import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import GroomCoinIcon from "../../components/common/GroomCoinIcon";
 import { extractList } from "../../utils/dataHelper";
+import { showConfirm, showAlert } from "../../context/ConfirmContext";
 import {
   Search,
   Crown,
@@ -113,6 +114,32 @@ export default function CustomersPage() {
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [groupSearchQuery, setGroupSearchQuery] = useState("");
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [manualEmailInput, setManualEmailInput] = useState("");
+  const [manualEmailError, setManualEmailError] = useState("");
+
+  const handleAddManualEmail = () => {
+    const trimmed = manualEmailInput.trim();
+    if (!trimmed) {
+      setManualEmailError("Please enter an email address.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) {
+      setManualEmailError("Please enter a valid email address (e.g. name@domain.com).");
+      return;
+    }
+    setManualEmailError("");
+    setEmailForm((prev) => ({
+      ...prev,
+      selectedCustomer: null,
+      userId: "",
+      customerEmail: trimmed,
+      subject: prev.subject || "Exclusive Privilege from Groomish Salon",
+      message:
+        prev.message ||
+        `Dear Valued Customer,\n\nWe would love to welcome you to Groomish Now. Here is a curated salon privilege crafted specially for your grooming routine.\n\nBook your experience now!`,
+    }));
+  };
 
   // Close custom dropdowns on click outside
   useEffect(() => {
@@ -190,6 +217,8 @@ export default function CustomersPage() {
     setCustomerDropdownOpen(false);
     setGroupSearchQuery("");
     setCustomerSearchQuery("");
+    setManualEmailInput("");
+    setManualEmailError("");
     setEmailSuccess("");
     setEmailError("");
     setEmailModalOpen(true);
@@ -202,8 +231,20 @@ export default function CustomersPage() {
       return;
     }
 
-    if (emailForm.recipientType === "INDIVIDUAL" && !emailForm.selectedCustomer?.id && !emailForm.customerEmail?.trim()) {
-      setEmailError("Please select a target customer or enter a valid email address.");
+    let targetCustomerEmail = emailForm.customerEmail?.trim();
+    if (emailForm.recipientType === "INDIVIDUAL" && !emailForm.selectedCustomer && !targetCustomerEmail && manualEmailInput.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(manualEmailInput.trim())) {
+        targetCustomerEmail = manualEmailInput.trim();
+        setEmailForm((prev) => ({ ...prev, customerEmail: targetCustomerEmail }));
+      } else {
+        setEmailError("Please enter a valid email address and click Add to confirm.");
+        return;
+      }
+    }
+
+    if (emailForm.recipientType === "INDIVIDUAL" && !emailForm.selectedCustomer?.id && !targetCustomerEmail) {
+      setEmailError("Please select a target customer or enter and add a confirmed email address.");
       return;
     }
 
@@ -220,7 +261,7 @@ export default function CustomersPage() {
 
       if (emailForm.recipientType === "INDIVIDUAL") {
         payload.userId = emailForm.selectedCustomer?.id || null;
-        payload.email = emailForm.selectedCustomer?.email || emailForm.customerEmail?.trim() || null;
+        payload.email = emailForm.selectedCustomer?.email || targetCustomerEmail || null;
       } else {
         payload.userGroup = emailForm.userGroup;
       }
@@ -483,7 +524,11 @@ export default function CustomersPage() {
                                   await deactivateUserApi(u.id);
                                   loadData();
                                 } catch (err) {
-                                  alert(err.response?.data?.message || "Failed to toggle status");
+                                  await showAlert({
+                                    title: "Action Failed",
+                                    message: err.response?.data?.message || "Failed to toggle customer status.",
+                                    variant: "danger",
+                                  });
                                 }
                               }}
                               className={`p-2 rounded-xl border transition shadow-2xs cursor-pointer active:scale-95 ${u.active !== false
@@ -498,13 +543,23 @@ export default function CustomersPage() {
                             <button
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                if (window.confirm(`FORCE DELETE customer "${u.name}"?\nThis permanently removes their customer account, orders, and points.`)) {
-                                  try {
-                                    await forceDeleteCustomerApi(u.id);
-                                    loadData();
-                                  } catch (err) {
-                                    alert(err.response?.data?.message || "Failed to force delete customer.");
-                                  }
+                                const ok = await showConfirm({
+                                  title: "Force Delete Customer",
+                                  message: `Are you sure you want to FORCE DELETE customer "${u.name}"?\nThis permanently removes their customer account, orders, and points.`,
+                                  confirmText: "Force Delete Customer",
+                                  variant: "danger",
+                                });
+                                if (!ok) return;
+
+                                try {
+                                  await forceDeleteCustomerApi(u.id);
+                                  loadData();
+                                } catch (err) {
+                                  await showAlert({
+                                    title: "Deletion Failed",
+                                    message: err.response?.data?.message || "Failed to force delete customer.",
+                                    variant: "danger",
+                                  });
                                 }
                               }}
                               className="p-2 rounded-xl border border-red-200 text-red-600 bg-white hover:bg-red-50 hover:border-red-300 transition shadow-2xs cursor-pointer active:scale-95"
@@ -919,6 +974,8 @@ export default function CustomersPage() {
                                     subject: `Exclusive Groomish Privilege for ${cust.name || "Valued Member"}`,
                                     message: `Dear ${cust.name || "Valued Customer"},\n\nWe would love to welcome you back to Groomish Now. Here is a curated salon offer crafted specially for your grooming routine.\n\nVisit us soon to enjoy your personalized grooming experience!`,
                                   }));
+                                  setManualEmailInput("");
+                                  setManualEmailError("");
                                   setCustomerDropdownOpen(false);
                                   setCustomerSearchQuery("");
                                 }}
@@ -989,22 +1046,77 @@ export default function CustomersPage() {
                               userId: "",
                               customerEmail: "",
                             }));
+                            setManualEmailInput("");
+                            setManualEmailError("");
                           }}
                           className="text-[11px] font-bold text-groomish-crimson hover:underline cursor-pointer"
                         >
                           Clear
                         </button>
                       </div>
+                    ) : emailForm.customerEmail ? (
+                      /* Confirmed Manual Recipient Badge */
+                      <div className="mt-2 p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between gap-3 text-xs animate-fade-in">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="text-groomish-slate/80 truncate">
+                            Confirmed Email: <strong className="text-groomish-slate font-mono">{emailForm.customerEmail}</strong>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setManualEmailInput(emailForm.customerEmail);
+                            setEmailForm((prev) => ({
+                              ...prev,
+                              customerEmail: "",
+                            }));
+                            setManualEmailError("");
+                          }}
+                          className="text-[11px] font-bold text-groomish-orange hover:text-groomish-crimson hover:underline cursor-pointer shrink-0"
+                          title="Edit email address"
+                        >
+                          Change
+                        </button>
+                      </div>
                     ) : (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[11px] text-groomish-slate/50">Or enter manual email:</span>
-                        <input
-                          type="email"
-                          value={emailForm.customerEmail}
-                          onChange={(e) => setEmailForm({ ...emailForm, customerEmail: e.target.value })}
-                          placeholder="client@example.com"
-                          className="bg-white border border-groomish-slate/20 rounded-lg px-2.5 py-1 text-xs text-groomish-slate flex-1 focus:border-groomish-orange focus:outline-hidden"
-                        />
+                      /* Manual Email Entry with Add Button */
+                      <div className="mt-2 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-semibold text-groomish-slate/60 shrink-0">
+                            Or enter manual email:
+                          </span>
+                          <input
+                            type="email"
+                            value={manualEmailInput}
+                            onChange={(e) => {
+                              setManualEmailInput(e.target.value);
+                              setManualEmailError("");
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddManualEmail();
+                              }
+                            }}
+                            placeholder="client@example.com"
+                            className="bg-white border border-groomish-slate/20 rounded-xl px-3 py-1.5 text-xs text-groomish-slate flex-1 focus:border-groomish-orange focus:outline-hidden font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddManualEmail}
+                            className="btn-primary text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1 shrink-0 font-bold shadow-xs cursor-pointer"
+                            title="Confirm and attach email recipient"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add</span>
+                          </button>
+                        </div>
+                        {manualEmailError && (
+                          <p className="text-[11px] text-groomish-crimson font-medium pl-1">
+                            {manualEmailError}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

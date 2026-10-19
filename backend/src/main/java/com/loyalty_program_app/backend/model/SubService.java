@@ -27,6 +27,11 @@ public class SubService {
     @Column(nullable = false)
     private String name;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private Double mrp;
+
     @Column(nullable = false)
     private Double price;
 

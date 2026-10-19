@@ -12,17 +12,28 @@ export function groupBookingServices(items = []) {
   items.forEach((item, index) => {
     // Unique key by serviceId or service name
     const serviceId = item.serviceId || item.service?.id;
-    const serviceName =
+    let serviceName =
       item.serviceNameSnapshot ||
       item.serviceName ||
       item.service?.name ||
       "Salon Treatment";
+
+    if (item.subServiceName && !serviceName.includes(`(${item.subServiceName})`)) {
+      serviceName = `${serviceName} (${item.subServiceName})`;
+    }
 
     const unitPrice = Number(
       item.servicePriceSnapshot ??
       item.price ??
       item.service?.price ??
       0
+    );
+
+    const unitMrp = Number(
+      item.mrp ??
+      item.serviceMrp ??
+      item.service?.mrp ??
+      unitPrice
     );
 
     const unitDuration = Number(
@@ -32,17 +43,22 @@ export function groupBookingServices(items = []) {
       30
     );
 
-    const key = serviceId ? String(serviceId) : serviceName.toLowerCase().trim();
+    const key = (serviceId ? String(serviceId) : "") + "__" + serviceName.toLowerCase().trim();
+
+    const image = item.image || item.serviceImage || item.service?.image || null;
 
     if (!map.has(key)) {
       map.set(key, {
         key,
         serviceId,
         serviceName,
+        image,
         unitPrice,
+        unitMrp,
         unitDuration,
         quantity: 1,
         totalPrice: unitPrice,
+        totalMrp: unitMrp,
         totalDuration: unitDuration,
         status: item.status || "CONFIRMED",
         itemIds: [item.id || `item-${index}`],
@@ -50,8 +66,12 @@ export function groupBookingServices(items = []) {
       });
     } else {
       const existing = map.get(key);
+      if (!existing.image && image) {
+        existing.image = image;
+      }
       existing.quantity += 1;
       existing.totalPrice += unitPrice;
+      existing.totalMrp += unitMrp;
       existing.totalDuration += unitDuration;
       existing.itemIds.push(item.id || `item-${index}`);
       existing.rawItems.push(item);

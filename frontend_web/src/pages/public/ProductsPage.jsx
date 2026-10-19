@@ -7,7 +7,6 @@ import CustomSelect from "../../components/common/CustomSelect";
 import Pagination from "../../components/common/Pagination";
 import BrandShowcaseSection from "../../components/shop/BrandShowcaseSection";
 import { getPublicProducts, getProductCategories, getProductBrands } from "../../api/products";
-import { getPublicCoupons } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
 import { useGroomCoin } from "../../context/GroomCoinContext";
@@ -28,10 +27,8 @@ import {
   ShieldCheck,
   Star,
   Check,
-  Tag,
   Clock,
   Info,
-  Copy,
   Award,
 } from "lucide-react";
 
@@ -45,8 +42,6 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [serverBrands, setServerBrands] = useState([]);
-  const [coupons, setCoupons] = useState([]);
-  const [copiedCode, setCopiedCode] = useState("");
   const [addingToCartId, setAddingToCartId] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -100,17 +95,15 @@ export default function ProductsPage() {
   const loadProductsData = async () => {
     setLoading(true);
     try {
-      const [prodsRes, catsRes, coupRes, brandsRes] = await Promise.all([
+      const [prodsRes, catsRes, brandsRes] = await Promise.all([
         getPublicProducts(),
         getProductCategories().catch(() => ({ data: [] })),
-        getPublicCoupons().catch(() => ({ data: [] })),
         getProductBrands().catch(() => ({ data: [] })),
       ]);
       const rawProducts = extractList(prodsRes.data);
       // Strictly show only active products in shop
       const activeProducts = rawProducts.filter((p) => p && p.active !== false);
       setProducts(activeProducts);
-      setCoupons(extractList(coupRes.data));
       setServerBrands(extractList(brandsRes?.data));
 
       // Dynamically load categories strictly from active products or backend
@@ -304,61 +297,6 @@ export default function ProductsPage() {
             totalProductsCount={productList.length}
           />
 
-          {/* PROMOTIONAL OFFERS STRIP */}
-          {coupons.length > 0 && (
-            <div className="bg-gradient-to-r from-groomish-slateDark via-groomish-slate to-groomish-slateDark text-white p-5 sm:p-6 rounded-3xl shadow-soft">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-groomish-orange text-white flex items-center justify-center shrink-0">
-                    <Tag className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-heading font-extrabold text-sm sm:text-base tracking-tight">
-                      Exclusive Retail & Salon Offers Available
-                    </h3>
-                    <p className="text-[11px] text-white/70">
-                      Copy any promo voucher code below and redeem at checkout for instant savings.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-                  {coupons.map((coupon) => (
-                    <div
-                      key={coupon.id}
-                      className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 flex items-center gap-2.5 shrink-0 transition"
-                    >
-                      <div>
-                        <span className="font-mono text-xs font-black text-groomish-gold block">
-                          {coupon.code}
-                        </span>
-                        <span className="text-[10px] text-white/80 block">
-                          ₹{coupon.discount} OFF • Min ₹{coupon.minAmount || 0}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyCode(coupon.code)}
-                        className="px-2 py-1 rounded-lg bg-groomish-orange hover:bg-groomish-orangeDark text-white text-[10px] font-bold transition flex items-center gap-1"
-                      >
-                        {copiedCode === coupon.code ? (
-                          <>
-                            <Check className="w-3 h-3" />
-                            <span>Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>Copy</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
           {loading ? (
             <div className="py-20 text-center">
@@ -406,7 +344,7 @@ export default function ProductsPage() {
                 {sortedProducts
                   .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                   .map((product) => {
-                    const coinsEarned = calculateCoins ? calculateCoins(product.price) : Math.max(1, Math.floor(product.price / 100));
+                    const coinsEarned = calculateCoins ? calculateCoins(product.price) : Math.max(1, Math.round(product.price / 100));
                     const discountPercent =
                       product.mrp && product.mrp > product.price
                         ? Math.round(((product.mrp - product.price) / product.mrp) * 100)

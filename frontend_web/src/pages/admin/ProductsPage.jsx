@@ -12,7 +12,7 @@ import Pagination from "../../components/common/Pagination";
 import { extractList } from "../../utils/dataHelper";
 import { storeApi } from "../../api/store";
 import StaffBranchInventoryTab from "../../components/staff/StaffBranchInventoryTab";
-import { showConfirm } from "../../context/ConfirmContext";
+import { showConfirm, showAlert } from "../../context/ConfirmContext";
 import { forceDeleteProductApi } from "../../api/maintenance";
 import {
   Package,
@@ -232,7 +232,11 @@ export default function ProductsPage() {
       await forceDeleteProductApi(product.id);
       loadProducts();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to force delete product.");
+      await showAlert({
+        title: "Deletion Failed",
+        message: err.response?.data?.message || "Failed to force delete product.",
+        variant: "danger",
+      });
     }
   };
 

@@ -23,6 +23,7 @@ import {
   Power,
 } from "lucide-react";
 import { forceDeleteStaffApi } from "../../api/maintenance";
+import { showConfirm, showAlert } from "../../context/ConfirmContext";
 
 const PAGE_SIZE = 20;
 
@@ -182,6 +183,11 @@ export default function StaffPage() {
       loadData();
     } catch (err) {
       console.error(err);
+      await showAlert({
+        title: "Action Failed",
+        message: err.response?.data?.message || "Failed to update staff status.",
+        variant: "danger",
+      });
     }
   };
 
@@ -321,13 +327,23 @@ export default function StaffPage() {
 
                         <button
                           onClick={async () => {
-                            if (window.confirm(`FORCE DELETE staff member "${s.name}"?\nThis permanently removes their staff profile.`)) {
-                              try {
-                                await forceDeleteStaffApi(s.id);
-                                loadStaff();
-                              } catch (err) {
-                                alert(err.response?.data?.message || "Failed to force delete staff.");
-                              }
+                            const ok = await showConfirm({
+                              title: "Force Delete Staff Member",
+                              message: `Are you sure you want to FORCE DELETE staff member "${s.name}"?\nThis permanently removes their staff profile.`,
+                              confirmText: "Force Delete Staff",
+                              variant: "danger",
+                            });
+                            if (!ok) return;
+
+                            try {
+                              await forceDeleteStaffApi(s.id);
+                              loadData();
+                            } catch (err) {
+                              await showAlert({
+                                title: "Deletion Failed",
+                                message: err.response?.data?.message || "Failed to force delete staff.",
+                                variant: "danger",
+                              });
                             }
                           }}
                           className="p-2 rounded-xl border border-red-200 text-red-600 bg-white hover:bg-red-50 hover:border-red-300 transition shadow-2xs cursor-pointer active:scale-95"

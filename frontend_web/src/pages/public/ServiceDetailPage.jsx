@@ -23,6 +23,7 @@ import {
   Star,
   ShieldCheck,
   CheckCircle2,
+  Check,
   CalendarCheck,
   ChevronRight,
   Home,
@@ -118,10 +119,14 @@ export default function ServiceDetailPage() {
       return;
     }
     setAddingToCart(true);
+    const displayName = selectedSubService
+      ? `${service.name} (${selectedSubService.name})`
+      : service.name;
+
     await addItem({
       itemType: "SERVICE",
       serviceId: service.id,
-      name: service.name,
+      name: displayName,
       subServiceName: selectedSubService ? selectedSubService.name : null,
       subServicePrice: selectedSubService ? selectedSubService.price : null,
       subServiceDuration: selectedSubService ? selectedSubService.durationMinutes : null,
@@ -133,7 +138,8 @@ export default function ServiceDetailPage() {
   const isAlreadyInCart = items?.some(
     (i) =>
       (i.itemType === "SERVICE" || !i.itemType) &&
-      (i.serviceId === service?.id || i.service?.id === service?.id)
+      (i.serviceId === service?.id || i.service?.id === service?.id) &&
+      (!selectedSubService || !i.subServiceName || i.subServiceName === selectedSubService.name)
   );
 
   const defaultServiceImages = {
@@ -226,12 +232,12 @@ export default function ServiceDetailPage() {
         </div>
 
         {/* HERO / PRODUCT DETAILS SECTION */}
-        <section className="py-5 sm:py-7 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 gap-5 lg:gap-7">
+        <section className="py-4 sm:py-7 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full min-w-0">
+          <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full min-w-0">
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
-            <div className="lg:col-span-7 space-y-5">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-5 w-full min-w-0">
               {/* Image Preview */}
-              <div className="relative rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft h-[320px] sm:h-[440px]">
+              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft h-[260px] sm:h-[360px] lg:h-[440px] w-full">
                 <img
                   src={imgSrc}
                   alt={service.name}
@@ -240,25 +246,25 @@ export default function ServiceDetailPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-groomish-slateDark/70 via-transparent to-transparent" />
 
                 {/* Floating Chips */}
-                <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/95 text-groomish-slate backdrop-blur-md shadow-sm uppercase">
+                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex gap-1.5 sm:gap-2 flex-wrap">
+                  <span className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold bg-white/95 text-groomish-slate backdrop-blur-md shadow-sm uppercase">
                     {service.gender}
                   </span>
                   <Link
                     to={categoryObj ? `/category/${categoryObj.id}` : "#"}
-                    className="px-3 py-1 rounded-full text-xs font-bold bg-groomish-orange text-white shadow-sm hover:opacity-90 transition"
+                    className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold bg-groomish-orange text-white shadow-sm hover:opacity-90 transition"
                   >
                     {categoryName}
                   </Link>
                 </div>
 
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-semibold">
+                <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-semibold">
                     <Clock className="w-3.5 h-3.5 text-groomish-gold" />
                     <span>Duration: {activeDuration} Minutes</span>
                   </div>
 
-                  <div className="flex items-center gap-1 bg-white/90 text-groomish-slate px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md">
+                  <div className="flex items-center gap-1 bg-white/90 text-groomish-slate px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold backdrop-blur-md">
                     <Star className="w-3.5 h-3.5 fill-groomish-gold text-groomish-gold" />
                     <span>{averageRating}</span>
                     <span className="text-[11px] text-groomish-slate/60">
@@ -269,23 +275,21 @@ export default function ServiceDetailPage() {
               </div>
 
               {/* Title & Overview */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-groomish-slate/10 shadow-soft space-y-6">
+              <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-groomish-slate/10 shadow-soft space-y-4 sm:space-y-6 w-full min-w-0">
                 <div>
-                  <h1 className="text-2xl sm:text-4xl font-heading font-extrabold text-groomish-slate tracking-tight">
+                  <h1 className="text-xl sm:text-3xl lg:text-4xl font-heading font-extrabold text-groomish-slate tracking-tight break-words">
                     {service.name}
                   </h1>
-                  <p className="text-xs sm:text-sm text-groomish-slate/60 mt-1 flex items-center gap-2">
+                  <p className="text-xs sm:text-sm text-groomish-slate/60 mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <span>{categoryName} Collection</span>
                     <span>•</span>
                     <span>{service.gender} Treatment</span>
                   </p>
                 </div>
 
-
-
                 {/* Description */}
                 <div>
-                  <h3 className="font-heading font-bold text-sm text-groomish-slate uppercase tracking-wider mb-2">
+                  <h3 className="font-heading font-bold text-xs sm:text-sm text-groomish-slate uppercase tracking-wider mb-1.5 sm:mb-2">
                     Treatment Description
                   </h3>
                   <p className="text-xs sm:text-sm text-groomish-slate/80 leading-relaxed font-normal">
@@ -296,17 +300,17 @@ export default function ServiceDetailPage() {
 
                 {/* SUB-SERVICES / TREATMENT OPTIONS */}
                 {Array.isArray(service.subServices) && service.subServices.length > 0 && (
-                  <div className="pt-4 border-t border-groomish-slate/10 space-y-3">
+                  <div className="pt-3 sm:pt-4 border-t border-groomish-slate/10 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-heading font-bold text-sm text-groomish-slate uppercase tracking-wider flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-groomish-orange" />
+                      <h3 className="font-heading font-bold text-xs sm:text-sm text-groomish-slate uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
+                        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-groomish-orange" />
                         Choose Option / Variation
                       </h3>
-                      <span className="text-[11px] font-semibold text-groomish-slate/60 bg-groomish-cream px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] sm:text-[11px] font-semibold text-groomish-slate/60 bg-groomish-cream px-2 py-0.5 rounded-full">
                         {service.subServices.length} Options Available
                       </span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                       {service.subServices.map((sub, idx) => {
                         const isSelected = selectedSubService?.name === sub.name;
                         return (
@@ -314,29 +318,43 @@ export default function ServiceDetailPage() {
                             key={sub.id || idx}
                             type="button"
                             onClick={() => setSelectedSubService(sub)}
-                            className={`p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${isSelected
+                            className={`p-3 sm:p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${isSelected
                                 ? "bg-amber-50/80 border-groomish-orange shadow-sm ring-2 ring-groomish-orange/20"
                                 : "bg-white border-groomish-slate/15 hover:border-groomish-orange/40 hover:bg-groomish-cream/40"
                               }`}
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <span className={`text-xs font-bold leading-tight ${isSelected ? "text-groomish-orange" : "text-groomish-slate"}`}>
-                                {sub.name}
-                              </span>
-                              <div
-                                className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition ${isSelected
-                                    ? "border-groomish-orange bg-groomish-orange text-white"
-                                    : "border-groomish-slate/30 bg-white"
-                                  }`}
-                              >
-                                {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            <div>
+                              <div className="flex items-start justify-between gap-2">
+                                <span className={`text-xs font-bold leading-tight ${isSelected ? "text-groomish-orange" : "text-groomish-slate"}`}>
+                                  {sub.name}
+                                </span>
+                                <div
+                                  className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition ${isSelected
+                                      ? "border-groomish-orange bg-groomish-orange text-white"
+                                      : "border-groomish-slate/30 bg-white"
+                                    }`}
+                                >
+                                  {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                </div>
                               </div>
+                              {sub.description && (
+                                <p className="text-[11px] text-groomish-slate/60 mt-1 line-clamp-2 leading-relaxed">
+                                  {sub.description}
+                                </p>
+                              )}
                             </div>
-                            <div className="flex items-center justify-between mt-3 text-xs">
-                              <span className="font-extrabold text-groomish-slate text-sm">
-                                ₹{sub.price}
-                              </span>
-                              <span className="text-[11px] text-groomish-slate/60 flex items-center gap-1 font-medium">
+                            <div className="flex items-center justify-between mt-2.5 sm:mt-3 text-xs">
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="font-extrabold text-groomish-slate text-sm">
+                                  ₹{sub.price}
+                                </span>
+                                {sub.mrp > sub.price && (
+                                  <span className="text-[10px] text-groomish-slate/40 line-through">
+                                    ₹{sub.mrp}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] sm:text-[11px] text-groomish-slate/60 flex items-center gap-1 font-medium">
                                 <Clock className="w-3 h-3 text-groomish-gold" />
                                 {sub.durationMinutes} mins
                               </span>
@@ -349,40 +367,40 @@ export default function ServiceDetailPage() {
                 )}
 
                 {/* What's Included / Highlights */}
-                <div className="pt-4 border-t border-groomish-slate/10">
-                  <h3 className="font-heading font-bold text-sm text-groomish-slate uppercase tracking-wider mb-3">
+                <div className="pt-3 sm:pt-4 border-t border-groomish-slate/10">
+                  <h3 className="font-heading font-bold text-xs sm:text-sm text-groomish-slate uppercase tracking-wider mb-2.5 sm:mb-3">
                     What to Expect at Groomish Now
                   </h3>
-                  <div className="grid sm:grid-cols-2 gap-3 text-xs text-groomish-slate">
-                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-groomish-cream/70">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs text-groomish-slate min-w-0">
+                    <div className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-groomish-cream/70 min-w-0">
                       <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold block">Certified Stylist Consultation</span>
-                        <span className="text-groomish-slate/60 text-[11px]">One-on-one consultation before treatment begins.</span>
+                      <div className="min-w-0">
+                        <span className="font-bold block leading-snug">Certified Stylist Consultation</span>
+                        <span className="text-groomish-slate/60 text-[11px] leading-tight block mt-0.5">One-on-one consultation before treatment begins.</span>
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-groomish-cream/70">
+                    <div className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-groomish-cream/70 min-w-0">
                       <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold block">100% Sanitized Instruments</span>
-                        <span className="text-groomish-slate/60 text-[11px]">Autoclave sanitized tools for maximum hygiene.</span>
+                      <div className="min-w-0">
+                        <span className="font-bold block leading-snug">100% Sanitized Instruments</span>
+                        <span className="text-groomish-slate/60 text-[11px] leading-tight block mt-0.5">Autoclave sanitized tools for maximum hygiene.</span>
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-groomish-cream/70">
+                    <div className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-groomish-cream/70 min-w-0">
                       <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold block">Organic Professional Care</span>
-                        <span className="text-groomish-slate/60 text-[11px]">High-grade styling products and serums.</span>
+                      <div className="min-w-0">
+                        <span className="font-bold block leading-snug">Organic Professional Care</span>
+                        <span className="text-groomish-slate/60 text-[11px] leading-tight block mt-0.5">High-grade styling products and serums.</span>
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-groomish-cream/70">
+                    <div className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-2xl bg-groomish-cream/70 min-w-0">
                       <CheckCircle2 className="w-4 h-4 text-groomish-green shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold block">Instant Groom Coin Accrual</span>
-                        <span className="text-groomish-slate/60 text-[11px]">Earn Groom Coins credited directly to your profile.</span>
+                      <div className="min-w-0">
+                        <span className="font-bold block leading-snug">Instant Groom Coin Accrual</span>
+                        <span className="text-groomish-slate/60 text-[11px] leading-tight block mt-0.5">Earn Groom Coins credited directly to your profile.</span>
                       </div>
                     </div>
                   </div>

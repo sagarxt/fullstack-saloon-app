@@ -326,12 +326,14 @@ public class ProductServiceImpl implements ProductService {
 
         if (booking.getBookingItems() != null) {
             for (BookingItem item : booking.getBookingItems()) {
+                String sImg = (item.getService() != null && item.getService().getImage() != null) ? item.getService().getImage() : null;
                 billItems.add(BillItemDto.builder()
                         .name(item.getServiceNameSnapshot() != null ? item.getServiceNameSnapshot() : "Salon Service")
                         .type("SERVICE")
                         .quantity(1)
                         .unitPrice(item.getServicePriceSnapshot())
                         .totalPrice(item.getServicePriceSnapshot())
+                        .image(sImg)
                         .build());
             }
         }
@@ -339,12 +341,14 @@ public class ProductServiceImpl implements ProductService {
         List<BookingProduct> attachedProducts = bookingProductRepository.findByBookingId(bookingId);
         if (attachedProducts != null) {
             for (BookingProduct bp : attachedProducts) {
+                String pImg = (bp.getProduct() != null && bp.getProduct().getImage() != null) ? bp.getProduct().getImage() : null;
                 billItems.add(BillItemDto.builder()
                         .name(bp.getProductNameSnapshot() != null ? bp.getProductNameSnapshot() : "Store Product")
                         .type("PRODUCT")
                         .quantity(bp.getQuantity())
                         .unitPrice(bp.getUnitPriceSnapshot())
                         .totalPrice(bp.getTotalPrice())
+                        .image(pImg)
                         .build());
             }
         }
@@ -519,6 +523,7 @@ public class ProductServiceImpl implements ProductService {
                     .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
                     .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
                     .unitPrice(bp.getUnitPriceSnapshot())
+                    .mrp(bp.getProduct() != null && bp.getProduct().getMrp() != null ? bp.getProduct().getMrp() : bp.getUnitPriceSnapshot())
                     .quantity(bp.getQuantity())
                     .totalPrice(bp.getTotalPrice())
                     .build()).collect(Collectors.toList()));

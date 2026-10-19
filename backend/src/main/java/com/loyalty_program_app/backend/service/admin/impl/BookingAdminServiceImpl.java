@@ -12,6 +12,7 @@ import com.loyalty_program_app.backend.model.*;
 import com.loyalty_program_app.backend.repository.*;
 import com.loyalty_program_app.backend.service.admin.BookingAdminService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BookingAdminServiceImpl implements BookingAdminService {
 
     private final BookingRepository bookingRepository;
@@ -316,38 +318,25 @@ public class BookingAdminServiceImpl implements BookingAdminService {
 
         // Dispatch updated details email & notification to customer: (Overrided by Administrator)
         if (saved.getUser() != null && saved.getUser().getEmail() != null) {
-            String serviceName = (saved.getBookingItems() != null && !saved.getBookingItems().isEmpty())
-                    ? saved.getBookingItems().stream()
-                        .map(bi -> bi.getServiceNameSnapshot() != null ? bi.getServiceNameSnapshot() : (bi.getService() != null ? bi.getService().getName() : "Salon Service"))
-                        .collect(Collectors.joining(", "))
-                    : "Salon Service";
-            String storeName = saved.getStore() != null ? saved.getStore().getName() : "Groomish Now";
-            String payStatus = saved.getPayment() != null && saved.getPayment().getStatus() != null ? saved.getPayment().getStatus().name() : "PENDING";
-            String payMethod = saved.getPayment() != null && saved.getPayment().getPaymentMethod() != null ? saved.getPayment().getPaymentMethod().name() : "CASH";
-            Double finalPrice = saved.getPricePaid() != null ? saved.getPricePaid() : (saved.getTotalAmount() != null ? saved.getTotalAmount() : 0.0);
-
             try {
-                emailService.sendBookingAdminOverrideEmail(
-                        saved.getUser().getEmail(),
-                        saved.getUser().getName() != null ? saved.getUser().getName() : "Valued Customer",
-                        saved.getId().toString(),
-                        saved.getBookingCode(),
-                        serviceName,
-                        storeName,
-                        saved.getScheduledAt(),
-                        saved.getStatus() != null ? saved.getStatus().name() : "MODIFIED",
-                        finalPrice,
-                        payStatus,
-                        payMethod,
-                        saved.getNote()
-                );
-            } catch (Exception ignored) {}
+                com.loyalty_program_app.backend.dto.mail.BookingEmailDto emailDto = com.loyalty_program_app.backend.dto.mail.BookingEmailDto.fromBooking(saved);
+                if (saved.getNote() != null) {
+                    emailDto.setAdminNote(saved.getNote());
+                }
+                if (saved.getStatus() == BookingStatus.COMPLETED) {
+                    emailService.sendBookingCompletedEmail(emailDto);
+                } else {
+                    emailService.sendBookingModifiedEmail(emailDto, true);
+                }
+            } catch (Exception ex) {
+                log.error("Failed to send admin override email: {}", ex.getMessage());
+            }
 
             try {
                 Notification overrideNotif = Notification.builder()
                         .user(saved.getUser())
-                        .title("Appointment Updated (Overrided by Administrator)")
-                        .message("Your appointment " + (saved.getBookingCode() != null ? saved.getBookingCode() : saved.getId())
+                        .title("Booking Updated (Overrided by Administrator)")
+                        .message("Your booking " + (saved.getBookingCode() != null ? saved.getBookingCode() : saved.getId())
                                 + " has been modified by an administrator. (Overrided by Administrator)")
                         .type(com.loyalty_program_app.backend.enums.NotificationType.BOOKING)
                         .build();
@@ -484,6 +473,7 @@ public class BookingAdminServiceImpl implements BookingAdminService {
                     .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
                     .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
                     .unitPrice(bp.getUnitPriceSnapshot())
+                    .mrp(bp.getProduct() != null && bp.getProduct().getMrp() != null ? bp.getProduct().getMrp() : bp.getUnitPriceSnapshot())
                     .quantity(bp.getQuantity())
                     .totalPrice(bp.getTotalPrice())
                     .build()).collect(Collectors.toList()));
@@ -529,6 +519,7 @@ public class BookingAdminServiceImpl implements BookingAdminService {
         dto.setPrice(item.getServicePriceSnapshot() != null ? item.getServicePriceSnapshot() : (item.getService() != null ? item.getService().getPrice() : 0.0));
         dto.setDurationMinutes(item.getServiceDurationSnapshot() != null ? item.getServiceDurationSnapshot() : (item.getService() != null ? item.getService().getDurationMinutes() : 30));
         dto.setRewardCoins(item.getServiceRewardCoinsSnapshot() != null ? item.getServiceRewardCoinsSnapshot() : 0);
+        dto.setImage(item.getService() != null ? item.getService().getImage() : null);
         dto.setStatus(item.getStatus() != null ? item.getStatus().name() : "PENDING");
         return dto;
     }

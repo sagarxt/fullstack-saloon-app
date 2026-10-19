@@ -30,6 +30,7 @@ import StaffBranchServicesTab from "../../components/staff/StaffBranchServicesTa
 import StaffBranchInventoryTab from "../../components/staff/StaffBranchInventoryTab";
 import StaffBranchAnalyticsTab from "../../components/staff/StaffBranchAnalyticsTab";
 import StaffProfileTab from "../../components/staff/StaffProfileTab";
+import { showAlert } from "../../context/ConfirmContext";
 import {
   CalendarClock,
   CheckCircle2,
@@ -186,7 +187,11 @@ export default function StaffDashboard() {
       loadDashboard();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Failed to confirm appointment");
+      await showAlert({
+        title: "Action Failed",
+        message: err.response?.data?.message || "Failed to confirm appointment",
+        variant: "danger",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -1481,7 +1486,7 @@ export default function StaffDashboard() {
                 {billingBooking.items && billingBooking.items.length > 0 ? (
                   groupBookingServices(billingBooking.items).map((grp, idx) => (
                     <div
-                      key={grp.serviceId || grp.serviceName || idx}
+                      key={grp.key || `${grp.serviceId || ""}_${grp.serviceName || ""}_${idx}`}
                       className="p-3 rounded-xl bg-white border border-groomish-slate/10 flex items-center justify-between gap-3 shadow-soft"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">

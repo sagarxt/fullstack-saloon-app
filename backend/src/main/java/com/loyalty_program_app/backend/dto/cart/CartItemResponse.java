@@ -19,12 +19,14 @@ public class CartItemResponse {
     private UUID serviceId;
     private String serviceName;
     private Double servicePrice;
+    private Double serviceMrp;
     private Integer serviceDurationMinutes;
     private String serviceGender;
     private String serviceCategoryName;
     private String serviceImage;
     private String subServiceName;
     private Double subServicePrice;
+    private Double subServiceMrp;
     private Integer subServiceDuration;
 
     // Product specifics
@@ -38,6 +40,7 @@ public class CartItemResponse {
     private String productCategory;
 
     // Common
+    private Double mrp;
     private Integer quantity;
     private Double unitPrice;
     private Double totalPrice;

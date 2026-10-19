@@ -76,6 +76,18 @@ For optimal responsiveness, fast CDN delivery, and crisp rendering across Groomi
     - Dispatches a single, authoritative confirmation notification (`"Order & Booking Confirmed"`) and email only after payment is finalized.
     - Guarded booking scheduler skips product-only orders and pending reservations from premature appointment alerts or cancellations.
   - Unauthenticated clients clicking "Add Service" are prompted with the Login/Register modal before services are placed in the cart.
+- **Dynamic Groom Coins Earning Model**:
+  - Automatically awards 1 Groom Coin per ₹100 of eligible spend, rounding up when remainder is >= 50:
+    - ₹100 – ₹149 -> 1 Coin
+    - ₹150 – ₹249 -> 2 Coins (e.g., ₹249 -> 2 Coins)
+    - ₹250 – ₹349 -> 3 Coins (e.g., ₹299 -> 3 Coins)
+  - Synchronized across Spring Boot backend, web cart/checkout, mobile app, and PDF/HTML invoices.
+- **Transparent MRP Savings & Promo Coupon Stacking**:
+  - Displays original MRP alongside standard catalog discounts and applied coupon savings across checkout modals, receipts, and Gmail confirmation notifications with explicit "Total Savings" highlights.
+- **Multi-Service Category-Combined Coupon Eligibility**:
+  - Smart validation calculates the combined subtotal of all cart items belonging to coupon-eligible categories to evaluate `minOrderAmount`, allowing coupons to apply cleanly when customers combine multiple salon services.
+- **Streamlined Service Cards & "View Options" Navigation**:
+  - Services with multiple sub-service variations display formatted price/duration ranges and a clean "View Options" button that navigates directly to the dedicated treatment page (`/services/:id`), hiding inline selection chips for an uncluttered gallery experience.
 - **Available Offers and Promotional Coupons Hub**:
   - Luxury "Available Offers & Promotional Coupons" strip on Treatment Detail (`/services/:id`) and Products page (`/products`).
   - 1-click clipboard coupon copy with real-time discount preview.
@@ -398,6 +410,8 @@ graph TD
 - Implemented 3-slide luxury welcome onboarding carousel (`app/index.tsx`) allowing guest exploration of Home, Services, and Shop tabs without forced login.
 - Configured localtunnel with `Bypass-Tunnel-Reminder` headers and backend CORS wildcards for seamless remote device testing.
 - Feature parity across treatment booking, retail cart & shop, booking management, and VIP rewards.
+- **Zero-Layout-Shift Appointment Slot Selection**: Solid color highlight for slot cards with fixed dimensions, eliminating layout jumping and row expansion during selection.
+- **Razorpay WebView & Sandbox Integration**: Android WebView multi-window & popup redirection handling, automatic test payment approval, and dynamic tunnel proxying for seamless local testing.
 
 ---
 

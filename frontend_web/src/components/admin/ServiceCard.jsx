@@ -4,7 +4,9 @@ import EditServiceModal from "../modals/EditServiceModal";
 import { Scissors, Edit3, Clock, Tag, Trash2 } from "lucide-react";
 import { forceDeleteServiceApi } from "../../api/maintenance";
 import { getOptimizedImageUrl } from "../../utils/imageHelper";
+import { showConfirm, showAlert } from "../../context/ConfirmContext";
 
+import { getServicePriceRange, getServiceDurationRange } from "../../utils/dataHelper";
 import GroomCoinIcon from "../common/GroomCoinIcon";
 
 export default function ServiceCard({ service, categories, refresh }) {
@@ -23,6 +25,11 @@ export default function ServiceCard({ service, categories, refresh }) {
       refresh();
     } catch (err) {
       console.error(err);
+      await showAlert({
+        title: "Action Failed",
+        message: err.response?.data?.message || "Failed to update service status.",
+        variant: "danger",
+      });
     } finally {
       setLoading(false);
     }
@@ -61,11 +68,10 @@ export default function ServiceCard({ service, categories, refresh }) {
               {categoryName}
             </span>
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                service.active
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${service.active
                   ? "bg-groomish-greenLight text-groomish-green"
                   : "bg-groomish-crimsonLight text-groomish-crimson"
-              }`}
+                }`}
             >
               {service.active ? "Active" : "Disabled"}
             </span>
@@ -84,11 +90,11 @@ export default function ServiceCard({ service, categories, refresh }) {
           <div className="flex items-center gap-4 text-xs text-groomish-slate/70 pt-1 flex-wrap">
             <span className="flex items-center gap-1 text-groomish-slate/60">
               <Clock className="w-3.5 h-3.5 text-groomish-orange" />
-              {service.durationMinutes} mins
+              {getServiceDurationRange(service)}
             </span>
             <span className="font-extrabold text-sm text-groomish-slate">
-              ₹{service.price}
-              {service.mrp > service.price && (
+              {getServicePriceRange(service)}
+              {(!service.subServices || service.subServices.length === 0) && service.mrp > service.price && (
                 <span className="text-xs font-normal text-groomish-slate/40 line-through ml-1.5">
                   ₹{service.mrp}
                 </span>
@@ -127,11 +133,10 @@ export default function ServiceCard({ service, categories, refresh }) {
           <button
             disabled={loading}
             onClick={handleDeactivate}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
-              service.active
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${service.active
                 ? "bg-groomish-crimsonLight text-groomish-crimson hover:bg-groomish-crimson hover:text-white"
                 : "bg-groomish-greenLight text-groomish-green hover:bg-groomish-green hover:text-white"
-            }`}
+              }`}
           >
             {service.active ? "Deactivate" : "Activate"}
           </button>
@@ -139,19 +144,29 @@ export default function ServiceCard({ service, categories, refresh }) {
           <button
             disabled={loading}
             onClick={async () => {
-              if (window.confirm(`FORCE DELETE service "${service.name}"?\nThis permanently removes this service from database and bookings.`)) {
-                try {
-                  setLoading(true);
-                  await forceDeleteServiceApi(service.id);
-                  refresh();
-                } catch (err) {
-                  alert(err.response?.data?.message || "Failed to force delete service.");
-                } finally {
-                  setLoading(false);
-                }
+              const ok = await showConfirm({
+                title: "Force Delete Service",
+                message: `Are you sure you want to FORCE DELETE service "${service.name}"?\nThis permanently removes this service from database and bookings.`,
+                confirmText: "Force Delete Service",
+                variant: "danger",
+              });
+              if (!ok) return;
+
+              try {
+                setLoading(true);
+                await forceDeleteServiceApi(service.id);
+                refresh();
+              } catch (err) {
+                await showAlert({
+                  title: "Deletion Failed",
+                  message: err.response?.data?.message || "Failed to force delete service.",
+                  variant: "danger",
+                });
+              } finally {
+                setLoading(false);
               }
             }}
-            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-1 shadow-xs"
+            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
             title="Permanently remove service from database"
           >
             <Trash2 className="w-3.5 h-3.5" />
