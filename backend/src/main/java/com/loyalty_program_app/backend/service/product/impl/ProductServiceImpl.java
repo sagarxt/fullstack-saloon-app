@@ -491,6 +491,8 @@ public class ProductServiceImpl implements ProductService {
         dto.setUserName(b.getUser() != null ? b.getUser().getName() : null);
         dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
         dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
+        dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
+        dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
         dto.setTotalAmount(b.getTotalAmount());
         dto.setPricePaid(b.getPricePaid());
         dto.setStatus(b.getStatus() != null ? b.getStatus().name() : null);

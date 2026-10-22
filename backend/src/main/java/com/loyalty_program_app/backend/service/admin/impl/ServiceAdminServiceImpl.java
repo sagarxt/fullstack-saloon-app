@@ -19,12 +19,21 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class ServiceAdminServiceImpl implements ServiceAdminService {
 
     private final ServiceRepository serviceRepository;
     private final CategoryRepository categoryRepository;
     private final CloudinaryService cloudinaryService;
+
+    public ServiceAdminServiceImpl(
+            ServiceRepository serviceRepository,
+            CategoryRepository categoryRepository,
+            CloudinaryService cloudinaryService
+    ) {
+        this.serviceRepository = serviceRepository;
+        this.categoryRepository = categoryRepository;
+        this.cloudinaryService = cloudinaryService;
+    }
 
     @Override
     public ServiceResponse createService(String name, UUID categoryId, String description, String gender,
@@ -45,6 +54,15 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
                                          Double mrp, Double price, Integer rewards, Integer durationMinutes,
                                          MultipartFile image, String imageUrl,
                                          java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices) {
+        return createService(name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, subServices, true);
+    }
+
+    @Override
+    public ServiceResponse createService(String name, UUID categoryId, String description, String gender,
+                                         Double mrp, Double price, Integer rewards, Integer durationMinutes,
+                                         MultipartFile image, String imageUrl,
+                                         java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices,
+                                         Boolean active) {
 
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
@@ -71,7 +89,7 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
         s.setRewards(rewards != null ? rewards : 0);
         s.setDurationMinutes(durationMinutes != null ? durationMinutes : 30);
         s.setImage(finalImageUrl);
-        s.setActive(true);
+        s.setActive(active != null ? active : true);
 
         if (subServices != null && !subServices.isEmpty()) {
             for (com.loyalty_program_app.backend.dto.service.SubServiceDto subDto : subServices) {
@@ -129,6 +147,15 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
                                          String gender, Double mrp, Double price, Integer rewards,
                                          Integer durationMinutes, MultipartFile image, String imageUrl,
                                          java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices) {
+        return updateService(id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, subServices, null);
+    }
+
+    @Override
+    public ServiceResponse updateService(UUID id, String name, UUID categoryId, String description,
+                                         String gender, Double mrp, Double price, Integer rewards,
+                                         Integer durationMinutes, MultipartFile image, String imageUrl,
+                                         java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices,
+                                         Boolean active) {
 
         ServiceEntity s = serviceRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Service not found"));
@@ -140,6 +167,7 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
         if (price != null) s.setPrice(price);
         if (rewards != null) s.setRewards(rewards);
         if (durationMinutes != null) s.setDurationMinutes(durationMinutes);
+        if (active != null) s.setActive(active);
 
         if (categoryId != null) {
             Category category = categoryRepository.findById(categoryId)
@@ -196,6 +224,19 @@ public class ServiceAdminServiceImpl implements ServiceAdminService {
             }
         }
 
+        serviceRepository.save(s);
+        return toDto(s);
+    }
+
+    @Override
+    public ServiceResponse updateServiceStatus(UUID id, Boolean active) {
+        ServiceEntity s = serviceRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Service not found"));
+        if (active != null) {
+            s.setActive(active);
+        } else {
+            s.setActive(!s.isActive());
+        }
         serviceRepository.save(s);
         return toDto(s);
     }

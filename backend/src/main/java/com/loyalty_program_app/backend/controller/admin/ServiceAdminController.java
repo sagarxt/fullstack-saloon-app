@@ -14,11 +14,18 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/services")
-@RequiredArgsConstructor
 public class ServiceAdminController {
 
     private final ServiceAdminService serviceAdminService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    public ServiceAdminController(
+            ServiceAdminService serviceAdminService,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper
+    ) {
+        this.serviceAdminService = serviceAdminService;
+        this.objectMapper = objectMapper;
+    }
 
     @PostMapping(consumes = {"multipart/form-data"})
     public ServiceResponse createServiceMultipart(
@@ -32,7 +39,8 @@ public class ServiceAdminController {
             @RequestParam(required = false) Integer durationMinutes,
             @RequestParam(required = false) MultipartFile image,
             @RequestParam(required = false) String imageUrl,
-            @RequestParam(required = false) String subServicesJson
+            @RequestParam(required = false) String subServicesJson,
+            @RequestParam(required = false) Boolean active
     ) {
         java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subList = null;
         if (subServicesJson != null && !subServicesJson.isBlank()) {
@@ -43,7 +51,7 @@ public class ServiceAdminController {
             }
         }
         return serviceAdminService.createService(
-                name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, subList
+                name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, subList, active
         );
     }
 
@@ -60,7 +68,8 @@ public class ServiceAdminController {
                 request.getDurationMinutes(),
                 null,
                 request.getImage(),
-                request.getSubServices()
+                request.getSubServices(),
+                request.getActive()
         );
     }
 
@@ -77,7 +86,8 @@ public class ServiceAdminController {
             @RequestParam(required = false) Integer durationMinutes,
             @RequestParam(required = false) MultipartFile image,
             @RequestParam(required = false) String imageUrl,
-            @RequestParam(required = false) String subServicesJson
+            @RequestParam(required = false) String subServicesJson,
+            @RequestParam(required = false) Boolean active
     ) {
         java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subList = null;
         if (subServicesJson != null && !subServicesJson.isBlank()) {
@@ -88,7 +98,7 @@ public class ServiceAdminController {
             }
         }
         return serviceAdminService.updateService(
-                id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, subList
+                id, name, categoryId, description, gender, mrp, price, rewards, durationMinutes, image, imageUrl, subList, active
         );
     }
 
@@ -106,8 +116,25 @@ public class ServiceAdminController {
                 request.getDurationMinutes(),
                 null,
                 request.getImage(),
-                request.getSubServices()
+                request.getSubServices(),
+                request.getActive()
         );
+    }
+
+    @PutMapping("/{id}/status")
+    public ServiceResponse updateServiceStatus(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Boolean active
+    ) {
+        return serviceAdminService.updateServiceStatus(id, active);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ServiceResponse patchServiceStatus(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Boolean active
+    ) {
+        return serviceAdminService.updateServiceStatus(id, active);
     }
 
     @DeleteMapping("/{id}")
@@ -129,7 +156,7 @@ public class ServiceAdminController {
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "1000") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
         return serviceAdminService.searchServices(name, categoryId, gender, active, minPrice, maxPrice, pageable);

@@ -2,11 +2,11 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-const ACTIVE_TUNNEL_URL = 'https://tame-carrots-watch.loca.lt/api/v1';
+const ACTIVE_TUNNEL_URL = 'https://eighty-cars-shop.loca.lt/api/v1';
 
 function getBaseUrl(): string {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl && !envUrl.includes('moody-states-jam') && !envUrl.includes('pink-seahorse')) {
+  if (envUrl && !envUrl.includes('moody-states-jam') && !envUrl.includes('pink-seahorse') && !envUrl.includes('tame-carrots-watch') && !envUrl.includes('fine-ads-shop')) {
     return envUrl;
   }
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
@@ -35,6 +35,7 @@ apiClient.interceptors.request.use(
   async (config) => {
     try {
       config.headers['Bypass-Tunnel-Reminder'] = 'true';
+      config.headers['bypass-tunnel-reminder'] = 'true';
       const token = await AsyncStorage.getItem('token');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
@@ -42,11 +43,11 @@ apiClient.interceptors.request.use(
     } catch (_) {}
 
     // Rewrite stale/dead tunnels if cached in client bundle
-    if (config.baseURL && (config.baseURL.includes('moody-states-jam') || config.baseURL.includes('pink-seahorse'))) {
+    if (config.baseURL && (config.baseURL.includes('moody-states-jam') || config.baseURL.includes('pink-seahorse') || config.baseURL.includes('tame-carrots-watch') || config.baseURL.includes('fine-ads-shop'))) {
       config.baseURL = ACTIVE_TUNNEL_URL;
     }
-    if (config.url && (config.url.includes('moody-states-jam') || config.url.includes('pink-seahorse'))) {
-      config.url = config.url.replace(/https:\/\/(moody-states-jam|pink-seahorse[^\/]*)\.loca\.lt\/api\/v1/, ACTIVE_TUNNEL_URL);
+    if (config.url && (config.url.includes('moody-states-jam') || config.url.includes('pink-seahorse') || config.url.includes('tame-carrots-watch') || config.url.includes('fine-ads-shop'))) {
+      config.url = config.url.replace(/https:\/\/(moody-states-jam|pink-seahorse|tame-carrots-watch|fine-ads-shop[^\/]*)\.loca\.lt\/api\/v1/, ACTIVE_TUNNEL_URL);
     }
 
     console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url || ''}`);
@@ -58,9 +59,19 @@ apiClient.interceptors.request.use(
   }
 );
 
+let onUnauthorizedCallback: (() => void) | null = null;
+
+export function setOnUnauthorizedCallback(cb: (() => void) | null) {
+  onUnauthorizedCallback = cb;
+}
+
 // Response interceptor for 401 handling & logging
 apiClient.interceptors.response.use(
   (response) => {
+    if (typeof response.data === 'string' && (response.data.includes('Friendly Reminder') || response.data.includes('localtunnel') || response.data.trim().startsWith('<!DOCTYPE html>'))) {
+      console.warn('[API WARNING] Localtunnel reminder HTML page intercepted instead of JSON:', response.config.url);
+      return Promise.reject(new Error('Localtunnel reminder page intercepted'));
+    }
     console.log(`[API RESPONSE] ${response.status} ${response.config.url}`);
     return response;
   },
@@ -73,6 +84,9 @@ apiClient.interceptors.response.use(
     );
     if (error.response?.status === 401) {
       await AsyncStorage.multiRemove(['token', 'user']);
+      if (onUnauthorizedCallback) {
+        onUnauthorizedCallback();
+      }
     }
     return Promise.reject(error);
   }

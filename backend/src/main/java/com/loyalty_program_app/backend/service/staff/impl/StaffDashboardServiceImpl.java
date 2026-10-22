@@ -363,6 +363,9 @@ public class StaffDashboardServiceImpl implements StaffDashboardService {
         }
         dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
         dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
+        dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
+        dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
+        dto.setInvoiceNumber(b.getPayment() != null ? b.getPayment().getInvoiceNumber() : null);
         dto.setTotalAmount(b.getTotalAmount());
         dto.setPricePaid(b.getPricePaid() != null ? b.getPricePaid() : b.getTotalAmount());
         dto.setStatus(b.getStatus().name());

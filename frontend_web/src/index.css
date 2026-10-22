@@ -5,15 +5,25 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    overflow-x: clip;
+    overflow-x: hidden;
+    max-width: 100vw;
+    width: 100%;
   }
 
   body {
     background-color: #FAF6ED;
     color: #373A43;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    overflow-x: clip;
+    overflow-x: hidden;
+    max-width: 100vw;
     width: 100%;
+    min-height: 100vh;
+  }
+
+  #root {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
     min-height: 100vh;
   }
 }

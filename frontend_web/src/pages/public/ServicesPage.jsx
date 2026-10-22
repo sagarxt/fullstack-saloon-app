@@ -414,7 +414,7 @@ export default function PublicServicesPage() {
                             )}
 
                             {/* Groom Coins reward badge */}
-                            <div className="pt-1 flex items-center gap-1.5 text-[11px] font-bold text-groomish-slate">
+                            <div className="pt-2 flex items-center gap-1.5 text-[11px] font-bold text-groomish-slate">
                               <GroomCoinIcon className="w-3.5 h-3.5" />
                               <span>Earn {coinsEarned} Groom Coins</span>
                             </div>
@@ -422,9 +422,9 @@ export default function PublicServicesPage() {
                         </div>
 
                         {/* Pricing & Booking Action */}
-                        <div className="p-4 pt-0 border-t border-groomish-slate/10 mt-3 flex items-center justify-between">
-                          <div>
-                            <div className="text-lg font-extrabold text-groomish-slate">
+                        <div className="p-4 pt-3 border-t border-groomish-slate/10 flex items-center justify-between gap-2 mt-auto">
+                          <div className="min-w-0 pr-1">
+                            <div className="text-base sm:text-[17px] font-extrabold text-groomish-slate leading-tight whitespace-nowrap">
                               {displayPrice}
                             </div>
                             {activeSub?.mrp > activeSub?.price ? (
@@ -444,16 +444,16 @@ export default function PublicServicesPage() {
                             <button
                               type="button"
                               onClick={() => navigate(`/services/${service.id}`)}
-                              className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
+                              className="btn-primary text-xs px-3 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5 shrink-0 whitespace-nowrap"
                             >
                               <Eye className="w-3.5 h-3.5" />
-                              <span>View Options</span>
+                              <span>Options</span>
                             </button>
                           ) : isInCart ? (
                             <button
                               type="button"
                               onClick={() => navigate("/cart")}
-                              className="btn-secondary text-xs px-3.5 py-2 flex items-center gap-1.5 bg-groomish-orangeLight/60 border border-groomish-orange/40 text-groomish-orange hover:bg-groomish-orange hover:text-white transition shadow-2xs font-bold"
+                              className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 bg-groomish-orangeLight/60 border border-groomish-orange/40 text-groomish-orange hover:bg-groomish-orange hover:text-white transition shadow-2xs font-bold shrink-0 whitespace-nowrap"
                             >
                               <ShoppingCart className="w-3.5 h-3.5" />
                               <span>View Cart</span>
@@ -462,7 +462,7 @@ export default function PublicServicesPage() {
                             <button
                               type="button"
                               onClick={() => handleAddToCart(service)}
-                              className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
+                              className="btn-primary text-xs px-3 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5 shrink-0 whitespace-nowrap"
                             >
                               <ShoppingCart className="w-3.5 h-3.5" />
                               <span>Add Service</span>

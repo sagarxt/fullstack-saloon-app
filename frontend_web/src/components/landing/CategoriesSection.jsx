@@ -13,7 +13,7 @@ export default function CategoriesSection({
   const displayedCategories = categoryList.slice(0, 9);
 
   return (
-    <section id="categories" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14">
+    <section id="categories" className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-8 sm:py-14 w-full max-w-full overflow-x-hidden min-w-0">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-8">
         <div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-groomish-coralLight text-groomish-coral mb-2 sm:mb-3">

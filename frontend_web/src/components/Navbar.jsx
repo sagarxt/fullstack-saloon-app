@@ -78,10 +78,10 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-groomish-slate/10 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-groomish-slate/10 transition-all duration-300 w-full max-w-full">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* BRAND LOGO & STORE SELECTOR */}
-          <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-1.5 xs:gap-3 sm:gap-4 min-w-0">
             <div
               className="flex items-center cursor-pointer group shrink-0"
               onClick={() => navigate("/")}
@@ -89,7 +89,7 @@ export default function Navbar() {
               <img
                 src="/groomish_logo_2.png"
                 alt="Groomish Now"
-                className="h-8 xs:h-9 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                className="h-7 xs:h-8 sm:h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
               />
             </div>
 
@@ -164,7 +164,7 @@ export default function Navbar() {
           </nav>
 
           {/* RIGHT UTILITY ICONS & USER SECTION */}
-          <div className="flex items-center gap-1.5 xs:gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 shrink-0">
             {/* Cart Icon */}
             <button
               onClick={() => navigate("/cart")}
@@ -174,7 +174,7 @@ export default function Navbar() {
             >
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-groomish-slate/80 group-hover:text-groomish-orange transition-colors" />
               {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 sm:top-0.5 sm:right-0.5 min-w-[16px] h-4 sm:min-w-[18px] sm:h-4.5 px-1 rounded-full bg-groomish-orange text-white text-[9px] sm:text-[10px] font-extrabold flex items-center justify-center shadow-sm animate-pulse">
+                <span className="absolute -top-0.5 -right-0.5 sm:top-0.5 sm:right-0.5 min-w-[15px] h-3.5 sm:min-w-[18px] sm:h-4.5 px-0.5 rounded-full bg-groomish-orange text-white text-[8px] sm:text-[10px] font-extrabold flex items-center justify-center shadow-sm animate-pulse">
                   {cartCount > 99 ? "99+" : cartCount}
                 </span>
               )}
@@ -331,7 +331,7 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => setAuthOpen(true)}
-                className="btn-primary text-xs px-2.5 xs:px-3 sm:px-4 py-1.5 sm:py-2 shadow-glowOrange whitespace-nowrap"
+                className="btn-primary text-[11px] xs:text-xs px-2 xs:px-3 sm:px-4 py-1.5 sm:py-2 shadow-glowOrange whitespace-nowrap"
               >
                 <span className="hidden xs:inline">Sign In / Register</span>
                 <span className="xs:hidden">Sign In</span>
@@ -341,7 +341,7 @@ export default function Navbar() {
             {/* Mobile Hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-1.5 sm:p-2 md:hidden text-groomish-slate rounded-lg hover:bg-black/5"
+              className="p-1 xs:p-1.5 sm:p-2 md:hidden text-groomish-slate rounded-lg hover:bg-black/5"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

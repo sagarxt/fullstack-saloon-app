@@ -282,12 +282,16 @@ export default function EditServiceModal({
                 className="w-full px-3 py-2 rounded-xl border border-amber-300/60 bg-amber-50/40 text-xs text-groomish-slate focus:outline-none focus:ring-2 focus:ring-groomish-gold/40"
               />
             </div>
-            {/* active status toggle based on */}
+            {/* active status toggle */}
             <div>
               <label className="block text-xs font-bold text-groomish-slate mb-1">
                 Active Status
               </label>
-              <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 hover:border-groomish-slate/30 transition">
+              <div
+                onClick={() => setForm((prev) => ({ ...prev, active: !prev.active }))}
+                className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 hover:border-groomish-slate/30 transition cursor-pointer select-none"
+                title="Click to toggle active status"
+              >
                 <div className="flex items-center gap-2">
                   <span
                     className={`inline-block w-2.5 h-2.5 rounded-full ${
@@ -298,16 +302,16 @@ export default function EditServiceModal({
                     {form.active ? "Active" : "Deactive"}
                   </span>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <div className="relative inline-flex items-center pointer-events-none">
                   <input
                     type="checkbox"
                     name="active"
                     checked={Boolean(form.active)}
-                    onChange={handleChange}
+                    readOnly
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-groomish-slate/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-groomish-green"></div>
-                </label>
+                  <div className="w-9 h-5 bg-groomish-slate/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-groomish-green"></div>
+                </div>
               </div>
             </div>
           </div>

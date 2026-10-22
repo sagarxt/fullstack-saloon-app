@@ -16,6 +16,8 @@ public class BookingResponse {
     private String userPhone;
     private UUID paymentId;
     private UUID couponId;
+    private String couponCode;
+    private String couponApplied;
     private Double totalAmount;
     private Double pricePaid;
     private String status;

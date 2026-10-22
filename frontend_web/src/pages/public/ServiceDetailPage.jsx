@@ -201,41 +201,41 @@ export default function ServiceDetailPage() {
   const totalReviewsCount = ratingSummary?.totalReviews ?? reviews.length;
 
   return (
-    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
+    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1">
+      <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {/* BREADCRUMBS */}
-        <div className="bg-white border-b border-groomish-slate/10 py-3">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-groomish-slate/60">
-            <Link to="/" className="hover:text-groomish-orange flex items-center gap-1">
+        <div className="bg-white border-b border-groomish-slate/10 py-2.5 sm:py-3 w-full overflow-hidden">
+          <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center gap-1.5 sm:gap-2 text-xs text-groomish-slate/60 overflow-x-auto no-scrollbar whitespace-nowrap">
+            <Link to="/" className="hover:text-groomish-orange flex items-center gap-1 shrink-0">
               <Home className="w-3.5 h-3.5" />
               <span>Home</span>
             </Link>
-            <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
-            <Link to="/services" className="hover:text-groomish-orange">
+            <ChevronRight className="w-3 h-3 text-groomish-slate/30 shrink-0" />
+            <Link to="/services" className="hover:text-groomish-orange shrink-0">
               Services
             </Link>
             {categoryObj && (
               <>
-                <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
-                <Link to={`/category/${categoryObj.id}`} className="hover:text-groomish-orange">
+                <ChevronRight className="w-3 h-3 text-groomish-slate/30 shrink-0" />
+                <Link to={`/category/${categoryObj.id}`} className="hover:text-groomish-orange shrink-0">
                   {categoryObj.name}
                 </Link>
               </>
             )}
-            <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
-            <span className="font-bold text-groomish-slate truncate max-w-[200px]">
+            <ChevronRight className="w-3 h-3 text-groomish-slate/30 shrink-0" />
+            <span className="font-bold text-groomish-slate truncate max-w-[140px] xs:max-w-[200px] shrink-0">
               {service.name}
             </span>
           </div>
         </div>
 
         {/* HERO / PRODUCT DETAILS SECTION */}
-        <section className="py-4 sm:py-7 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full min-w-0">
-          <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full min-w-0">
+        <section className="py-3.5 sm:py-7 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 w-full max-w-full overflow-x-hidden min-w-0">
+          <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full max-w-full min-w-0">
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
-            <div className="lg:col-span-7 space-y-4 sm:space-y-5 w-full min-w-0">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-5 w-full max-w-full min-w-0">
               {/* Image Preview */}
               <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft h-[260px] sm:h-[360px] lg:h-[440px] w-full">
                 <img
@@ -258,16 +258,16 @@ export default function ServiceDetailPage() {
                   </Link>
                 </div>
 
-                <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 flex items-center justify-between text-white">
-                  <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-semibold">
+                <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 flex items-center justify-between text-white gap-2">
+                  <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shrink-0">
                     <Clock className="w-3.5 h-3.5 text-groomish-gold" />
-                    <span>Duration: {activeDuration} Minutes</span>
+                    <span>Duration: {activeDuration}m</span>
                   </div>
 
-                  <div className="flex items-center gap-1 bg-white/90 text-groomish-slate px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-bold backdrop-blur-md">
+                  <div className="flex items-center gap-1 bg-white/95 text-groomish-slate px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold backdrop-blur-md shrink-0">
                     <Star className="w-3.5 h-3.5 fill-groomish-gold text-groomish-gold" />
                     <span>{averageRating}</span>
-                    <span className="text-[11px] text-groomish-slate/60">
+                    <span className="text-[10px] sm:text-[11px] text-groomish-slate/60">
                       ({totalReviewsCount})
                     </span>
                   </div>
@@ -301,12 +301,12 @@ export default function ServiceDetailPage() {
                 {/* SUB-SERVICES / TREATMENT OPTIONS */}
                 {Array.isArray(service.subServices) && service.subServices.length > 0 && (
                   <div className="pt-3 sm:pt-4 border-t border-groomish-slate/10 space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <h3 className="font-heading font-bold text-xs sm:text-sm text-groomish-slate uppercase tracking-wider flex items-center gap-1.5 sm:gap-2">
                         <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-groomish-orange" />
                         Choose Option / Variation
                       </h3>
-                      <span className="text-[10px] sm:text-[11px] font-semibold text-groomish-slate/60 bg-groomish-cream px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] sm:text-[11px] font-semibold text-groomish-slate/60 bg-groomish-cream px-2 py-0.5 rounded-full shrink-0">
                         {service.subServices.length} Options Available
                       </span>
                     </div>
@@ -409,18 +409,18 @@ export default function ServiceDetailPage() {
 
               {/* VERIFIED CUSTOMER REVIEWS & RATINGS */}
               <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-soft space-y-4">
-                <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4">
-                  <div>
-                    <h2 className="font-heading font-extrabold text-xl text-groomish-slate flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5 text-groomish-orange" />
-                      Verified Client Reviews
+                <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4 gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <h2 className="font-heading font-extrabold text-lg sm:text-xl text-groomish-slate flex items-center gap-2">
+                      <MessageSquare className="w-5 h-5 text-groomish-orange shrink-0" />
+                      <span>Verified Client Reviews</span>
                     </h2>
                     <p className="text-xs text-groomish-slate/60 mt-0.5">
                       Authentic ratings from customers who experienced this treatment.
                     </p>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-left sm:text-right shrink-0">
                     <div className="flex items-center gap-1 text-2xl font-heading font-extrabold text-groomish-slate">
                       <Star className="w-6 h-6 fill-groomish-gold text-groomish-gold" />
                       <span>{averageRating}</span>
@@ -495,8 +495,8 @@ export default function ServiceDetailPage() {
             </div>
 
             {/* RIGHT SIDEBAR: STICKY BOOKING CARD (STICKY UNTIL REVIEWS END) */}
-            <div className="lg:col-span-5 relative">
-              <div className="lg:sticky lg:top-24 space-y-4">
+            <div className="lg:col-span-5 relative w-full max-w-full min-w-0">
+              <div className="lg:sticky lg:top-24 space-y-4 w-full min-w-0">
                 <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-card space-y-4">
                   <div>
                     <span className="text-[10px] uppercase font-bold tracking-wider text-groomish-slate/50 block mb-1">
@@ -600,14 +600,14 @@ export default function ServiceDetailPage() {
 
                 {/* AVAILABLE OFFERS & PROMOTIONAL COUPONS (RIGHT SIDEBAR BELOW TARIFF & BOOKING) */}
                 {(coupons.length > 0 || service.rewards > 0 || coinsEarned > 0) && (
-                  <div className="bg-white rounded-3xl p-5 sm:p-6 border border-groomish-slate/10 shadow-card space-y-4">
-                    <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
-                      <div className="flex items-center gap-2">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-groomish-slate/10 shadow-card space-y-4 w-full min-w-0">
+                    <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3 gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
                           <Tag className="w-3.5 h-3.5" />
                         </div>
-                        <div>
-                          <h3 className="font-heading font-extrabold text-sm text-groomish-slate">
+                        <div className="min-w-0">
+                          <h3 className="font-heading font-extrabold text-sm text-groomish-slate truncate">
                             Available Offers & Promotional Coupons
                           </h3>
                           <p className="text-[11px] text-groomish-slate/60">

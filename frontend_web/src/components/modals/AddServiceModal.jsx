@@ -22,14 +22,20 @@ export default function AddServiceModal({
     price: "",
     durationMinutes: "",
     rewards: "",
+    active: true,
   });
   const [enableSubServices, setEnableSubServices] = useState(false);
   const [subServices, setSubServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
 
   const handleImageChange = (url) => {
     setForm((prev) => ({ ...prev, image: url }));
@@ -111,6 +117,7 @@ export default function AddServiceModal({
 
       const payload = {
         ...form,
+        active: form.active !== undefined ? Boolean(form.active) : true,
         mrp: finalMrp,
         price: finalPrice,
         durationMinutes: finalDuration,
@@ -129,6 +136,7 @@ export default function AddServiceModal({
         price: "",
         durationMinutes: "",
         rewards: "",
+        active: true,
       });
       setEnableSubServices(false);
       setSubServices([]);
@@ -294,12 +302,16 @@ export default function AddServiceModal({
                 className="w-full px-3 py-2 rounded-xl border border-amber-300/60 bg-amber-50/40 text-xs text-groomish-slate focus:outline-none focus:ring-2 focus:ring-groomish-gold/40"
               />
             </div>
-            {/* active status toggle based on */}
+            {/* active status toggle */}
             <div>
               <label className="block text-xs font-bold text-groomish-slate mb-1">
                 Active Status
               </label>
-              <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 hover:border-groomish-slate/30 transition">
+              <div
+                onClick={() => setForm((prev) => ({ ...prev, active: !prev.active }))}
+                className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-groomish-cream/40 border border-groomish-slate/15 hover:border-groomish-slate/30 transition cursor-pointer select-none"
+                title="Click to toggle active status"
+              >
                 <div className="flex items-center gap-2">
                   <span
                     className={`inline-block w-2.5 h-2.5 rounded-full ${form.active ? "bg-emerald-500 animate-pulse" : "bg-rose-400"
@@ -309,16 +321,16 @@ export default function AddServiceModal({
                     {form.active ? "Active" : "Deactive"}
                   </span>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <div className="relative inline-flex items-center pointer-events-none">
                   <input
                     type="checkbox"
                     name="active"
                     checked={Boolean(form.active)}
-                    onChange={handleChange}
+                    readOnly
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-groomish-slate/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-groomish-green"></div>
-                </label>
+                  <div className="w-9 h-5 bg-groomish-slate/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-groomish-green"></div>
+                </div>
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { deactivateServiceApi } from "../../api/admin";
+import { deactivateServiceApi, activateServiceApi } from "../../api/admin";
 import EditServiceModal from "../modals/EditServiceModal";
 import { Scissors, Edit3, Clock, Tag, Trash2 } from "lucide-react";
 import { forceDeleteServiceApi } from "../../api/maintenance";
@@ -18,10 +18,14 @@ export default function ServiceCard({ service, categories, refresh }) {
     service.categoryName ||
     "Salon Care";
 
-  const handleDeactivate = async () => {
+  const handleToggleActive = async () => {
     setLoading(true);
     try {
-      await deactivateServiceApi(service.id);
+      if (service.active) {
+        await deactivateServiceApi(service.id);
+      } else {
+        await activateServiceApi(service.id);
+      }
       refresh();
     } catch (err) {
       console.error(err);
@@ -132,7 +136,7 @@ export default function ServiceCard({ service, categories, refresh }) {
 
           <button
             disabled={loading}
-            onClick={handleDeactivate}
+            onClick={handleToggleActive}
             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${service.active
                 ? "bg-groomish-crimsonLight text-groomish-crimson hover:bg-groomish-crimson hover:text-white"
                 : "bg-groomish-greenLight text-groomish-green hover:bg-groomish-green hover:text-white"

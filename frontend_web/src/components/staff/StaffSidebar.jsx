@@ -15,9 +15,18 @@ import {
   Sparkles,
   TrendingUp,
   UserCheck,
+  X,
+  PanelLeftClose,
 } from "lucide-react";
 
-export default function StaffSidebar({ activeBookingCode = null, activeBookingId = null }) {
+export default function StaffSidebar({
+  activeBookingCode = null,
+  activeBookingId = null,
+  isOpen = false,
+  onClose,
+  collapsed = false,
+  onToggleCollapse,
+}) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,27 +37,70 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
   const activeTab = searchParams.get("tab");
 
   return (
-    <aside className="w-64 bg-groomish-slate text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-white/10 select-none overflow-hidden hidden lg:flex">
-      <div className="flex-1 overflow-y-auto">
-        {/* Brand Header */}
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
         <div
-          onClick={() => navigate("/staff/dashboard")}
-          className="p-6 border-b border-white/10 flex items-center gap-3 cursor-pointer group"
-        >
-          <img
-            src="/groomish_logo_2.png"
-            alt="Groomish Now"
-            className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
-          />
-          <div>
-            <span className="font-heading font-extrabold text-sm tracking-wide block text-white">
-              Groomish Now
-            </span>
-            <span className="text-[10px] uppercase tracking-wider font-bold text-groomish-orange bg-groomish-orange/20 px-2 py-0.5 rounded-full inline-block">
-              Staff Portal
-            </span>
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden animate-fade-in"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Main Staff Sidebar (Drawer on mobile, Collapsible on desktop) */}
+      <aside
+        className={`fixed top-0 left-0 bottom-0 z-50 w-64 bg-groomish-slate text-white flex flex-col justify-between h-screen border-r border-white/10 select-none transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+        } ${
+          collapsed ? "lg:-translate-x-full" : "lg:translate-x-0"
+        }`}
+      >
+        <div className="flex-1 overflow-y-auto">
+          {/* Brand Header */}
+          <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+            <div
+              onClick={() => {
+                navigate("/staff/dashboard");
+                onClose?.();
+              }}
+              className="flex items-center gap-3 cursor-pointer group"
+            >
+              <img
+                src="/groomish_logo_2.png"
+                alt="Groomish Now"
+                className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+              />
+              <div>
+                <span className="font-heading font-extrabold text-sm tracking-wide block text-white">
+                  Groomish Now
+                </span>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-groomish-orange bg-groomish-orange/20 px-2 py-0.5 rounded-full inline-block">
+                  Staff Portal
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile Close Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition lg:hidden cursor-pointer"
+              aria-label="Close staff menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Desktop Hide Button */}
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="hidden lg:flex p-1.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              title="Hide sidebar (Ctrl+B)"
+              aria-label="Hide sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
           </div>
-        </div>
 
         {/* Stylist Profile Card */}
         <div
@@ -96,8 +148,11 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
           </div>
 
           <button
-            onClick={() => navigate("/staff/dashboard")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+            onClick={() => {
+              navigate("/staff/dashboard");
+              onClose?.();
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
               isDashboard && !activeTab
                 ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
                 : "text-white/70 hover:text-white hover:bg-white/10"
@@ -111,8 +166,11 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
           </button>
 
           <button
-            onClick={() => navigate("/staff/dashboard?tab=analytics")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+            onClick={() => {
+              navigate("/staff/dashboard?tab=analytics");
+              onClose?.();
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
               isDashboard && activeTab === "analytics"
                 ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
                 : "text-white/70 hover:text-white hover:bg-white/10"
@@ -128,8 +186,11 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
           </button>
 
           <button
-            onClick={() => navigate("/staff/dashboard?tab=profile")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+            onClick={() => {
+              navigate("/staff/dashboard?tab=profile");
+              onClose?.();
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
               isDashboard && activeTab === "profile"
                 ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
                 : "text-white/70 hover:text-white hover:bg-white/10"
@@ -145,8 +206,11 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
           </button>
 
           <button
-            onClick={() => navigate("/staff/dashboard?tab=services")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+            onClick={() => {
+              navigate("/staff/dashboard?tab=services");
+              onClose?.();
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
               isDashboard && activeTab === "services"
                 ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
                 : "text-white/70 hover:text-white hover:bg-white/10"
@@ -162,8 +226,11 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
           </button>
 
           <button
-            onClick={() => navigate("/staff/dashboard?tab=inventory")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+            onClick={() => {
+              navigate("/staff/dashboard?tab=inventory");
+              onClose?.();
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
               isDashboard && activeTab === "inventory"
                 ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
                 : "text-white/70 hover:text-white hover:bg-white/10"
@@ -177,7 +244,6 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
               Stock
             </span>
           </button>
-
 
           {/* Active Appointment Link (if on appointment detail page) */}
           {isBookingDetail && (
@@ -196,9 +262,27 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
 
       {/* Footer Info & Sign Out */}
       <div className="p-4 border-t border-white/10 space-y-2 shrink-0 bg-groomish-slate">
+        {/* Desktop Hide Sidebar Button */}
         <button
-          onClick={() => navigate("/")}
-          className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition"
+          type="button"
+          onClick={onToggleCollapse}
+          className="hidden lg:flex w-full items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-white/60 hover:text-white hover:bg-white/10 transition cursor-pointer"
+          title="Hide sidebar to maximize screen space"
+        >
+          <span className="flex items-center gap-2">
+            <PanelLeftClose className="w-4 h-4 text-groomish-orange" />
+            <span>Hide Sidebar</span>
+          </span>
+          <span className="text-[9px] text-white/40 uppercase font-mono">Ctrl+B</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            navigate("/");
+            onClose?.();
+          }}
+          className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
         >
           <span className="flex items-center gap-2">
             <ExternalLink className="w-4 h-4" />
@@ -208,13 +292,18 @@ export default function StaffSidebar({ activeBookingCode = null, activeBookingId
         </button>
 
         <button
-          onClick={logout}
-          className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-groomish-crimson hover:bg-groomish-crimson/10 transition"
+          type="button"
+          onClick={() => {
+            logout();
+            onClose?.();
+          }}
+          className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-groomish-crimson hover:bg-groomish-crimson/10 transition cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
         </button>
       </div>
     </aside>
-  );
+  </>
+);
 }

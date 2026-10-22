@@ -9,8 +9,8 @@
 
 | Subsystem | Tech Stack | Completion | Status Summary |
 | :--- | :--- | :---: | :--- |
-| **Backend** | Spring Boot 3.5, Java 21, PostgreSQL, JPA, JWT, JavaMail | **100%** | **Completed, Tested & Live Running.** Multi-store branch architecture, database-persistent Cart (`Cart` & `CartItem`), multi-item checkout converting to bookings & product attachments, coupon/voucher redemption, localized service/product availability overrides, staff/admin cart management, staff profile & password change endpoints, branch analytics API with customizable timeframes, real-time Gmail SMTP asynchronous mailing, complete Service Review system, payment checkout & point accruals, authoritative single-notification confirmation engine without spam, guarded appointment scheduler, and request context verified with live test user. |
-| **Frontend Web** | React 19, Vite 7, Tailwind CSS 3, Lucide Icons | **100%** | **Completed & Fully Production-Ready.** Overhauled with official Groomish Now brand palette, smooth keyframe animations, glassmorphism navbar, persistent Cart system with reactive cart badge, dedicated `/cart` and `/checkout` pages, promo coupon & loyalty voucher redemption, "Available Offers" sections on service & product pages, store geolocation selector with Haversine distance, Staff Station with tabbed appointment queues (Today, Upcoming, Completed, All), Staff Booking Detail page with itemized billing, Staff Branch Analytics dashboard, Staff & Admin customer cart inspector, Custom Groomish Date & Time Pickers, searchable `CustomSelect` dropdowns, item multiplier displays (`Item X {qty}`), global modal confirmation/alert system (`ConfirmContext`), and post-payment confirmation screen with auto-redirect countdown to Booking Details. Production build passes cleanly with 0 errors (`vite build` ✓). |
+| **Backend** | Spring Boot 3.5, Java 21, PostgreSQL, JPA, JWT, JavaMail | **100%** | **Completed, Tested & Live Running.** Multi-store branch architecture, database-persistent Cart (`Cart` & `CartItem`), multi-item checkout converting to bookings & product attachments, coupon/voucher redemption, full Invoice Breakdown parity DTO & mapping (`couponCode`, `couponApplied`, `invoiceNumber`, item `mrp`), localized service/product availability overrides, staff/admin cart management, staff profile & password change endpoints, branch analytics API with customizable timeframes, real-time Gmail SMTP asynchronous mailing, complete Service Review system, payment checkout & point accruals, authoritative single-notification confirmation engine without spam, guarded appointment scheduler, and request context verified with live test user. |
+| **Frontend Web** | React 19, Vite 7, Tailwind CSS 3, Lucide Icons | **100%** | **Completed & Fully Production-Ready.** Overhauled with official Groomish Now brand palette, smooth keyframe animations, glassmorphism navbar, persistent Cart system with reactive cart badge, dedicated `/cart` and `/checkout` pages, promo coupon & loyalty voucher redemption, full **Invoice Breakdown** parity matching Customer Booking Details across Admin Booking Details (`AdminBookingDetailPage`), Staff Booking Details (`StaffBookingDetailPage`), and Admin quick modal (`BookingDetailsModal`), "Available Offers" sections on service & product pages, store geolocation selector with Haversine distance, Staff Station with tabbed appointment queues (Today, Upcoming, Completed, All), Staff Branch Analytics dashboard, Staff & Admin customer cart inspector, Custom Groomish Date & Time Pickers, searchable `CustomSelect` dropdowns, item multiplier displays (`Item X {qty}`), global modal confirmation/alert system (`ConfirmContext`), and post-payment confirmation screen with auto-redirect countdown to Booking Details. Production build passes cleanly with 0 errors (`vite build` ✓). |
 | **Mobile App** | React Native (Expo SDK 57), React 19.2, React Native 0.86, TypeScript, NativeWind | **~95%** | **Upgraded to Expo SDK 57 & Live Running.** 3-Slide luxury welcome onboarding carousel (`app/index.tsx`) allowing guest browsing without forced login. Replaced scissor icon with official brand logo (`logo.png`) on Login & Register. Full feature parity with Web: Home with groom coins card, Services catalog & booking modal, Shop (products catalog, category/brand filters, cart sheet, persistent Groom Coins discounts), Bookings management (filter & cancel/reschedule), Rewards & tier perks, and Customer Profile. Verified with `npx expo-doctor` (21/21 passed) and TypeScript compilation (`tsc --noEmit` ✓). |
 
 ---
@@ -18,8 +18,18 @@
 ## 1. Backend (`/backend`)
 
 ### Implemented and Stabilized (100%)
+- **Admin Services & Categories Active/Deactive Toggle & Catalog Governance**:
+  - Implemented `updateServiceStatus(UUID id, Boolean active)` and `updateCategoryStatus(UUID id, Boolean active)` endpoints (`PUT/PATCH /api/v1/admin/services/{id}/status` and `/categories/{id}/status`) to seamlessly toggle active/inactive states.
+  - Added `private Boolean active;` to `ServiceRequest` and updated `ServiceAdminController` multipart & JSON endpoints so active states are supported during creation and update.
+  - Resolved compiler/Lombok ECJ compatibility issues by establishing explicit public constructors for `ServiceAdminController`, `ServiceAdminServiceImpl`, `CategoryAdminController`, and `CategoryAdminServiceImpl`.
+  - Fixed `ServiceCard.jsx` and `CategoryCard.jsx` frontend status toggling: previously inactive items erroneously called deactivate APIs; now both activate and deactivate transitions work smoothly with instant refresh.
+  - Fixed `AddServiceModal.jsx`: defaulted active status to `true`, fixed checkbox handler reading `e.target.checked` instead of `e.target.value`, enhanced entire Active Status pill to be clickable, and ensured form resets maintain `active: true`.
+  - **Service Card Price & Button Alignment Optimization**:
+    - Changed button label from `'View Options'` to `'Options'` for multi-variation services across [ServicesSection.jsx](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/landing/ServicesSection.jsx), [ServicesPage.jsx](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/public/ServicesPage.jsx), and [CategoryDetailPage.jsx](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/public/CategoryDetailPage.jsx).
+    - Reduced excessive vertical space between Groom Coins pill and bottom price/booking section (`mt-auto`, `pt-2`, `pt-3 border-t`).
+    - Enforced `whitespace-nowrap` and optimized font sizing on price range text so prices never break onto two lines and stay horizontally aligned with the action button.
 - **Build & Quality**:
-  - Compiles cleanly with Maven (`BUILD SUCCESS` on Java 21, 198 source files compiled).
+  - Compiles cleanly with Maven (`BUILD SUCCESS` on Java 21).
   - Cleaned up deprecated `Specification.where(null)` in `ServiceAdminServiceImpl` to modern `Specification.allOf()`.
   - Removed empty dummy skeleton class `CustomerServiceBookingController.java`.
   - Fixed Lombok `@Builder.Default` on all entities (`User`, `Category`, `ServiceEntity`, `Coupon`, `Banner`, `Referral`, `Reward`, `Notification`) so default fields (like `active = true`, `points = 0`, `seen = false`) are never erased by builders.
@@ -264,9 +274,27 @@
     - Admin: `CategoriesPage`, `ServicesPage`, `ProductsPage`, `BookingsPage`, `CustomersPage`, `StaffPage`, `CouponsPage`, `PaymentsPage`, `ReviewsPage`.
     - Public: `CategoriesPage`, `ServicesPage`, `CategoryDetailPage`, `ServiceDetailPage`, `ProductsPage`, `LandingPage`, `CategoriesSection`, `ServicesSection`.
     - Customer & Modals: `MyBookingsPage`, `RewardsPage`, `NotificationDrawer`, `CategoryServicesModal`, `Navbar`.
+- **Invoice Breakdown Feature Parity Across Admin & Staff Portals**:
+  - Reusable [InvoiceBreakdownCard.jsx](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/booking/InvoiceBreakdownCard.jsx) component extracting and computing:
+    - **Subtotal** (aggregated original MRP of all booked salon services + attached store retail products).
+    - **Discount on MRP** (`-₹...` with green tag badge).
+    - **Coupon / Promo Voucher Applied** (`-₹...` with voucher code).
+    - **Salon Hygiene & Taxes** (`FREE` indicator).
+    - **Payment Method** (formatted readable label: Pay at Salon, Online Payment, Cash, Card, UPI).
+    - **Payment Status Badge** (`Cancelled • No Payment Received`, `Paid at Salon`, `Paid Online`, `Payment Pending`).
+    - **Invoice Reference** (displaying `booking.invoiceNumber`).
+    - **Final Payable** (prominent bold orange amount).
+    - **Groom Coins Alert Banner** (Cancelled status note, Confirmed credited note, or Completion pending note).
+  - Integrated across:
+    - [AdminBookingDetailPage.jsx](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/admin/AdminBookingDetailPage.jsx): Complete invoice breakdown card replacing simple summaries; added strikethrough MRP on services and retail products.
+    - [StaffBookingDetailPage.jsx](file:///d:/Projects/loyalty_program_app/frontend_web/src/pages/staff/StaffBookingDetailPage.jsx): Full invoice breakdown with integrated "Finalize & Bill Client" action button; added strikethrough MRP on services and products.
+    - [BookingDetailsModal.jsx](file:///d:/Projects/loyalty_program_app/frontend_web/src/components/modals/BookingDetailsModal.jsx): Complete invoice breakdown card and strikethrough MRP in service & product list items.
+  - Backend DTO & Service Mapping:
+    - Updated [BookingResponse.java](file:///d:/Projects/loyalty_program_app/backend/src/main/java/com/loyalty_program_app/backend/dto/booking/BookingResponse.java) with `couponCode` and `couponApplied`.
+    - Updated [BookingAdminServiceImpl.java](file:///d:/Projects/loyalty_program_app/backend/src/main/java/com/loyalty_program_app/backend/service/admin/impl/BookingAdminServiceImpl.java) and [StaffBookingServiceImpl.java](file:///d:/Projects/loyalty_program_app/backend/src/main/java/com/loyalty_program_app/backend/service/staff/impl/StaffBookingServiceImpl.java) to populate `couponCode`, `couponApplied`, `invoiceNumber`, and `mrp` on service item details.
 - **Routing & Build Verification**:
   - All routes protected by `PrivateRoute` with role-based authorization (`CUSTOMER`, `STAFF`, `ADMIN`).
-  - Production build succeeds cleanly with 0 errors (`✓ built in 11.79s`).
+  - Production build succeeds cleanly with 0 errors (`✓ built in 15.08s`).
 
 ---
 
@@ -593,4 +621,24 @@
    - In test mode, intercepted test bank simulation errors ("Please use another method") to approve test transactions via `order_sim_...` credentials, which Spring Boot backend natively recognizes and approves without HMAC signature rejection.
    - Added a top test banner with a **`Pass Test Mode ✓`** button inside the modal for instant 1-tap testing.
    - Added automatic stale localtunnel rewrite in `api/client.ts` to seamlessly route Expo mobile requests to the active tunnel.
+
+7. **Admin Services Catalog Full Pagination Fix (`ServicesPage.jsx`, `service.js`, `admin.js`, `ServiceAdminController.java`)**:
+   - Resolved the issue where Admin Services showed only 20 of 20 services (missing page 2 and services 21 & 22) while Public customer services showed all 22.
+   - Root cause: Spring Boot's `/admin/services` defaulted to `size=20`, and `getServicesApi()` made an unparameterized call which was sliced on the client side at 20 items.
+   - Updated `ServiceAdminController.java` default size to `1000`.
+   - Updated `api/service.js`, `api/admin.js`, and `admin/ServicesPage.jsx` to request `size=1000`, enabling complete catalog retrieval and proper pagination across all 22+ services.
+
+8. **Expo Mobile App Branch Loading & Geolocation Non-Blocking Fix (`BranchContext.tsx`, `client.ts`)**:
+   - Resolved the issue where the branch was stuck on "Loading branches..." or showing "Select Branch" indefinitely on app launch.
+   - **Root Cause**:
+     1. `Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })` in `BranchContext.tsx` was awaited synchronously inside the main boot flow before `selectedBranch` was set. On devices without active GPS satellite lock or with location services disabled, `getCurrentPositionAsync` hung indefinitely without timing out, preventing `setLoadingBranches(false)` and `setSelectedBranchState(...)` from ever executing.
+     2. Geolocation was executed unconditionally even when only 1 active branch existed in the database ("Groomish Hitech City").
+   - **Fixes Applied**:
+     - Pre-initialized state with `DEFAULT_BRANCH` (`Groomish Hitech City`, id `0b40a44e-59ac-42a1-8406-67f3f5965f4f`) so the app immediately renders with an active branch and zero UI flash/loading delay.
+     - Checked `AsyncStorage` first for any previously selected branch preference and applied it instantly.
+     - Protected branch API parsing against wrapped or stringified responses.
+     - Moved nearest-branch geolocation calculation into a non-blocking background task that only runs if multiple branches exist, and guarded it with a strict 3-second `Promise.race` timeout.
+     - Added localtunnel reminder bypass headers (`Bypass-Tunnel-Reminder: true` and `bypass-tunnel-reminder: true`) and added HTML reminder interception in `client.ts`.
+     - Added a "Retry" button to the branch selection modal if branches ever fail to load.
+
 

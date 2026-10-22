@@ -165,80 +165,80 @@ export default function ProductDetailPage() {
   const brandInfo = getBrandInfo(brandName);
 
   return (
-    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
+    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1">
+      <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {/* BREADCRUMBS */}
-        <div className="bg-white border-b border-groomish-slate/10 py-3">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-groomish-slate/60">
-            <Link to="/" className="hover:text-groomish-orange flex items-center gap-1">
+        <div className="bg-white border-b border-groomish-slate/10 py-2.5 sm:py-3 w-full overflow-hidden">
+          <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center gap-1.5 sm:gap-2 text-xs text-groomish-slate/60 overflow-x-auto no-scrollbar whitespace-nowrap">
+            <Link to="/" className="hover:text-groomish-orange flex items-center gap-1 shrink-0">
               <Home className="w-3.5 h-3.5" />
               <span>Home</span>
             </Link>
-            <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
-            <Link to="/products" className="hover:text-groomish-orange">
+            <ChevronRight className="w-3 h-3 text-groomish-slate/30 shrink-0" />
+            <Link to="/products" className="hover:text-groomish-orange shrink-0">
               Retail Products
             </Link>
-            <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
+            <ChevronRight className="w-3 h-3 text-groomish-slate/30 shrink-0" />
             <Link
               to={`/products?brand=${encodeURIComponent(brandName)}`}
-              className="hover:text-groomish-orange font-medium"
+              className="hover:text-groomish-orange font-medium shrink-0"
             >
               {brandName}
             </Link>
             {product.category && (
               <>
-                <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
-                <span className="text-groomish-slate/60">
+                <ChevronRight className="w-3 h-3 text-groomish-slate/30 shrink-0" />
+                <span className="text-groomish-slate/60 shrink-0">
                   {product.category}
                 </span>
               </>
             )}
-            <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
-            <span className="font-bold text-groomish-slate truncate max-w-[200px]">
+            <ChevronRight className="w-3 h-3 text-groomish-slate/30 shrink-0" />
+            <span className="font-bold text-groomish-slate truncate max-w-[140px] xs:max-w-[200px] shrink-0">
               {product.name}
             </span>
           </div>
         </div>
 
         {/* HERO / PRODUCT DETAILS SECTION */}
-        <section className="py-5 sm:py-7 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 gap-5 lg:gap-7">
+        <section className="py-3.5 sm:py-7 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 w-full max-w-full overflow-x-hidden min-w-0">
+          <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full max-w-full min-w-0">
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
-            <div className="lg:col-span-7 space-y-5">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-5 w-full max-w-full min-w-0">
               {/* Image Preview Card */}
-              <div className="relative rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft p-6 sm:p-10 flex flex-col items-center justify-center min-h-[340px] sm:min-h-[460px]">
+              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft p-4 sm:p-8 flex flex-col items-center justify-center min-h-[300px] sm:min-h-[460px] w-full">
                 <img
                   src={getOptimizedImageUrl(mainImageUrl, { width: 900 })}
                   alt={product.name}
                   loading="eager"
                   decoding="async"
-                  className="max-h-[360px] max-w-full object-contain transition-transform duration-500 hover:scale-105"
+                  className="max-h-[320px] sm:max-h-[360px] max-w-full object-contain transition-transform duration-500 hover:scale-105"
                 />
 
                 {/* Floating Chips */}
-                <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
+                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex gap-1.5 sm:gap-2 flex-wrap">
                   <Link
                     to={`/products?brand=${encodeURIComponent(brandName)}`}
-                    className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/95 text-groomish-slate backdrop-blur-md shadow-sm border border-groomish-slate/10 hover:border-groomish-orange hover:text-groomish-orange transition flex items-center gap-1.5"
+                    className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/95 text-groomish-slate backdrop-blur-md shadow-sm border border-groomish-slate/10 hover:border-groomish-orange hover:text-groomish-orange transition flex items-center gap-1.5"
                     title={`Browse all ${brandName} products`}
                   >
                     <ShieldCheck className="w-3.5 h-3.5 text-groomish-green" />
                     <span>{brandName}</span>
                   </Link>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-groomish-orange text-white shadow-sm">
+                  <span className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold bg-groomish-orange text-white shadow-sm">
                     {product.category || "Professional Care"}
                   </span>
                 </div>
 
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs font-semibold">
-                  <span className="px-3 py-1.5 rounded-full bg-groomish-slateDark/80 text-white backdrop-blur-md flex items-center gap-1.5">
-                    <Store className="w-3.5 h-3.5 text-groomish-gold" />
-                    <span>In-Store Pickup Available</span>
+                <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 flex items-center justify-between text-[10px] sm:text-xs font-semibold gap-1.5">
+                  <span className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-groomish-slateDark/80 text-white backdrop-blur-md flex items-center gap-1 sm:gap-1.5 truncate">
+                    <Store className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-groomish-gold shrink-0" />
+                    <span className="truncate">In-Store Pickup</span>
                   </span>
-                  <span className="px-3 py-1.5 rounded-full bg-white/95 text-groomish-green border border-groomish-green/30 backdrop-blur-md flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5" />
+                  <span className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/95 text-groomish-green border border-groomish-green/30 backdrop-blur-md flex items-center gap-1 sm:gap-1.5 shrink-0">
+                    <ShieldCheck className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                     <span>100% Genuine</span>
                   </span>
                 </div>
@@ -271,9 +271,9 @@ export default function ProductDetailPage() {
               )}
 
               {/* Title & Overview Card */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-groomish-slate/10 shadow-soft space-y-6">
+              <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-groomish-slate/10 shadow-soft space-y-4 sm:space-y-6 w-full min-w-0">
                 <div>
-                  <h1 className="text-2xl sm:text-4xl font-heading font-extrabold text-groomish-slate tracking-tight">
+                  <h1 className="text-xl sm:text-3xl lg:text-4xl font-heading font-extrabold text-groomish-slate tracking-tight break-words">
                     {product.name}
                   </h1>
                   <p className="text-xs sm:text-sm text-groomish-slate/60 mt-1 flex items-center gap-2">
@@ -389,9 +389,9 @@ export default function ProductDetailPage() {
             </div>
 
             {/* RIGHT SIDEBAR: STICKY PRICING & PURCHASE CARD (STICKY UNTIL DETAILS END) */}
-            <div className="lg:col-span-5 relative">
-              <div className="lg:sticky lg:top-24 space-y-4">
-                <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-card space-y-4">
+            <div className="lg:col-span-5 relative w-full max-w-full min-w-0">
+              <div className="lg:sticky lg:top-24 space-y-4 w-full min-w-0">
+                <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-card space-y-4 w-full min-w-0">
                 <div>
                   <span className="text-[10px] uppercase font-bold tracking-wider text-groomish-slate/50 block mb-1">
                     Product Price & Availability
@@ -542,14 +542,14 @@ export default function ProductDetailPage() {
 
               {/* AVAILABLE OFFERS & PROMOTIONAL COUPONS (RIGHT SIDEBAR BELOW PURCHASE CARD) */}
               {(coupons.length > 0 || coinsEarned > 0) && (
-                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-groomish-slate/10 shadow-card space-y-4">
-                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
-                    <div className="flex items-center gap-2">
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-groomish-slate/10 shadow-card space-y-4 w-full min-w-0">
+                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3 gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
                         <Tag className="w-3.5 h-3.5" />
                       </div>
-                      <div>
-                        <h3 className="font-heading font-extrabold text-sm text-groomish-slate">
+                      <div className="min-w-0">
+                        <h3 className="font-heading font-extrabold text-sm text-groomish-slate truncate">
                           Available Offers & Promotional Coupons
                         </h3>
                         <p className="text-[11px] text-groomish-slate/60">

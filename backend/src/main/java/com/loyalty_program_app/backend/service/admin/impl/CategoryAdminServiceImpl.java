@@ -14,11 +14,18 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class CategoryAdminServiceImpl implements CategoryAdminService {
 
     private final CategoryRepository categoryRepository;
     private final CloudinaryService cloudinaryService;
+
+    public CategoryAdminServiceImpl(
+            CategoryRepository categoryRepository,
+            CloudinaryService cloudinaryService
+    ) {
+        this.categoryRepository = categoryRepository;
+        this.cloudinaryService = cloudinaryService;
+    }
 
     @Override
     public CategoryResponse createCategory(String name, String description, MultipartFile image) {
@@ -82,6 +89,19 @@ public class CategoryAdminServiceImpl implements CategoryAdminService {
             }
         }
 
+        categoryRepository.save(category);
+        return toDto(category);
+    }
+
+    @Override
+    public CategoryResponse updateCategoryStatus(UUID id, Boolean active) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+        if (active != null) {
+            category.setActive(active);
+        } else {
+            category.setActive(!category.isActive());
+        }
         categoryRepository.save(category);
         return toDto(category);
     }

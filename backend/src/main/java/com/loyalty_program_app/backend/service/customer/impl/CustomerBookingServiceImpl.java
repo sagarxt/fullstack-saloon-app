@@ -1222,8 +1222,27 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             itemPrice = item.getService().getPrice();
         }
         dto.setPrice(itemPrice != null ? itemPrice : 0.0);
-        Double itemMrp = item.getService() != null ? item.getService().getMrp() : null;
-        dto.setMrp(itemMrp != null ? itemMrp : dto.getPrice());
+
+        Double subMrp = null;
+        if (item.getService() != null && item.getService().getSubServices() != null) {
+            for (com.loyalty_program_app.backend.model.SubService sub : item.getService().getSubServices()) {
+                if (sub.getName() != null && name.toLowerCase().contains(sub.getName().toLowerCase())) {
+                    if (sub.getMrp() != null && sub.getMrp() > 0) {
+                        subMrp = sub.getMrp();
+                    }
+                    break;
+                }
+            }
+        }
+        double uMrp = subMrp != null ? subMrp
+                : (item.getService() != null && item.getService().getMrp() != null && item.getService().getMrp() > 0
+                        ? item.getService().getMrp()
+                        : dto.getPrice());
+        if (uMrp < dto.getPrice()) {
+            uMrp = dto.getPrice();
+        }
+        dto.setMrp(uMrp);
+
         dto.setDurationMinutes(item.getServiceDurationSnapshot());
         dto.setRewardCoins(item.getServiceRewardCoinsSnapshot() != null ? item.getServiceRewardCoinsSnapshot() : 0);
         dto.setImage(item.getService() != null ? item.getService().getImage() : null);

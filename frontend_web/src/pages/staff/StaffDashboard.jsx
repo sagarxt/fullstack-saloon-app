@@ -30,6 +30,7 @@ import StaffBranchServicesTab from "../../components/staff/StaffBranchServicesTa
 import StaffBranchInventoryTab from "../../components/staff/StaffBranchInventoryTab";
 import StaffBranchAnalyticsTab from "../../components/staff/StaffBranchAnalyticsTab";
 import StaffProfileTab from "../../components/staff/StaffProfileTab";
+import StaffSidebar from "../../components/staff/StaffSidebar";
 import { showAlert } from "../../context/ConfirmContext";
 import {
   CalendarClock,
@@ -59,6 +60,9 @@ import {
   History,
   User as UserIcon,
   ChevronRight,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 export default function StaffDashboard() {
@@ -70,16 +74,49 @@ export default function StaffDashboard() {
   const initialFilter = tabParam === "analytics"
     ? "BRANCH_ANALYTICS"
     : tabParam === "services"
-    ? "BRANCH_SERVICES"
-    : tabParam === "inventory"
-    ? "BRANCH_INVENTORY"
-    : tabParam === "profile"
-    ? "BRANCH_PROFILE"
-    : "TODAY";
+      ? "BRANCH_SERVICES"
+      : tabParam === "inventory"
+        ? "BRANCH_INVENTORY"
+        : tabParam === "profile"
+          ? "BRANCH_PROFILE"
+          : "TODAY";
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(initialFilter);
+
+  // Mobile drawer state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Desktop collapsed state
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("groomish_staff_sidebar_collapsed") === "true";
+  });
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("groomish_staff_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
+  // Close mobile drawer on tab change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [tabParam, filter]);
+
+  // Ctrl+B shortcut to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleSidebarCollapsed();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (tabParam === "analytics") setFilter("BRANCH_ANALYTICS");
@@ -530,262 +567,135 @@ export default function StaffDashboard() {
   });
 
   return (
-    <div className="flex min-h-screen bg-groomish-cream font-sans">
-      {/* FIXED STAFF SIDEBAR */}
-      <aside className="w-64 bg-groomish-slate text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-white/10 select-none overflow-hidden hidden lg:flex">
-        <div className="flex-1 overflow-y-auto">
-          {/* Brand Header */}
-          <div
-            onClick={() => navigate("/")}
-            className="p-6 border-b border-white/10 flex items-center gap-3 cursor-pointer group"
-          >
-            <img
-              src="/groomish_logo_2.png"
-              alt="Groomish Now"
-              className="h-9 w-auto object-contain transition-transform group-hover:scale-105"
-            />
-            <div>
-              <span className="font-heading font-extrabold text-sm tracking-wide block text-white">
-                Groomish Now
-              </span>
-              <span className="text-[10px] uppercase tracking-wider font-bold text-groomish-orange bg-groomish-orange/20 px-2 py-0.5 rounded-full inline-block">
-                Staff Portal
-              </span>
-            </div>
-          </div>
+    <div className="min-h-screen bg-groomish-cream font-sans w-full max-w-full overflow-x-hidden">
+      {/* STAFF SIDEBAR (Drawer on Mobile, Collapsible on Desktop) */}
+      <StaffSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebarCollapsed}
+      />
 
-          {/* Stylist Profile Card */}
-          <div
-            onClick={() => {
-              navigate("/staff/dashboard?tab=profile");
-              setFilter("BRANCH_PROFILE");
-              setPage(1);
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className={`mx-4 mt-4 mb-2 p-3.5 rounded-2xl border flex items-center gap-3 cursor-pointer transition ${
-              filter === "BRANCH_PROFILE"
-                ? "bg-white/15 border-groomish-orange/50 shadow-sm"
-                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
-            }`}
-            title="View & Edit Stylist & Branch Profile"
-          >
-            <div className="w-10 h-10 rounded-xl bg-groomish-orange text-white font-extrabold text-sm flex items-center justify-center shrink-0 shadow-sm">
-              {user?.name?.charAt(0) || "S"}
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="font-heading font-bold text-xs text-white truncate block">
-                {user?.name || "Stylist Specialist"}
+      {/* MAIN VIEW AREA */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarCollapsed ? "lg:pl-0" : "lg:pl-64"
+          } pl-0`}
+      >
+        {/* TOP HEADER (Desktop) with Sidebar Toggle & Quick Actions */}
+        <header className="hidden lg:flex h-14 bg-white/85 backdrop-blur-md border-b border-groomish-slate/10 px-6 items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleSidebarCollapsed}
+              className="px-2.5 py-1.5 rounded-xl text-groomish-slate/75 hover:text-groomish-orange hover:bg-groomish-orange/10 border border-groomish-slate/15 transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              title={sidebarCollapsed ? "Show sidebar (Ctrl+B)" : "Hide sidebar (Ctrl+B)"}
+            >
+              {sidebarCollapsed ? (
+                <>
+                  <PanelLeftOpen className="w-4 h-4 text-groomish-orange" />
+                  <span>Show Sidebar</span>
+                </>
+              ) : (
+                <>
+                  <PanelLeftClose className="w-4 h-4" />
+                  <span>Hide Sidebar</span>
+                </>
+              )}
+            </button>
+            <span className="text-xs text-groomish-slate/30">|</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-extrabold text-groomish-slate uppercase tracking-wider">
+                Salon Stylist Terminal
               </span>
-              <span className="text-[10px] text-white/50 block font-mono truncate">
-                {user?.email || "stylist@groomish.com"}
-              </span>
-            </div>
-            <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${filter === "BRANCH_PROFILE" ? "text-groomish-orange translate-x-0.5" : "text-white/30"}`} />
-          </div>
-
-          {/* Assigned Salon Branch Badge */}
-          {(data?.storeName || user?.storeName) && (
-            <div className="mx-4 mb-3 p-3 rounded-2xl bg-groomish-orange/10 border border-groomish-orange/20">
-              <div className="flex items-center gap-2 text-groomish-orange text-xs font-bold">
-                <MapPin className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{data?.storeName || user?.storeName}</span>
-              </div>
-              {data?.storeCode && (
-                <span className="inline-block mt-1 text-[9px] font-mono bg-groomish-orange/20 text-groomish-orange font-bold px-1.5 py-0.2 rounded">
-                  {data.storeCode}
+              {(data?.storeName || user?.storeName) && (
+                <span className="text-[10px] bg-groomish-orange/15 text-groomish-orange font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  <span>{data?.storeName || user?.storeName}</span>
                 </span>
               )}
             </div>
-          )}
+          </div>
 
-          {/* Navigation Menu */}
-          <nav className="p-4 space-y-1.5">
-            <div className="text-[10px] uppercase font-bold tracking-wider text-white/40 px-3 py-1">
-              Staff Navigation
-            </div>
+          <div className="flex items-center gap-2.5">
             <button
-              onClick={() => {
-                navigate("/staff/dashboard");
-                setFilter("TODAY");
-                setPage(1);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
-                filter === "TODAY" || filter === "UPCOMING" || filter === "RECENT" || filter === "ALL"
-                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
-                  : "text-white/70 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <CalendarClock className="w-4 h-4" />
-                <span>Branch Bookings</span>
-              </span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
-                {allList.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                navigate("/staff/dashboard?tab=analytics");
-                setFilter("BRANCH_ANALYTICS");
-                setPage(1);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
-                filter === "BRANCH_ANALYTICS"
-                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
-                  : "text-white/70 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <TrendingUp className="w-4 h-4" />
-                <span>Analysis Dashboard</span>
-              </span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
-                Live
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                navigate("/staff/dashboard?tab=profile");
-                setFilter("BRANCH_PROFILE");
-                setPage(1);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
-                filter === "BRANCH_PROFILE"
-                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
-                  : "text-white/70 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <UserCheck className="w-4 h-4" />
-                <span>Stylist Profile</span>
-              </span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
-                Account
-              </span>
-            </button>
-
-            <div className="pt-3 text-[10px] uppercase font-bold tracking-wider text-white/40 px-3 py-1">
-              Branch Management
-            </div>
-            <button
-              onClick={() => {
-                navigate("/staff/dashboard?tab=services");
-                setFilter("BRANCH_SERVICES");
-                setPage(1);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
-                filter === "BRANCH_SERVICES"
-                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
-                  : "text-white/70 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <Scissors className="w-4 h-4" />
-                <span>Branch Services</span>
-              </span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
-                Manage
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                navigate("/staff/dashboard?tab=inventory");
-                setFilter("BRANCH_INVENTORY");
-                setPage(1);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
-                filter === "BRANCH_INVENTORY"
-                  ? "bg-gradient-to-r from-groomish-orange to-groomish-coral text-white font-bold shadow-glowOrange"
-                  : "text-white/70 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <span className="flex items-center gap-2.5">
-                <Package className="w-4 h-4" />
-                <span>Branch Inventory</span>
-              </span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">
-                Stock
-              </span>
-            </button>
-
-            <div className="pt-3 text-[10px] uppercase font-bold tracking-wider text-white/40 px-3 py-1">
-              Quick Actions
-            </div>
-            <button
+              type="button"
               onClick={() => {
                 setClientError("");
                 setClientSuccess("");
                 setClientModalOpen(true);
               }}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 transition"
+              className="btn-primary text-xs px-3 py-1.5 font-bold shadow-soft flex items-center gap-1.5 cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-groomish-orange" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Register Walk-In</span>
             </button>
 
             <button
+              type="button"
               onClick={loadDashboard}
-              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 transition"
+              className="p-1.5 rounded-xl border border-groomish-slate/15 bg-white text-groomish-slate hover:bg-groomish-cream transition cursor-pointer"
+              title="Refresh schedule"
             >
-              <RefreshCw className={`w-4 h-4 text-groomish-orange ${loading ? "animate-spin" : ""}`} />
-              <span>Refresh Schedule</span>
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-groomish-orange" : ""}`} />
             </button>
-          </nav>
-        </div>
 
-        {/* Footer info & sign out */}
-        <div className="p-4 border-t border-white/10 space-y-2 shrink-0 bg-groomish-slate">
-          <button
-            onClick={() => navigate("/")}
-            className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition"
-          >
-            <span className="flex items-center gap-2">
-              <ExternalLink className="w-4 h-4" />
-              <span>Customer Website</span>
-            </span>
-            <span className="text-[10px] text-white/40">↗</span>
-          </button>
-
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-groomish-crimson hover:bg-groomish-crimson/10 transition"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* MAIN VIEW AREA */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* TOP HEADER (Mobile / Tablet) */}
-        <header className="h-16 bg-white border-b border-groomish-slate/10 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-soft lg:hidden">
-          <div className="flex items-center gap-3">
-            <img
-              src="/groomish_logo_2.png"
-              alt="Groomish Now"
-              className="h-9 w-auto object-contain cursor-pointer"
+            <button
+              type="button"
               onClick={() => navigate("/")}
-            />
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-groomish-orange bg-groomish-orangeLight px-2.5 py-0.5 rounded-full">
-                Staff Station
+              className="text-xs font-bold text-groomish-slate/75 hover:text-groomish-orange px-2.5 py-1.5 rounded-xl border border-groomish-slate/15 transition flex items-center gap-1 bg-white shadow-2xs cursor-pointer"
+            >
+              <span>Store</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          </div>
+        </header>
+
+        {/* TOP HEADER (Mobile / Tablet) with Hamburger Menu */}
+        <header className="h-14 sm:h-16 bg-white border-b border-groomish-slate/10 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-2xs lg:hidden">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="p-1.5 rounded-xl hover:bg-groomish-cream text-groomish-slate border border-groomish-slate/15 transition cursor-pointer"
+              aria-label="Open staff navigation menu"
+              title="Open Staff Menu"
+            >
+              <Menu className="w-5 h-5 text-groomish-slate" />
+            </button>
+
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => navigate("/staff/dashboard")}
+            >
+              <img
+                src="/groomish_logo_2.png"
+                alt="Groomish Now"
+                className="h-7 sm:h-8 w-auto object-contain"
+              />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-groomish-orange bg-groomish-orangeLight px-2 py-0.5 rounded-full">
+                Staff
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={() => {
+                setClientError("");
+                setClientSuccess("");
+                setClientModalOpen(true);
+              }}
+              className="btn-primary text-xs px-2.5 py-1 font-bold shadow-soft flex items-center gap-1 cursor-pointer"
+              title="Register Walk-In Client"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Walk-In</span>
+            </button>
+
+            <button
               onClick={logout}
-              className="p-2 text-groomish-crimson hover:bg-groomish-crimsonLight rounded-full transition"
+              className="p-1.5 text-groomish-crimson hover:bg-groomish-crimsonLight rounded-xl border border-groomish-slate/10 transition cursor-pointer"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -800,11 +710,10 @@ export default function StaffDashboard() {
               navigate("/staff/dashboard");
               setFilter("TODAY");
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-              filter === "TODAY" || filter === "UPCOMING" || filter === "RECENT" || filter === "ALL"
-                ? "bg-groomish-orange text-white"
-                : "text-white/70 hover:bg-white/10"
-            }`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${filter === "TODAY" || filter === "UPCOMING" || filter === "RECENT" || filter === "ALL"
+              ? "bg-groomish-orange text-white"
+              : "text-white/70 hover:bg-white/10"
+              }`}
           >
             Branch Bookings
           </button>
@@ -813,11 +722,10 @@ export default function StaffDashboard() {
               navigate("/staff/dashboard?tab=analytics");
               setFilter("BRANCH_ANALYTICS");
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-              filter === "BRANCH_ANALYTICS"
-                ? "bg-groomish-orange text-white"
-                : "text-white/70 hover:bg-white/10"
-            }`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${filter === "BRANCH_ANALYTICS"
+              ? "bg-groomish-orange text-white"
+              : "text-white/70 hover:bg-white/10"
+              }`}
           >
             Analysis Dashboard
           </button>
@@ -826,11 +734,10 @@ export default function StaffDashboard() {
               navigate("/staff/dashboard?tab=profile");
               setFilter("BRANCH_PROFILE");
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-              filter === "BRANCH_PROFILE"
-                ? "bg-groomish-orange text-white"
-                : "text-white/70 hover:bg-white/10"
-            }`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${filter === "BRANCH_PROFILE"
+              ? "bg-groomish-orange text-white"
+              : "text-white/70 hover:bg-white/10"
+              }`}
           >
             Stylist Profile
           </button>
@@ -839,11 +746,10 @@ export default function StaffDashboard() {
               navigate("/staff/dashboard?tab=services");
               setFilter("BRANCH_SERVICES");
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-              filter === "BRANCH_SERVICES"
-                ? "bg-groomish-orange text-white"
-                : "text-white/70 hover:bg-white/10"
-            }`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${filter === "BRANCH_SERVICES"
+              ? "bg-groomish-orange text-white"
+              : "text-white/70 hover:bg-white/10"
+              }`}
           >
             Branch Services
           </button>
@@ -852,11 +758,10 @@ export default function StaffDashboard() {
               navigate("/staff/dashboard?tab=inventory");
               setFilter("BRANCH_INVENTORY");
             }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-              filter === "BRANCH_INVENTORY"
-                ? "bg-groomish-orange text-white"
-                : "text-white/70 hover:bg-white/10"
-            }`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${filter === "BRANCH_INVENTORY"
+              ? "bg-groomish-orange text-white"
+              : "text-white/70 hover:bg-white/10"
+              }`}
           >
             Branch Inventory
           </button>
@@ -864,342 +769,333 @@ export default function StaffDashboard() {
 
         {/* MAIN CONTENT */}
         <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-5 space-y-4">
-        {filter === "BRANCH_PROFILE" ? (
-          <StaffProfileTab
-            onNavigateTab={(tab) => {
-              if (tab === "services") {
-                navigate("/staff/dashboard?tab=services");
-                setFilter("BRANCH_SERVICES");
-              } else if (tab === "inventory") {
-                navigate("/staff/dashboard?tab=inventory");
-                setFilter("BRANCH_INVENTORY");
-              } else {
-                navigate("/staff/dashboard");
-                setFilter("TODAY");
-              }
-            }}
-          />
-        ) : filter === "BRANCH_ANALYTICS" ? (
-          <StaffBranchAnalyticsTab
-            storeName={data?.storeName || user?.storeName}
-          />
-        ) : filter === "BRANCH_SERVICES" ? (
-          <StaffBranchServicesTab
-            storeName={data?.storeName || user?.storeName}
-          />
-        ) : filter === "BRANCH_INVENTORY" ? (
-          <StaffBranchInventoryTab
-            storeName={data?.storeName || user?.storeName}
-          />
-        ) : (
-          <>
-        {/* Title & Quick Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-heading font-extrabold text-groomish-slate">
-              Today's Styling Schedule
-            </h1>
-            <p className="text-xs text-groomish-slate/60 mt-0.5">
-              Review assigned appointments, complete salon treatments, and onboard walk-in guests.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={loadDashboard}
-              className="p-2.5 rounded-2xl bg-white border border-groomish-slate/15 text-groomish-slate hover:bg-groomish-cream transition"
-              title="Refresh schedule"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-groomish-orange" : ""}`} />
-            </button>
-
-            <button
-              onClick={() => {
-                setClientError("");
-                setClientSuccess("");
-                setClientModalOpen(true);
+          {filter === "BRANCH_PROFILE" ? (
+            <StaffProfileTab
+              onNavigateTab={(tab) => {
+                if (tab === "services") {
+                  navigate("/staff/dashboard?tab=services");
+                  setFilter("BRANCH_SERVICES");
+                } else if (tab === "inventory") {
+                  navigate("/staff/dashboard?tab=inventory");
+                  setFilter("BRANCH_INVENTORY");
+                } else {
+                  navigate("/staff/dashboard");
+                  setFilter("TODAY");
+                }
               }}
-              className="btn-primary text-xs px-4 py-2.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Register Walk-In Client</span>
-            </button>
-          </div>
-        </div>
-
-        {/* METRICS ROW */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Today's Bookings */}
-          <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-groomish-slate/50 uppercase tracking-wider">
-                Today's Bookings
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center">
-                <CalendarClock className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-heading font-extrabold text-groomish-slate">
-              {metrics.todaysBookings || 0}
-            </div>
-            <p className="text-[11px] text-groomish-slate/50 mt-1">
-              {metrics.todaysPending || 0} pending treatments
-            </p>
-          </div>
-
-          {/* Completed */}
-          <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-groomish-slate/50 uppercase tracking-wider">
-                Completed
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-groomish-greenLight text-groomish-green flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-heading font-extrabold text-groomish-green">
-              {metrics.todaysCompleted || 0}
-            </div>
-            <p className="text-[11px] text-groomish-slate/50 mt-1">
-              Treatments fulfilled
-            </p>
-          </div>
-
-          {/* Today's Revenue */}
-          <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-groomish-slate/50 uppercase tracking-wider">
-                Today's Billing
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-groomish-goldLight text-groomish-orange flex items-center justify-center">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-heading font-extrabold text-groomish-slate">
-              ₹{metrics.todaysRevenue || 0}
-            </div>
-            <p className="text-[11px] text-groomish-slate/50 mt-1">
-              Services completed today
-            </p>
-          </div>
-
-          {/* Total Assisted */}
-          <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-groomish-slate/50 uppercase tracking-wider">
-                Total Services
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-groomish-blueLight text-groomish-blue flex items-center justify-center">
-                <Scissors className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-heading font-extrabold text-groomish-slate">
-              {metrics.totalBookingsByStaff || 0}
-            </div>
-            <p className="text-[11px] text-groomish-slate/50 mt-1">
-              All-time completed visits
-            </p>
-          </div>
-        </div>
-
-        {/* APPOINTMENTS QUEUE */}
-        <div className="bg-white rounded-3xl border border-groomish-slate/10 shadow-soft overflow-hidden">
-          {/* Tabs & Search */}
-          <div className="p-4 sm:p-6 border-b border-groomish-slate/10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setFilter("TODAY")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                  filter === "TODAY"
-                    ? "bg-groomish-slate text-white shadow-soft"
-                    : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
-                }`}
-              >
-                <span>Today's Appointments</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    filter === "TODAY"
-                      ? "bg-white/20 text-white"
-                      : "bg-groomish-slate/10 text-groomish-slate font-bold"
-                  }`}
-                >
-                  {todayList.length}
-                </span>
-              </button>
-              <button
-                onClick={() => setFilter("UPCOMING")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                  filter === "UPCOMING"
-                    ? "bg-groomish-orange text-white shadow-soft"
-                    : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
-                }`}
-              >
-                <span>Upcoming</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    filter === "UPCOMING"
-                      ? "bg-white/20 text-white"
-                      : "bg-groomish-slate/10 text-groomish-slate font-bold"
-                  }`}
-                >
-                  {upcomingList.length}
-                </span>
-              </button>
-              <button
-                onClick={() => setFilter("RECENT")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                  filter === "RECENT"
-                    ? "bg-groomish-green text-white shadow-soft"
-                    : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
-                }`}
-              >
-                <span>Completed History</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    filter === "RECENT"
-                      ? "bg-white/20 text-white"
-                      : "bg-groomish-slate/10 text-groomish-slate font-bold"
-                  }`}
-                >
-                  {completedList.length}
-                </span>
-              </button>
-              <button
-                onClick={() => setFilter("ALL")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                  filter === "ALL"
-                    ? "bg-groomish-blue text-white shadow-soft"
-                    : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
-                }`}
-              >
-                <span>All</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                    filter === "ALL"
-                      ? "bg-white/20 text-white"
-                      : "bg-groomish-slate/10 text-groomish-slate font-bold"
-                  }`}
-                >
-                  {allList.length}
-                </span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 w-full lg:w-auto">
-              <div className="relative flex-1 lg:w-72">
-                <Search className="w-4 h-4 text-groomish-slate/40 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by ID (GN-XX-123456), client..."
-                  className="w-full pl-9 pr-8 py-2 rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-xs text-groomish-slate placeholder:text-groomish-slate/40 focus:outline-none focus:ring-2 focus:ring-groomish-orange/40 focus:bg-white transition"
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-groomish-slate/40 hover:text-groomish-slate p-0.5"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <span className="text-xs text-groomish-slate/50 font-medium whitespace-nowrap">
-                {bookingList.length} listed
-              </span>
-            </div>
-          </div>
-
-          {/* Table / List */}
-          {loading ? (
-            <div className="py-16 text-center">
-              <div className="w-8 h-8 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-groomish-slate/60">Loading stylist schedule...</p>
-            </div>
-          ) : bookingList.length === 0 ? (
-            <div className="py-12 text-center text-xs text-groomish-slate/50 space-y-2">
-              {search ? (
-                <>
-                  <p className="font-semibold text-groomish-slate text-sm">
-                    No appointments match "{search}"
-                  </p>
-                  <p className="text-groomish-slate/60 text-xs">
-                    Try searching by 10-digit Booking ID (e.g. GN-XX-123456), client name, or service.
-                  </p>
-                  <button
-                    onClick={() => setSearch("")}
-                    className="mt-2 text-xs font-bold text-groomish-orange hover:underline inline-block"
-                  >
-                    Clear search filter
-                  </button>
-                </>
-              ) : (
-                <p>No appointments found for the selected view.</p>
-              )}
-            </div>
+            />
+          ) : filter === "BRANCH_ANALYTICS" ? (
+            <StaffBranchAnalyticsTab
+              storeName={data?.storeName || user?.storeName}
+            />
+          ) : filter === "BRANCH_SERVICES" ? (
+            <StaffBranchServicesTab
+              storeName={data?.storeName || user?.storeName}
+            />
+          ) : filter === "BRANCH_INVENTORY" ? (
+            <StaffBranchInventoryTab
+              storeName={data?.storeName || user?.storeName}
+            />
           ) : (
-            <div className="divide-y divide-groomish-slate/10">
-              {bookingList
-                .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-                .map((b) => {
-                const firstItem = b.items?.[0];
-                const serviceName = firstItem?.serviceNameSnapshot || "Salon Care";
-                const timeStr = b.scheduledAt
-                  ? new Date(b.scheduledAt).toLocaleTimeString("en-IN", {
-                      hour: "numeric",
-                      minute: "2-digit",
-                      hour12: true,
-                    })
-                  : "Scheduled";
-                const dateStr = b.scheduledAt
-                  ? new Date(b.scheduledAt).toLocaleDateString([], {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : "Today";
+            <>
+              {/* Title & Quick Actions */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-heading font-extrabold text-groomish-slate">
+                    Today's Styling Schedule
+                  </h1>
+                  <p className="text-xs text-groomish-slate/60 mt-0.5">
+                    Review assigned appointments, complete salon treatments, and onboard walk-in guests.
+                  </p>
+                </div>
 
-                return (
-                  <div
-                    key={b.id}
-                    className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-groomish-cream/40 transition"
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={loadDashboard}
+                    className="p-2.5 rounded-2xl bg-white border border-groomish-slate/15 text-groomish-slate hover:bg-groomish-cream transition"
+                    title="Refresh schedule"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
-                        <Scissors className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-heading font-bold text-sm text-groomish-slate">
-                            {serviceName}
-                          </h3>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              b.status === "CONFIRMED"
-                                ? "bg-groomish-greenLight text-groomish-green"
-                                : b.status === "COMPLETED"
-                                ? "bg-groomish-blueLight text-groomish-blue"
-                                : b.status === "MODIFIED"
-                                ? "bg-purple-100 text-purple-700"
-                                : b.status === "CANCELLED"
-                                ? "bg-groomish-crimsonLight text-groomish-crimson"
-                                : "bg-amber-100 text-amber-800"
-                            }`}
-                          >
-                            {b.status === "PENDING" ? "PENDING (ONLINE PAYMENT)" : b.status}
-                          </span>
-                        </div>
+                    <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-groomish-orange" : ""}`} />
+                  </button>
 
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <Link
-                            to={`/staff/bookings/${b.id}`}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-extrabold bg-groomish-slate/5 text-groomish-slate border border-groomish-slate/15 tracking-wider hover:text-groomish-orange hover:border-groomish-orange/30 transition"
-                            title="Click to view appointment details"
+                  <button
+                    onClick={() => {
+                      setClientError("");
+                      setClientSuccess("");
+                      setClientModalOpen(true);
+                    }}
+                    className="btn-primary text-xs px-4 py-2.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Register Walk-In Client</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* METRICS ROW */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Today's Bookings */}
+                <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-groomish-slate/50 uppercase tracking-wider">
+                      Today's Bookings
+                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center">
+                      <CalendarClock className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-heading font-extrabold text-groomish-slate">
+                    {metrics.todaysBookings || 0}
+                  </div>
+                  <p className="text-[11px] text-groomish-slate/50 mt-1">
+                    {metrics.todaysPending || 0} pending treatments
+                  </p>
+                </div>
+
+                {/* Completed */}
+                <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-groomish-slate/50 uppercase tracking-wider">
+                      Completed
+                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-groomish-greenLight text-groomish-green flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-heading font-extrabold text-groomish-green">
+                    {metrics.todaysCompleted || 0}
+                  </div>
+                  <p className="text-[11px] text-groomish-slate/50 mt-1">
+                    Treatments fulfilled
+                  </p>
+                </div>
+
+                {/* Today's Revenue */}
+                <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-groomish-slate/50 uppercase tracking-wider">
+                      Today's Billing
+                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-groomish-goldLight text-groomish-orange flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-heading font-extrabold text-groomish-slate">
+                    ₹{metrics.todaysRevenue || 0}
+                  </div>
+                  <p className="text-[11px] text-groomish-slate/50 mt-1">
+                    Services completed today
+                  </p>
+                </div>
+
+                {/* Total Assisted */}
+                <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-groomish-slate/50 uppercase tracking-wider">
+                      Total Services
+                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-groomish-blueLight text-groomish-blue flex items-center justify-center">
+                      <Scissors className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-heading font-extrabold text-groomish-slate">
+                    {metrics.totalBookingsByStaff || 0}
+                  </div>
+                  <p className="text-[11px] text-groomish-slate/50 mt-1">
+                    All-time completed visits
+                  </p>
+                </div>
+              </div>
+
+              {/* APPOINTMENTS QUEUE */}
+              <div className="bg-white rounded-3xl border border-groomish-slate/10 shadow-soft overflow-hidden">
+                {/* Tabs & Search */}
+                <div className="p-4 sm:p-6 border-b border-groomish-slate/10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setFilter("TODAY")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${filter === "TODAY"
+                        ? "bg-groomish-slate text-white shadow-soft"
+                        : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
+                        }`}
+                    >
+                      <span>Today's Appointments</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${filter === "TODAY"
+                          ? "bg-white/20 text-white"
+                          : "bg-groomish-slate/10 text-groomish-slate font-bold"
+                          }`}
+                      >
+                        {todayList.length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setFilter("UPCOMING")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${filter === "UPCOMING"
+                        ? "bg-groomish-orange text-white shadow-soft"
+                        : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
+                        }`}
+                    >
+                      <span>Upcoming</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${filter === "UPCOMING"
+                          ? "bg-white/20 text-white"
+                          : "bg-groomish-slate/10 text-groomish-slate font-bold"
+                          }`}
+                      >
+                        {upcomingList.length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setFilter("RECENT")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${filter === "RECENT"
+                        ? "bg-groomish-green text-white shadow-soft"
+                        : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
+                        }`}
+                    >
+                      <span>Completed History</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${filter === "RECENT"
+                          ? "bg-white/20 text-white"
+                          : "bg-groomish-slate/10 text-groomish-slate font-bold"
+                          }`}
+                      >
+                        {completedList.length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setFilter("ALL")}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${filter === "ALL"
+                        ? "bg-groomish-blue text-white shadow-soft"
+                        : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
+                        }`}
+                    >
+                      <span>All</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${filter === "ALL"
+                          ? "bg-white/20 text-white"
+                          : "bg-groomish-slate/10 text-groomish-slate font-bold"
+                          }`}
+                      >
+                        {allList.length}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full lg:w-auto">
+                    <div className="relative flex-1 lg:w-72">
+                      <Search className="w-4 h-4 text-groomish-slate/40 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search by ID (GN-XX-123456), client..."
+                        className="w-full pl-9 pr-8 py-2 rounded-xl bg-groomish-cream/70 border border-groomish-slate/15 text-xs text-groomish-slate placeholder:text-groomish-slate/40 focus:outline-none focus:ring-2 focus:ring-groomish-orange/40 focus:bg-white transition"
+                      />
+                      {search && (
+                        <button
+                          onClick={() => setSearch("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-groomish-slate/40 hover:text-groomish-slate p-0.5"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-xs text-groomish-slate/50 font-medium whitespace-nowrap">
+                      {bookingList.length} listed
+                    </span>
+                  </div>
+                </div>
+
+                {/* Table / List */}
+                {loading ? (
+                  <div className="py-16 text-center">
+                    <div className="w-8 h-8 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    <p className="text-xs text-groomish-slate/60">Loading stylist schedule...</p>
+                  </div>
+                ) : bookingList.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-groomish-slate/50 space-y-2">
+                    {search ? (
+                      <>
+                        <p className="font-semibold text-groomish-slate text-sm">
+                          No appointments match "{search}"
+                        </p>
+                        <p className="text-groomish-slate/60 text-xs">
+                          Try searching by 10-digit Booking ID (e.g. GN-XX-123456), client name, or service.
+                        </p>
+                        <button
+                          onClick={() => setSearch("")}
+                          className="mt-2 text-xs font-bold text-groomish-orange hover:underline inline-block"
+                        >
+                          Clear search filter
+                        </button>
+                      </>
+                    ) : (
+                      <p>No appointments found for the selected view.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-groomish-slate/10">
+                    {bookingList
+                      .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                      .map((b) => {
+                        const firstItem = b.items?.[0];
+                        const serviceName = firstItem?.serviceNameSnapshot || "Salon Care";
+                        const timeStr = b.scheduledAt
+                          ? new Date(b.scheduledAt).toLocaleTimeString("en-IN", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
+                          : "Scheduled";
+                        const dateStr = b.scheduledAt
+                          ? new Date(b.scheduledAt).toLocaleDateString([], {
+                            month: "short",
+                            day: "numeric",
+                          })
+                          : "Today";
+
+                        return (
+                          <div
+                            key={b.id}
+                            className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-groomish-cream/40 transition"
                           >
-                            {b.bookingCode || (b.id ? `GN-${b.id.slice(0, 8).toUpperCase()}` : "GN-NEW")}
-                          </Link>
-                          <span className="text-xs text-groomish-slate/60 flex items-center gap-1">
-                            <span>Client:</span>
-                            {b.userId ? (
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-2xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
+                                <Scissors className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-heading font-bold text-sm text-groomish-slate">
+                                    {serviceName}
+                                  </h3>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${b.status === "CONFIRMED"
+                                      ? "bg-groomish-greenLight text-groomish-green"
+                                      : b.status === "COMPLETED"
+                                        ? "bg-groomish-blueLight text-groomish-blue"
+                                        : b.status === "MODIFIED"
+                                          ? "bg-purple-100 text-purple-700"
+                                          : b.status === "CANCELLED"
+                                            ? "bg-groomish-crimsonLight text-groomish-crimson"
+                                            : "bg-amber-100 text-amber-800"
+                                      }`}
+                                  >
+                                    {b.status === "PENDING" ? "PENDING (ONLINE PAYMENT)" : b.status}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <Link
+                                    to={`/staff/bookings/${b.id}`}
+                                    className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-extrabold bg-groomish-slate/5 text-groomish-slate border border-groomish-slate/15 tracking-wider hover:text-groomish-orange hover:border-groomish-orange/30 transition"
+                                    title="Click to view appointment details"
+                                  >
+                                    {b.bookingCode || (b.id ? `GN-${b.id.slice(0, 8).toUpperCase()}` : "GN-NEW")}
+                                  </Link>
+                                  <span className="text-xs text-groomish-slate/60 flex items-center gap-1">
+                                    {/* <span>Client:</span> */}
+                                    {/* {b.userId ? (
                               <button
                                 type="button"
                                 onClick={() => handleOpenCustomerHistory(b)}
@@ -1210,127 +1106,127 @@ export default function StaffDashboard() {
                               </button>
                             ) : (
                               <b>{b.bookedBy || b.userName || "Walk-In Client"}</b>
-                            )}
-                          </span>
-                          {b.userId && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenCustomerHistory(b)}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-groomish-orange hover:text-groomish-orangeDark bg-groomish-orange/10 hover:bg-groomish-orange/20 px-2 py-0.5 rounded-full transition"
-                              title="View client profile, orders & loyalty rewards"
-                            >
-                              <Crown className="w-3 h-3 text-groomish-gold fill-groomish-gold" />
-                              <span>Profile & Rewards</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                            )} */}
+                                  </span>
+                                  {b.userId && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenCustomerHistory(b)}
+                                      className="inline-flex items-center gap-1 text-[11px] font-bold text-groomish-orange hover:text-groomish-orangeDark bg-groomish-orange/10 hover:bg-groomish-orange/20 px-2 py-0.5 rounded-full transition"
+                                      title="View client profile, orders & loyalty rewards"
+                                    >
+                                      <Crown className="w-3 h-3 text-groomish-gold fill-groomish-gold" />
+                                      <span>Profile & Rewards</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
 
-                    <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
-                      <div className="text-right">
-                        <div className="font-mono text-xs font-bold text-groomish-slate flex items-center gap-1 justify-end">
-                          <Clock className="w-3.5 h-3.5 text-groomish-orange" />
-                          <span>{timeStr}</span>
-                          <span className="text-groomish-slate/40 text-[10px]">({dateStr})</span>
-                        </div>
-                        <div className="text-xs font-extrabold text-groomish-orange mt-0.5">
-                          ₹{b.pricePaid ?? b.totalAmount}
-                        </div>
-                      </div>
+                            <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
+                              <div className="text-right">
+                                <div className="font-mono text-xs font-bold text-groomish-slate flex items-center gap-1 justify-end">
+                                  <Clock className="w-3.5 h-3.5 text-groomish-orange" />
+                                  <span>{timeStr}</span>
+                                  <span className="text-groomish-slate/40 text-[10px]">({dateStr})</span>
+                                </div>
+                                <div className="text-xs font-extrabold text-groomish-orange mt-0.5">
+                                  ₹{b.pricePaid ?? b.totalAmount}
+                                </div>
+                              </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {b.status !== "CANCELLED" && b.status !== "COMPLETED" && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenReschedule(b)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white text-groomish-slate border border-groomish-slate/15 hover:border-groomish-orange hover:text-groomish-orange font-bold text-xs transition shadow-soft"
-                            title="Reschedule appointment date & time"
-                          >
-                            <CalendarClock className="w-3.5 h-3.5 text-groomish-orange" />
-                            <span>Reschedule</span>
-                          </button>
-                        )}
+                              {/* Actions */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {b.status !== "CANCELLED" && b.status !== "COMPLETED" && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenReschedule(b)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white text-groomish-slate border border-groomish-slate/15 hover:border-groomish-orange hover:text-groomish-orange font-bold text-xs transition shadow-soft"
+                                    title="Reschedule appointment date & time"
+                                  >
+                                    <CalendarClock className="w-3.5 h-3.5 text-groomish-orange" />
+                                    <span>Reschedule</span>
+                                  </button>
+                                )}
 
-                        {b.status !== "CANCELLED" && (
-                          <button
-                            onClick={() => handleOpenBilling(b)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-groomish-cream text-groomish-slate border border-groomish-slate/15 hover:border-groomish-orange hover:bg-groomish-orange/10 font-bold text-xs transition shadow-soft"
-                            title="Add salon products & finalize bill"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5 text-groomish-orange" />
-                            <span>Bill & Products</span>
-                          </button>
-                        )}
+                                {b.status !== "CANCELLED" && (
+                                  <button
+                                    onClick={() => handleOpenBilling(b)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-groomish-cream text-groomish-slate border border-groomish-slate/15 hover:border-groomish-orange hover:bg-groomish-orange/10 font-bold text-xs transition shadow-soft"
+                                    title="Add salon products & finalize bill"
+                                  >
+                                    <ShoppingBag className="w-3.5 h-3.5 text-groomish-orange" />
+                                    <span>Bill & Products</span>
+                                  </button>
+                                )}
 
-                        {(b.status === "CONFIRMED" || b.status === "MODIFIED") && (
-                          <button
-                            disabled={actionLoading}
-                            onClick={() => handleMarkComplete(b.id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 transition shadow-soft"
-                            title="Complete appointment and dispatch bill email"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Complete</span>
-                          </button>
-                        )}
+                                {(b.status === "CONFIRMED" || b.status === "MODIFIED") && (
+                                  <button
+                                    disabled={actionLoading}
+                                    onClick={() => handleMarkComplete(b.id)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 transition shadow-soft"
+                                    title="Complete appointment and dispatch bill email"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Complete</span>
+                                  </button>
+                                )}
 
-                        {b.status === "PENDING" && (
-                          <>
-                            <button
-                              disabled={actionLoading}
-                              onClick={() => handleConfirm(b.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 transition shadow-soft"
-                              title="Confirm appointment (payment verified at salon)"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Confirm</span>
-                            </button>
-                            <button
-                              disabled={actionLoading}
-                              onClick={() => handleCancel(b.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-crimsonLight text-groomish-crimson font-bold text-xs hover:bg-groomish-crimson hover:text-white transition"
-                              title="Cancel appointment"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              <span>Cancel</span>
-                            </button>
-                          </>
-                        )}
+                                {b.status === "PENDING" && (
+                                  <>
+                                    <button
+                                      disabled={actionLoading}
+                                      onClick={() => handleConfirm(b.id)}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 transition shadow-soft"
+                                      title="Confirm appointment (payment verified at salon)"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>Confirm</span>
+                                    </button>
+                                    <button
+                                      disabled={actionLoading}
+                                      onClick={() => handleCancel(b.id)}
+                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-crimsonLight text-groomish-crimson font-bold text-xs hover:bg-groomish-crimson hover:text-white transition"
+                                      title="Cancel appointment"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                      <span>Cancel</span>
+                                    </button>
+                                  </>
+                                )}
 
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/staff/bookings/${b.id}`)}
-                          className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1"
-                          title="Click to view appointment details"
-                        >
-                          <span>Details</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/staff/bookings/${b.id}`)}
+                                  className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1"
+                                  title="Click to view appointment details"
+                                >
+                                  <span>Details</span>
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                )}
 
-          {bookingList.length > 0 && (
-            <div className="p-4 border-t border-groomish-slate/10 bg-white">
-              <Pagination
-                currentPage={page}
-                totalItems={bookingList.length}
-                pageSize={PAGE_SIZE}
-                onPageChange={setPage}
-                itemName="appointments"
-              />
-            </div>
+                {bookingList.length > 0 && (
+                  <div className="p-4 border-t border-groomish-slate/10 bg-white">
+                    <Pagination
+                      currentPage={page}
+                      totalItems={bookingList.length}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setPage}
+                      itemName="appointments"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
           )}
-        </div>
-          </>
-        )}
-      </main>
+        </main>
       </div>
 
       {/* WALK-IN CLIENT MODAL */}
@@ -1780,11 +1676,10 @@ export default function StaffDashboard() {
                         key={time}
                         type="button"
                         onClick={() => setRescheduleTime(time)}
-                        className={`py-1.5 px-1 rounded-lg text-xs font-mono font-bold transition flex items-center justify-center ${
-                          isSelected
-                            ? "bg-groomish-orange text-white shadow-soft font-black"
-                            : "bg-white text-groomish-slate border border-groomish-slate/20 hover:border-groomish-orange hover:bg-groomish-orangeLight/30"
-                        }`}
+                        className={`py-1.5 px-1 rounded-lg text-xs font-mono font-bold transition flex items-center justify-center ${isSelected
+                          ? "bg-groomish-orange text-white shadow-soft font-black"
+                          : "bg-white text-groomish-slate border border-groomish-slate/20 hover:border-groomish-orange hover:bg-groomish-orangeLight/30"
+                          }`}
                       >
                         {time}
                       </button>

@@ -14,10 +14,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/categories")
-@RequiredArgsConstructor
 public class CategoryAdminController {
 
     private final CategoryAdminService categoryAdminService;
+
+    public CategoryAdminController(CategoryAdminService categoryAdminService) {
+        this.categoryAdminService = categoryAdminService;
+    }
 
     @PostMapping(consumes = {"multipart/form-data"})
     public CategoryResponse createCategoryMultipart(
@@ -49,6 +52,22 @@ public class CategoryAdminController {
     @PutMapping(value = "/{id}", consumes = {"application/json"})
     public CategoryResponse updateCategoryJson(@PathVariable UUID id, @RequestBody CategoryRequest request) {
         return categoryAdminService.updateCategory(id, request.getName(), request.getDescription(), null, request.getImage(), request.getActive());
+    }
+
+    @PutMapping("/{id}/status")
+    public CategoryResponse updateCategoryStatus(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Boolean active
+    ) {
+        return categoryAdminService.updateCategoryStatus(id, active);
+    }
+
+    @PatchMapping("/{id}/status")
+    public CategoryResponse patchCategoryStatus(
+            @PathVariable UUID id,
+            @RequestParam(required = false) Boolean active
+    ) {
+        return categoryAdminService.updateCategoryStatus(id, active);
     }
 
     @DeleteMapping("/{id}")

@@ -276,7 +276,7 @@ export default function StoresPage() {
   });
 
   return (
-    <div className="p-6 sm:p-8 space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Toast Notification */}
       {toastMsg && (
         <div className="fixed top-6 right-6 z-50 bg-groomish-slate text-white px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-top-2 border border-groomish-orange/30">

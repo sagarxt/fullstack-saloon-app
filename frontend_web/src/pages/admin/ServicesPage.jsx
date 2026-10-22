@@ -27,7 +27,7 @@ export default function ServicesPage() {
     setLoading(true);
     try {
       const [srvRes, catRes, storeRes] = await Promise.all([
-        getServicesApi(),
+        getServicesApi(0, 1000),
         getCategoriesApi(),
         storeApi.getAdminStores().catch(() => ({ data: [] })),
       ]);
