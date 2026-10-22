@@ -10,6 +10,7 @@ import BookingTimelineSection from "../../components/booking/BookingTimelineSect
 import CustomSelect from "../../components/common/CustomSelect";
 import CustomDatePicker from "../../components/common/CustomDatePicker";
 import CustomTimePicker from "../../components/common/CustomTimePicker";
+import InvoiceBreakdownCard from "../../components/booking/InvoiceBreakdownCard";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import {
   Calendar,
@@ -510,7 +511,7 @@ export default function AdminBookingDetailPage() {
 
             <div className="divide-y divide-groomish-slate/10 border border-groomish-slate/10 rounded-2xl overflow-hidden">
               {(() => {
-                const grouped = groupBookingServices(booking.bookingItems || []);
+                const grouped = groupBookingServices(booking.items || booking.bookingItems || []);
                 if (grouped.length > 0) {
                   return grouped.map((grp, idx) => (
                     <div
@@ -550,8 +551,15 @@ export default function AdminBookingDetailPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right font-black font-heading text-sm text-groomish-slate">
-                        ₹{grp.totalPrice}
+                      <div className="text-right">
+                        <span className="font-black font-heading text-sm text-groomish-slate block">
+                          ₹{grp.totalPrice}
+                        </span>
+                        {grp.totalMrp && grp.totalMrp > grp.totalPrice && (
+                          <span className="text-[11px] text-groomish-slate/40 line-through block">
+                            ₹{grp.totalMrp}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ));
@@ -602,10 +610,22 @@ export default function AdminBookingDetailPage() {
                       </p>
                       <p className="text-[11px] text-groomish-slate/50 mt-0.5">
                         Qty: {prod.quantity} × ₹{prod.unitPriceSnapshot || prod.unitPrice || 0}
+                        {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
+                          <span className="text-groomish-slate/40 line-through ml-1.5">
+                            (MRP ₹{prod.mrp})
+                          </span>
+                        )}
                       </p>
                     </div>
-                    <div className="text-right font-black font-heading text-sm text-groomish-slate">
-                      ₹{prod.subtotal || (prod.quantity * (prod.unitPriceSnapshot || prod.unitPrice || 0))}
+                    <div className="text-right">
+                      <span className="font-black font-heading text-sm text-groomish-slate block">
+                        ₹{prod.totalPrice || prod.subtotal || (prod.quantity * (prod.unitPriceSnapshot || prod.unitPrice || 0))}
+                      </span>
+                      {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
+                        <span className="text-[11px] text-groomish-slate/40 line-through block">
+                          ₹{prod.mrp * (prod.quantity || 1)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -620,66 +640,11 @@ export default function AdminBookingDetailPage() {
 
         {/* Right 1 Column: Billing Breakdown & Admin Override Panel */}
         <div className="space-y-6">
-          {/* Payment & Invoice Summary */}
-          <div className="bg-white rounded-3xl border border-groomish-slate/10 p-6 shadow-soft space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-groomish-slate/10">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-groomish-orange" />
-                <h3 className="font-heading font-bold text-sm text-groomish-slate">
-                  Payment Summary
-                </h3>
-              </div>
-              <span
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${
-                  booking.paymentStatus === "COMPLETED" || booking.status === "COMPLETED"
-                    ? "bg-groomish-greenLight text-groomish-green border border-groomish-green/30"
-                    : "bg-groomish-goldLight text-groomish-slate border border-groomish-gold/40"
-                }`}
-              >
-                {booking.status === "COMPLETED" || booking.paymentStatus === "COMPLETED"
-                  ? (booking.paymentMethod === "CASH" ? "Paid at Salon" : `Paid Online (${booking.paymentMethod || "UPI"})`)
-                  : (booking.paymentStatus || "PENDING")}
-              </span>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between text-groomish-slate/70">
-                <span>Services Total:</span>
-                <span className="font-semibold text-groomish-slate">₹{booking.totalAmount || 0}</span>
-              </div>
-              {booking.couponCode && (
-                <div className="flex items-center justify-between text-groomish-green">
-                  <span>Coupon ({booking.couponCode}):</span>
-                  <span>-₹{booking.discountAmount || 0}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-2 border-t border-groomish-slate/10 text-sm font-bold text-groomish-slate">
-                <span>Final Price Paid:</span>
-                <span className="font-black text-lg text-groomish-orange font-heading">
-                  ₹{booking.pricePaid ?? booking.totalAmount ?? 0}
-                </span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-groomish-cream/40 border border-groomish-slate/10 space-y-1.5 text-[11px] text-groomish-slate/70">
-              <div className="flex justify-between">
-                <span>Payment Method:</span>
-                <span className="font-bold text-groomish-slate">{booking.paymentMethod || "CASH (Salon)"}</span>
-              </div>
-              {booking.invoiceNumber && (
-                <div className="flex justify-between">
-                  <span>Invoice Ref:</span>
-                  <span className="font-mono font-bold text-groomish-slate">{booking.invoiceNumber}</span>
-                </div>
-              )}
-              {booking.paymentGatewayId && (
-                <div className="flex justify-between">
-                  <span>Gateway ID:</span>
-                  <span className="font-mono text-groomish-slate truncate max-w-[130px]">{booking.paymentGatewayId}</span>
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Complete Invoice Breakdown Card */}
+          <InvoiceBreakdownCard
+            booking={booking}
+            className="rounded-3xl border border-groomish-slate/10 p-6 shadow-soft"
+          />
 
           {/* Admin Edit & Override Controls */}
           <div className="bg-white rounded-3xl border border-groomish-slate/10 p-6 shadow-soft space-y-4">

@@ -29,12 +29,14 @@ export function groupBookingServices(items = []) {
       0
     );
 
-    const unitMrp = Number(
+    const rawUnitMrp = Number(
+      item.subServiceMrp ??
       item.mrp ??
       item.serviceMrp ??
       item.service?.mrp ??
       unitPrice
     );
+    const unitMrp = Math.max(rawUnitMrp, unitPrice);
 
     const unitDuration = Number(
       item.serviceDurationSnapshot ??

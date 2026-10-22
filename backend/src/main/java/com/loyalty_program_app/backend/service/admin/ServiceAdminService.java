@@ -48,6 +48,21 @@ public interface ServiceAdminService {
             java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices
     );
 
+    ServiceResponse createService(
+            String name,
+            UUID categoryId,
+            String description,
+            String gender,
+            Double mrp,
+            Double price,
+            Integer rewards,
+            Integer durationMinutes,
+            MultipartFile image,
+            String imageUrl,
+            java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices,
+            Boolean active
+    );
+
     ServiceResponse updateService(
             UUID id,
             String name,
@@ -89,6 +104,24 @@ public interface ServiceAdminService {
             String imageUrl,
             java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices
     );
+
+    ServiceResponse updateService(
+            UUID id,
+            String name,
+            UUID categoryId,
+            String description,
+            String gender,
+            Double mrp,
+            Double price,
+            Integer rewards,
+            Integer durationMinutes,
+            MultipartFile image,
+            String imageUrl,
+            java.util.List<com.loyalty_program_app.backend.dto.service.SubServiceDto> subServices,
+            Boolean active
+    );
+
+    ServiceResponse updateServiceStatus(UUID id, Boolean active);
 
     void softDeleteService(UUID id);
 

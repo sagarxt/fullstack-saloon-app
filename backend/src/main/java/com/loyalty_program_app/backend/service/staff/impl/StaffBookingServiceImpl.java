@@ -556,6 +556,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         dto.setUserName(b.getUser() != null ? b.getUser().getName() : null);
         dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
         dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
+        dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
+        dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
         dto.setTotalAmount(b.getTotalAmount());
         dto.setPricePaid(b.getPricePaid());
         dto.setStatus(b.getStatus().name());
@@ -564,6 +566,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
         if (b.getPayment() != null) {
             dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
+            dto.setInvoiceNumber(b.getPayment().getInvoiceNumber());
             if (b.getStatus() == BookingStatus.COMPLETED) {
                 dto.setPaymentStatus("COMPLETED");
             } else if (b.getStatus() == BookingStatus.CANCELLED) {
@@ -605,8 +608,34 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                 BookingItemDetailsResponse itDto = new BookingItemDetailsResponse();
                 itDto.setId(it.getId());
                 itDto.setServiceId(it.getService() != null ? it.getService().getId() : null);
-                itDto.setServiceName(it.getServiceNameSnapshot());
-                itDto.setPrice(it.getServicePriceSnapshot());
+                String sName = it.getServiceNameSnapshot() != null ? it.getServiceNameSnapshot() : (it.getService() != null ? it.getService().getName() : "Salon Service");
+                itDto.setServiceName(sName);
+                Double itemPrice = it.getServicePriceSnapshot();
+                if ((itemPrice == null || itemPrice == 0.0) && it.getService() != null && it.getService().getPrice() != null) {
+                    itemPrice = it.getService().getPrice();
+                }
+                itDto.setPrice(itemPrice != null ? itemPrice : 0.0);
+
+                Double subMrp = null;
+                if (it.getService() != null && it.getService().getSubServices() != null) {
+                    for (com.loyalty_program_app.backend.model.SubService sub : it.getService().getSubServices()) {
+                        if (sub.getName() != null && sName.toLowerCase().contains(sub.getName().toLowerCase())) {
+                            if (sub.getMrp() != null && sub.getMrp() > 0) {
+                                subMrp = sub.getMrp();
+                            }
+                            break;
+                        }
+                    }
+                }
+                double uMrp = subMrp != null ? subMrp
+                        : (it.getService() != null && it.getService().getMrp() != null && it.getService().getMrp() > 0
+                                ? it.getService().getMrp()
+                                : itDto.getPrice());
+                if (uMrp < itDto.getPrice()) {
+                    uMrp = itDto.getPrice();
+                }
+                itDto.setMrp(uMrp);
+
                 itDto.setDurationMinutes(it.getServiceDurationSnapshot());
                 itDto.setRewardCoins(it.getServiceRewardCoinsSnapshot() != null ? it.getServiceRewardCoinsSnapshot() : 0);
                 itDto.setImage(it.getService() != null ? it.getService().getImage() : null);

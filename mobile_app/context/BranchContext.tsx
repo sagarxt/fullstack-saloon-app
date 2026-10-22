@@ -61,104 +61,157 @@ interface BranchContextType {
   refreshBranches: () => Promise<void>;
 }
 
+export const DEFAULT_BRANCH: Branch = {
+  id: '0b40a44e-59ac-42a1-8406-67f3f5965f4f',
+  name: 'Groomish Hitech City',
+  address: 'Hitech City, Madhavpur',
+  city: 'Hyderabad',
+  state: 'Telangana',
+  pincode: '500084',
+  phone: '9000080000',
+  email: 'hitech@groomish.now',
+  openingTime: '09:00',
+  closingTime: '21:00',
+  image: 'https://res.cloudinary.com/dfdnljcyt/image/upload/v1792078677/groomishnow/stores/groomish-hitech-city-5.png',
+  images: [
+    'https://res.cloudinary.com/dfdnljcyt/image/upload/v1792078677/groomishnow/stores/groomish-hitech-city-5.png',
+    'https://res.cloudinary.com/dfdnljcyt/image/upload/v1792078625/groomishnow/stores/groomish-hitech-city-1.png',
+    'https://res.cloudinary.com/dfdnljcyt/image/upload/v1792078630/groomishnow/stores/groomish-hitech-city-2.png',
+    'https://res.cloudinary.com/dfdnljcyt/image/upload/v1792078665/groomishnow/stores/groomish-hitech-city-4.png',
+    'https://res.cloudinary.com/dfdnljcyt/image/upload/v1792078648/groomishnow/stores/groomish-hitech-city-3.png',
+  ],
+  latitude: 17.454271,
+  longitude: 78.371807,
+  active: true,
+  rating: 4.8,
+};
+
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
 
 const BRANCH_STORAGE_KEY = '@groomish_selected_branch';
 
 export function BranchProvider({ children }: { children: ReactNode }) {
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranch, setSelectedBranchState] = useState<Branch | null>(null);
-  const [loadingBranches, setLoadingBranches] = useState<boolean>(true);
+  const [branches, setBranches] = useState<Branch[]>([DEFAULT_BRANCH]);
+  const [selectedBranch, setSelectedBranchState] = useState<Branch | null>(DEFAULT_BRANCH);
+  const [loadingBranches, setLoadingBranches] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     initBranches();
   }, []);
 
-  const initBranches = async () => {
-    setLoadingBranches(true);
+  const checkNearestBranchInBackground = async (activeList: Branch[]) => {
     try {
-      // 1. Fetch active salon branches
-      const res = await publicApi.getStores();
-      const list: Branch[] = Array.isArray(res.data)
-        ? res.data
-        : res.data?.content || [];
-      const activeList = list.filter((b) => b.active !== false);
-      setBranches(activeList);
+      const saved = await AsyncStorage.getItem(BRANCH_STORAGE_KEY);
+      if (saved) return; // User already has a saved selection, don't auto-override
 
-      // 2. Request Notification Permission on boot (native Android 13+)
-      if (Platform.OS === 'android' && Platform.Version >= 33) {
-        try {
-          await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
-          );
-        } catch (notifErr) {
-          console.log('Notification permission error/skipped:', notifErr);
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+
+      const posPromise = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+      const loc: any = await Promise.race([posPromise, timeoutPromise]);
+
+      if (loc?.coords) {
+        const uLat = loc.coords.latitude;
+        const uLng = loc.coords.longitude;
+        let nearest = activeList[0];
+        let minDistance = Infinity;
+
+        activeList.forEach((b) => {
+          if (b.latitude && b.longitude) {
+            const d = getDistanceInKm(uLat, uLng, Number(b.latitude), Number(b.longitude));
+            if (d < minDistance) {
+              minDistance = d;
+              nearest = b;
+            }
+          }
+        });
+
+        if (nearest) {
+          await setSelectedBranch(nearest);
         }
       }
+    } catch (_) {}
+  };
 
-      // 3. Check if user already has a saved branch preference
+  const initBranches = async () => {
+    try {
+      // 1. Immediately check AsyncStorage for any previously saved branch
+      try {
+        const savedBranchStr = await AsyncStorage.getItem(BRANCH_STORAGE_KEY);
+        if (savedBranchStr) {
+          const parsed = JSON.parse(savedBranchStr);
+          if (parsed && parsed.id) {
+            setSelectedBranchState(parsed);
+          }
+        }
+      } catch (_) {}
+
+      // 2. Fetch fresh salon branches from backend
+      setLoadingBranches(true);
+      let activeList: Branch[] = [];
+      try {
+        const res = await publicApi.getStores();
+        let list: Branch[] = [];
+        const rawData = res.data;
+        if (Array.isArray(rawData)) {
+          list = rawData;
+        } else if (rawData && Array.isArray(rawData.content)) {
+          list = rawData.content;
+        } else if (typeof rawData === 'string') {
+          try {
+            const parsed = JSON.parse(rawData);
+            list = Array.isArray(parsed) ? parsed : parsed.content || [];
+          } catch (_) {}
+        }
+        activeList = list.filter((b) => b.active !== false);
+      } catch (fetchErr) {
+        console.warn('[BranchContext] Could not fetch stores from backend, using default/cached:', fetchErr);
+      }
+
+      // If activeList is empty, ensure default fallback branch is present
+      if (activeList.length === 0) {
+        activeList = [DEFAULT_BRANCH];
+      }
+
+      setBranches(activeList);
+
+      // 3. Match or set current selected branch
       let chosenBranch: Branch | null = null;
-      const savedBranchStr = await AsyncStorage.getItem(BRANCH_STORAGE_KEY);
-      if (savedBranchStr) {
-        try {
+      try {
+        const savedBranchStr = await AsyncStorage.getItem(BRANCH_STORAGE_KEY);
+        if (savedBranchStr) {
           const parsed = JSON.parse(savedBranchStr);
           const found = activeList.find((b) => String(b.id) === String(parsed.id));
           if (found) {
             chosenBranch = found;
           }
-        } catch (_) {}
+        }
+      } catch (_) {}
+
+      if (!chosenBranch) {
+        chosenBranch = activeList[0];
       }
 
-      // 4. If no branch chosen yet, request location permission
-      if (!chosenBranch && activeList.length > 0) {
-        try {
-          const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
-          if (locStatus === 'granted') {
-            const loc = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            });
-            if (loc?.coords) {
-              const uLat = loc.coords.latitude;
-              const uLng = loc.coords.longitude;
-              let nearest = activeList[0];
-              let minDistance = Infinity;
+      setSelectedBranchState(chosenBranch);
+      try {
+        await AsyncStorage.setItem(BRANCH_STORAGE_KEY, JSON.stringify(chosenBranch));
+      } catch (_) {}
 
-              activeList.forEach((b) => {
-                if (b.latitude && b.longitude) {
-                  const d = getDistanceInKm(uLat, uLng, Number(b.latitude), Number(b.longitude));
-                  if (d < minDistance) {
-                    minDistance = d;
-                    nearest = b;
-                  }
-                }
-              });
-              chosenBranch = nearest;
-            } else {
-              // Location coords unavailable, fallback to default branch
-              chosenBranch = activeList[0];
-            }
-          } else {
-            // Location permission denied -> directly choose default branch
-            chosenBranch = activeList[0];
-          }
-        } catch (locErr) {
-          // If denied location or error -> directly choose default branch
-          console.log('Location permission denied or error, choosing default branch:', locErr);
-          chosenBranch = activeList[0];
-        }
+      setLoadingBranches(false);
 
-        if (chosenBranch) {
-          await setSelectedBranch(chosenBranch);
-        }
-      } else if (chosenBranch) {
-        setSelectedBranchState(chosenBranch);
-      } else if (activeList.length > 0) {
-        // Fallback default branch
-        await setSelectedBranch(activeList[0]);
+      // 4. Request Android notification permission in background (non-blocking)
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(() => {});
+      }
+
+      // 5. If more than 1 branch exists, calculate nearest branch in background
+      if (activeList.length > 1) {
+        checkNearestBranchInBackground(activeList);
       }
     } catch (err) {
-      console.error('Failed to load branches:', err);
+      console.error('[BranchContext] Error in initBranches:', err);
     } finally {
       setLoadingBranches(false);
     }
@@ -216,7 +269,7 @@ export function BranchProvider({ children }: { children: ReactNode }) {
               stylists, and retail products.
             </Text>
 
-            {loadingBranches ? (
+            {loadingBranches && branches.length === 0 ? (
               <View style={styles.centerBox}>
                 <ActivityIndicator size="small" color={Colors.orange} />
                 <Text style={styles.loadingText}>Loading branches...</Text>
@@ -225,6 +278,13 @@ export function BranchProvider({ children }: { children: ReactNode }) {
               <View style={styles.centerBox}>
                 <Ionicons name="storefront-outline" size={36} color={Colors.slateXLight} />
                 <Text style={styles.loadingText}>No salon branches found.</Text>
+                <TouchableOpacity
+                  onPress={refreshBranches}
+                  style={styles.retryBtn}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <FlatList
@@ -427,5 +487,17 @@ const styles = StyleSheet.create({
   radioCircleSelected: {
     backgroundColor: Colors.orange,
     borderColor: Colors.orange,
+  },
+  retryBtn: {
+    marginTop: 12,
+    backgroundColor: Colors.orange,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  retryBtnText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

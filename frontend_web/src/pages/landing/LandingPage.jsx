@@ -149,26 +149,26 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
+    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-hidden">
       <Navbar />
 
-      <main className="flex-1">
+      <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {/* HERO SECTION */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-white to-groomish-cream pt-4 sm:pt-10 pb-8 sm:pb-16 border-b border-groomish-slate/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-12 gap-6 lg:gap-12 items-center">
+        <section className="relative overflow-x-hidden bg-gradient-to-b from-white to-groomish-cream pt-3.5 sm:pt-10 pb-8 sm:pb-16 border-b border-groomish-slate/10 w-full max-w-full">
+          <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 w-full max-w-full min-w-0">
+            <div className="grid lg:grid-cols-12 gap-5 lg:gap-12 items-center w-full max-w-full min-w-0">
               {/* Right Column (Branch Photos Slider): On Mobile order-1, on Desktop lg:order-2 */}
-              <div className="lg:col-span-6 relative order-1 lg:order-2">
-                <div className="relative mx-auto w-full max-w-xl">
-                  {/* Decorative Ambient Glow */}
-                  <div className="absolute -inset-4 bg-gradient-to-tr from-groomish-orange/20 via-groomish-gold/20 to-groomish-coral/20 rounded-3xl blur-2xl -z-10" />
+              <div className="lg:col-span-6 relative order-1 lg:order-2 w-full max-w-full min-w-0">
+                <div className="relative mx-auto w-full max-w-xl min-w-0">
+                  {/* Decorative Ambient Glow (hidden on mobile to prevent horizontal viewport bleed) */}
+                  <div className="hidden sm:block absolute -inset-4 bg-gradient-to-tr from-groomish-orange/20 via-groomish-gold/20 to-groomish-coral/20 rounded-3xl blur-2xl -z-10 pointer-events-none" />
 
                   {!selectedStore || branchImages.length === 0 ? (
-                    <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-card border border-groomish-slate/10 text-center space-y-4">
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-groomish-cream text-groomish-orange flex items-center justify-center mx-auto border border-groomish-slate/10">
-                        <MapPin className="w-7 h-7 sm:w-8 sm:h-8" />
+                    <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-card border border-groomish-slate/10 text-center space-y-4 w-full min-w-0">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-groomish-cream text-groomish-orange flex items-center justify-center mx-auto border border-groomish-slate/10">
+                        <MapPin className="w-6 h-6 sm:w-8 sm:h-8" />
                       </div>
-                      <h3 className="font-heading font-extrabold text-lg sm:text-xl text-groomish-slate">
+                      <h3 className="font-heading font-extrabold text-base sm:text-xl text-groomish-slate">
                         {selectedStore ? selectedStore.name : "Welcome to Groomish Now"}
                       </h3>
                       <p className="text-xs sm:text-sm text-groomish-slateLight max-w-md mx-auto leading-relaxed">
@@ -184,15 +184,15 @@ export default function LandingPage() {
                   ) : (
                     /* Main Showcase Container */
                     <div
-                      className="bg-white rounded-3xl p-3 sm:p-4 shadow-card border border-groomish-slate/10 space-y-2.5 sm:space-y-3 relative group"
+                      className="bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-4 shadow-card border border-groomish-slate/10 space-y-2.5 sm:space-y-3 relative group w-full max-w-full min-w-0 overflow-hidden"
                       onMouseEnter={() => setIsPaused(true)}
                       onMouseLeave={() => setIsPaused(false)}
                     >
                     {/* Branch Header Bar */}
-                    <div className="flex items-center justify-between px-1.5 pt-0.5">
-                      <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="flex items-center justify-between px-1 pt-0.5 gap-2 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                         {/* Branch Logo */}
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-groomish-cream border border-groomish-slate/15 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-sm">
+                        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-groomish-cream border border-groomish-slate/15 flex items-center justify-center p-1 overflow-hidden shrink-0 shadow-sm">
                           {selectedStore?.logo ? (
                             <img
                               src={getOptimizedImageUrl(selectedStore.logo, { width: 120 })}
@@ -209,20 +209,20 @@ export default function LandingPage() {
                             />
                           )}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-1.5 sm:gap-2">
-                            <h3 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate leading-tight line-clamp-1">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                            <h3 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate leading-tight truncate">
                               {selectedStore?.name}
                             </h3>
                             {selectedStore?.code && (
-                              <span className="font-mono text-[10px] font-extrabold bg-groomish-slate text-white px-1.5 py-0.5 rounded-md shrink-0">
+                              <span className="font-mono text-[9px] sm:text-[10px] font-extrabold bg-groomish-slate text-white px-1.5 py-0.5 rounded-md shrink-0">
                                 {selectedStore.code}
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-groomish-slateLight flex items-center gap-1 mt-0.5">
+                          <p className="text-[10px] sm:text-[11px] text-groomish-slateLight flex items-center gap-1 mt-0.5 min-w-0">
                             <MapPin className="w-3 h-3 text-groomish-orange shrink-0" />
-                            <span className="truncate max-w-[200px] sm:max-w-[280px]">
+                            <span className="truncate max-w-[190px] xs:max-w-[240px] sm:max-w-[280px]">
                               {selectedStore?.city ? `${selectedStore.city}, ` : ""}{selectedStore?.address || "Salon Lounge"}
                             </span>
                           </p>
@@ -231,7 +231,7 @@ export default function LandingPage() {
                     </div>
 
                     {/* Main Image Slider Viewport */}
-                    <div className="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-groomish-slate/10 shadow-inner group/slider">
+                    <div className="relative w-full aspect-[16/10] rounded-xl sm:rounded-2xl overflow-hidden bg-groomish-slate/10 shadow-inner group/slider">
                       {branchImages.map((imgUrl, idx) => (
                         <div
                           key={idx}
@@ -253,19 +253,19 @@ export default function LandingPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/45 z-10 pointer-events-none" />
 
                       {/* Top Badges */}
-                      <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/20">
-                            <ImageIcon className="w-3 h-3 text-groomish-gold" />
-                            <span>
+                      <div className="absolute top-2.5 left-2.5 right-2.5 sm:top-3 sm:left-3 sm:right-3 z-20 flex items-center justify-between gap-1.5 pointer-events-none">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="bg-black/60 backdrop-blur-md text-white text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-1 rounded-full flex items-center gap-1 border border-white/20 shrink-0">
+                            <ImageIcon className="w-3 h-3 text-groomish-gold shrink-0" />
+                            <span className="truncate">
                               {branchImages.length > 0 ? `Photo ${currentSlide + 1} of ${branchImages.length}` : "Branch Showcase"}
                             </span>
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
-                          <span className="bg-white/90 backdrop-blur-md text-groomish-slate text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-groomish-orange" />
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="bg-white/95 backdrop-blur-md text-groomish-slate text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-groomish-orange shrink-0" />
                             <span>{selectedStore?.openingTime || "09:00 AM"} - {selectedStore?.closingTime || "09:00 PM"}</span>
                           </span>
                         </div>
@@ -278,28 +278,28 @@ export default function LandingPage() {
                             type="button"
                             onClick={prevSlide}
                             aria-label="Previous Branch Photo"
-                            className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-groomish-orange text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 shadow-md opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100"
+                            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-groomish-orange text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 shadow-md opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100"
                           >
-                            <ChevronLeft className="w-5 h-5" />
+                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                           </button>
                           <button
                             type="button"
                             onClick={nextSlide}
                             aria-label="Next Branch Photo"
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-groomish-orange text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 shadow-md opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-groomish-orange text-white backdrop-blur-md flex items-center justify-center transition-all duration-200 shadow-md opacity-80 sm:opacity-0 sm:group-hover/slider:opacity-100"
                           >
-                            <ChevronRight className="w-5 h-5" />
+                            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                           </button>
                         </>
                       )}
 
                       {/* Bottom Slide Info & Indicators */}
-                      <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between text-white">
-                        <div className="space-y-0.5 max-w-[70%]">
-                          <p className="text-xs font-bold drop-shadow-sm flex items-center gap-1.5">
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:bottom-3 sm:left-3 sm:right-3 z-20 flex items-center justify-between text-white gap-2">
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <p className="text-xs font-bold drop-shadow-sm flex items-center gap-1.5 truncate">
                             <span>{selectedStore?.name}</span>
                           </p>
-                          <p className="text-[10px] text-white/85 line-clamp-1 drop-shadow-sm">
+                          <p className="text-[10px] text-white/85 line-clamp-1 drop-shadow-sm truncate">
                             {selectedStore?.address}
                           </p>
                         </div>
@@ -315,7 +315,7 @@ export default function LandingPage() {
                                 aria-label={`Go to slide ${dotIdx + 1}`}
                                 className={`h-1.5 rounded-full transition-all duration-300 ${
                                   dotIdx === currentSlide
-                                    ? "w-4 bg-groomish-orange"
+                                    ? "w-3.5 sm:w-4 bg-groomish-orange"
                                     : "w-1.5 bg-white/50 hover:bg-white"
                                 }`}
                               />
@@ -327,15 +327,15 @@ export default function LandingPage() {
 
                     {/* Mini Thumbnails / Photo Strip */}
                     {branchImages.length > 1 && (
-                      <div className="flex items-center gap-2 overflow-x-auto pb-0.5 pt-0.5 scrollbar-thin">
+                      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-0.5 pt-0.5 scrollbar-thin w-full max-w-full">
                         {branchImages.map((imgUrl, thumbIdx) => (
                           <button
                             key={thumbIdx}
                             type="button"
                             onClick={() => setCurrentSlide(thumbIdx)}
-                            className={`relative h-11 w-16 sm:h-12 sm:w-20 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                            className={`relative h-10 w-14 sm:h-12 sm:w-20 rounded-lg sm:rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
                               thumbIdx === currentSlide
-                                ? "border-groomish-orange shadow-md scale-105"
+                                ? "border-groomish-orange shadow-md scale-102"
                                 : "border-transparent opacity-60 hover:opacity-100"
                             }`}
                           >
@@ -354,15 +354,15 @@ export default function LandingPage() {
               </div>
 
               {/* Left Column: Copy & Actions (On Mobile order-2, on Desktop lg:order-1) */}
-              <div className="lg:col-span-6 space-y-4 sm:space-y-6 text-center lg:text-left order-2 lg:order-1">
+              <div className="lg:col-span-6 space-y-3.5 sm:space-y-6 text-center lg:text-left order-2 lg:order-1 w-full max-w-full min-w-0">
                 {/* Pill */}
-                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-groomish-orangeLight border border-groomish-orange/30 text-groomish-orange text-xs font-bold uppercase tracking-wider shadow-xs">
-                  <Sparkles className="w-3.5 h-3.5 text-groomish-orange fill-groomish-orange" />
-                  <span>Next-Gen Salon Experience & VIP Loyalty</span>
+                <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1 rounded-full bg-groomish-orangeLight border border-groomish-orange/30 text-groomish-orange text-[10px] sm:text-xs font-bold uppercase tracking-wide sm:tracking-wider shadow-xs max-w-full">
+                  <Sparkles className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-groomish-orange fill-groomish-orange shrink-0" />
+                  <span className="truncate">Next-Gen Salon Experience & VIP Loyalty</span>
                 </div>
 
                 {/* Main Headline */}
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-groomish-slate tracking-tight leading-[1.12]">
+                <h1 className="text-2xl xs:text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-groomish-slate tracking-tight leading-[1.14] break-words">
                   Look Sharp. <br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-groomish-orange via-groomish-coral to-groomish-crimson">
                     Earn Rewards Every Visit.
@@ -370,15 +370,15 @@ export default function LandingPage() {
                 </h1>
 
                 {/* Subtitle */}
-                <p className="text-sm sm:text-base lg:text-lg text-groomish-slateLight max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                <p className="text-xs sm:text-base lg:text-lg text-groomish-slateLight max-w-xl mx-auto lg:mx-0 leading-relaxed font-normal break-words px-1 sm:px-0">
                   Reserve certified salon specialists, luxurious grooming therapies, and unlock complimentary upgrades with Groomish Now Groom Coins.
                 </p>
 
                 {/* CTAs */}
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-1">
+                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2.5 sm:gap-4 pt-1 w-full max-w-md mx-auto lg:mx-0">
                   <a
                     href="#services"
-                    className="btn-primary text-sm sm:text-base px-6 sm:px-7 py-3 sm:py-3.5 shadow-glowOrange w-full sm:w-auto"
+                    className="btn-primary text-xs sm:text-base px-5 sm:px-7 py-2.5 sm:py-3.5 shadow-glowOrange w-full sm:w-auto"
                   >
                     <span>Explore Services</span>
                     <ArrowRight className="w-4 h-4" />
@@ -386,7 +386,7 @@ export default function LandingPage() {
 
                   <a
                     href="#rewards"
-                    className="btn-secondary text-sm sm:text-base px-5 sm:px-6 py-3 sm:py-3.5 w-full sm:w-auto flex items-center justify-center gap-2"
+                    className="btn-secondary text-xs sm:text-base px-5 sm:px-6 py-2.5 sm:py-3.5 w-full sm:w-auto flex items-center justify-center gap-2"
                   >
                     <Gift className="w-4 h-4 text-groomish-orange" />
                     <span>View Loyalty Perks</span>

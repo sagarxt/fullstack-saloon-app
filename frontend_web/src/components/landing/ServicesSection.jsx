@@ -56,8 +56,8 @@ export default function ServicesSection({
   };
 
   return (
-    <section id="services" className="bg-groomish-cream py-8 sm:py-14 border-t border-groomish-slate/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="services" className="bg-groomish-cream py-8 sm:py-14 border-t border-groomish-slate/10 w-full max-w-full overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 w-full max-w-full min-w-0">
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 mb-5 sm:mb-8">
           <div>
@@ -156,13 +156,13 @@ export default function ServicesSection({
               return (
                 <div
                   key={service.id}
-                  className="card-groomish overflow-hidden flex flex-col justify-between group hover:-translate-y-1 transition duration-300"
+                  className="card-groomish overflow-hidden flex flex-col group hover:-translate-y-1 transition duration-300"
                 >
-                  <div>
+                  <div className="flex-1 flex flex-col">
                     {/* Image & Badges (Clickable directly to dedicated service page) */}
                     <div
                       onClick={() => navigate(`/services/${service.id}`)}
-                      className="relative h-44 overflow-hidden bg-groomish-slate/10 cursor-pointer"
+                      className="relative h-44 overflow-hidden bg-groomish-slate/10 cursor-pointer shrink-0"
                     >
                       <img
                         src={getOptimizedImageUrl(imgSrc, { width: 600 })}
@@ -188,45 +188,49 @@ export default function ServicesSection({
                     </div>
 
                     {/* Content Details */}
-                    <div className="p-5 space-y-2">
-                      <div className="text-[11px] font-bold text-groomish-orange uppercase tracking-wider">
-                        {catName}
+                    <div className="p-4 sm:p-5 pb-3 flex-1 flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        <div className="text-[11px] font-bold text-groomish-orange uppercase tracking-wider">
+                          {catName}
+                        </div>
+
+                        <h3
+                          onClick={() => navigate(`/services/${service.id}`)}
+                          className="font-heading font-bold text-base text-groomish-slate leading-snug group-hover:text-groomish-orange transition-colors cursor-pointer line-clamp-1"
+                        >
+                          {service.name}
+                        </h3>
+
+                        <p className="text-xs text-groomish-slateLight line-clamp-2 leading-relaxed">
+                          {service.description || "Signature grooming experience delivered by certified specialists."}
+                        </p>
                       </div>
 
-                      <h3
-                        onClick={() => navigate(`/services/${service.id}`)}
-                        className="font-heading font-bold text-base text-groomish-slate leading-snug group-hover:text-groomish-orange transition-colors cursor-pointer line-clamp-1"
-                      >
-                        {service.name}
-                      </h3>
-
-                      <p className="text-xs text-groomish-slateLight line-clamp-2 leading-relaxed">
-                        {service.description || "Signature grooming experience delivered by certified specialists."}
-                      </p>
-
                       {/* Groom Coins Pill */}
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-bold">
-                        <GroomCoinIcon className="w-3.5 h-3.5" />
-                        <span>Earn +{coinsEarned} Groom Coins</span>
-                        {service.rewards > 0 && (
-                          <span className="bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-extrabold text-[9px]">
-                            +{service.rewards} Extra!
-                          </span>
-                        )}
+                      <div className="pt-2">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-bold">
+                          <GroomCoinIcon className="w-3.5 h-3.5" />
+                          <span>Earn +{coinsEarned} Groom Coins</span>
+                          {service.rewards > 0 && (
+                            <span className="bg-amber-200 text-amber-900 px-1 py-0.2 rounded font-extrabold text-[9px]">
+                              +{service.rewards} Extra!
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Pricing & Booking CTA */}
-                  <div className="p-5 pt-0 border-t border-groomish-slate/10 mt-2 flex items-center justify-between">
-                    <div>
-                      <div className="text-lg font-extrabold text-groomish-slate leading-none">
+                  <div className="p-4 sm:p-5 pt-3 border-t border-groomish-slate/10 flex items-center justify-between gap-2 mt-auto">
+                    <div className="min-w-0 pr-1">
+                      <div className="text-base sm:text-[17px] font-extrabold text-groomish-slate leading-tight whitespace-nowrap">
                         {service.subServices && service.subServices.length > 0
                           ? getServicePriceRange(service)
                           : `₹${service.price}`}
                       </div>
                       {(!service.subServices || service.subServices.length === 0) && service.mrp > service.price && (
-                        <div className="text-[11px] text-groomish-slateLight line-through mt-0.5">
+                        <div className="text-[11px] text-groomish-slateLight line-through">
                           ₹{service.mrp}
                         </div>
                       )}
@@ -241,12 +245,12 @@ export default function ServicesSection({
                           onBook(service);
                         }
                       }}
-                      className="btn-primary text-xs px-3.5 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5"
+                      className="btn-primary text-xs px-3 py-2 shadow-sm group-hover:shadow-glowOrange flex items-center gap-1.5 shrink-0 whitespace-nowrap"
                     >
                       {service.subServices && service.subServices.length > 1 ? (
                         <>
                           <Eye className="w-3.5 h-3.5" />
-                          <span>View Options</span>
+                          <span>Options</span>
                         </>
                       ) : (
                         <>

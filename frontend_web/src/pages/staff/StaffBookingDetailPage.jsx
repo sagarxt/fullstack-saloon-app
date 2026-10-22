@@ -15,6 +15,7 @@ import {
 import StaffSidebar from "../../components/staff/StaffSidebar";
 import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import BookingTimelineSection from "../../components/booking/BookingTimelineSection";
+import InvoiceBreakdownCard from "../../components/booking/InvoiceBreakdownCard";
 import CustomSelect from "../../components/common/CustomSelect";
 import { showConfirm } from "../../context/ConfirmContext";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
@@ -44,11 +45,41 @@ import {
   Layers,
   Search,
   Minus,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 export default function StaffBookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // Mobile drawer state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Desktop collapsed state
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("groomish_staff_sidebar_collapsed") === "true";
+  });
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("groomish_staff_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleSidebarCollapsed();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -384,17 +415,88 @@ export default function StaffBookingDetailPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-groomish-cream font-sans">
-      {/* FIXED STAFF SIDEBAR */}
-      <StaffSidebar activeBookingCode={bookingCode} activeBookingId={id} />
+    <div className="min-h-screen bg-groomish-cream font-sans w-full max-w-full overflow-x-hidden">
+      {/* STAFF SIDEBAR */}
+      <StaffSidebar
+        activeBookingCode={bookingCode}
+        activeBookingId={id}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebarCollapsed}
+      />
 
       {/* MAIN VIEWPORT */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="p-3.5 sm:p-5 max-w-6xl w-full mx-auto space-y-4">
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+          sidebarCollapsed ? "lg:pl-0" : "lg:pl-64"
+        } pl-0`}
+      >
+        {/* Top Mobile Bar with Hamburger & Back */}
+        <header className="lg:hidden h-14 bg-white border-b border-groomish-slate/10 px-3 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="p-1.5 rounded-xl hover:bg-groomish-cream text-groomish-slate border border-groomish-slate/15 transition cursor-pointer"
+              aria-label="Open staff menu"
+            >
+              <Menu className="w-5 h-5 text-groomish-slate" />
+            </button>
+            <button
+              onClick={() => navigate("/staff/dashboard")}
+              className="text-xs font-bold text-groomish-orange flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Dashboard</span>
+            </button>
+          </div>
+          <span className="font-mono text-xs font-bold text-groomish-slate bg-groomish-cream px-2 py-0.5 rounded-lg border border-groomish-slate/15">
+            {bookingCode}
+          </span>
+        </header>
+
+        {/* Desktop Top Header Bar with Sidebar Toggle */}
+        <header className="hidden lg:flex h-12 bg-white/80 backdrop-blur-md border-b border-groomish-slate/10 px-6 items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleSidebarCollapsed}
+              className="px-2.5 py-1 rounded-xl text-groomish-slate/75 hover:text-groomish-orange hover:bg-groomish-orange/10 border border-groomish-slate/15 transition flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              title={sidebarCollapsed ? "Show sidebar (Ctrl+B)" : "Hide sidebar (Ctrl+B)"}
+            >
+              {sidebarCollapsed ? (
+                <>
+                  <PanelLeftOpen className="w-4 h-4 text-groomish-orange" />
+                  <span>Show Sidebar</span>
+                </>
+              ) : (
+                <>
+                  <PanelLeftClose className="w-4 h-4" />
+                  <span>Hide Sidebar</span>
+                </>
+              )}
+            </button>
+            <span className="text-xs text-groomish-slate/30">|</span>
+            <span className="text-xs font-bold text-groomish-slate/70">
+              Appointment Console • <strong className="font-mono text-groomish-slate">{bookingCode}</strong>
+            </span>
+          </div>
+
+          <button
+            onClick={() => navigate("/staff/dashboard")}
+            className="text-xs font-bold text-groomish-slate hover:text-groomish-orange flex items-center gap-1 cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Back to All Bookings</span>
+          </button>
+        </header>
+
+        <div className="p-3.5 sm:p-5 max-w-6xl w-full mx-auto space-y-4 min-w-0">
           {/* Top Header Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs text-groomish-slate/60">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-groomish-slate/60">
                 <button
                   onClick={() => navigate("/staff/dashboard")}
                   className="hover:text-groomish-orange inline-flex items-center gap-1 transition font-bold"
@@ -689,9 +791,16 @@ export default function StaffBookingDetailPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <span className="font-black font-heading text-sm text-groomish-slate">
-                            ₹{grp.totalPrice}
-                          </span>
+                          <div className="text-right">
+                            <span className="font-black font-heading text-sm text-groomish-slate block">
+                              ₹{grp.totalPrice}
+                            </span>
+                            {grp.totalMrp && grp.totalMrp > grp.totalPrice && (
+                              <span className="text-[11px] text-groomish-slate/40 line-through block">
+                                ₹{grp.totalMrp}
+                              </span>
+                            )}
+                          </div>
                           {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && totalRawItems > 1 && (
                             <button
                               onClick={() => handleRemoveService(grp.itemIds[grp.itemIds.length - 1])}
@@ -750,12 +859,24 @@ export default function StaffBookingDetailPage() {
                           </p>
                           <p className="text-[11px] text-groomish-slate/50 mt-0.5">
                             Qty: {prod.quantity} × ₹{prod.unitPriceSnapshot || prod.unitPrice || 0}
+                            {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
+                              <span className="text-groomish-slate/40 line-through ml-1.5">
+                                (MRP ₹{prod.mrp})
+                              </span>
+                            )}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-black font-heading text-sm text-groomish-slate">
-                            ₹{prod.subtotal || (prod.quantity * (prod.unitPriceSnapshot || prod.unitPrice || 0))}
-                          </span>
+                          <div className="text-right">
+                            <span className="font-black font-heading text-sm text-groomish-slate block">
+                              ₹{prod.totalPrice || prod.subtotal || (prod.quantity * (prod.unitPriceSnapshot || prod.unitPrice || 0))}
+                            </span>
+                            {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
+                              <span className="text-[11px] text-groomish-slate/40 line-through block">
+                                ₹{prod.mrp * (prod.quantity || 1)}
+                              </span>
+                            )}
+                          </div>
                           {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                             <button
                               onClick={() => handleRemoveProduct(prod.id)}
@@ -780,72 +901,23 @@ export default function StaffBookingDetailPage() {
               <BookingTimelineSection timeline={booking.timeline} />
             </div>
 
-            {/* Right 1 Col: Invoice & Finalize */}
+            {/* Right 1 Col: Complete Invoice Breakdown & Finalize */}
             <div className="space-y-6">
-              <div className="bg-white rounded-3xl border border-groomish-slate/10 p-6 shadow-soft space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-groomish-slate/10">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-groomish-orange" />
-                    <h3 className="font-heading font-bold text-sm text-groomish-slate">
-                      Invoice & Bill Total
-                    </h3>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${
-                      booking.paymentStatus === "COMPLETED" || booking.status === "COMPLETED"
-                        ? "bg-groomish-greenLight text-groomish-green border border-groomish-green/30"
-                        : "bg-groomish-goldLight text-groomish-slate border border-groomish-gold/40"
-                    }`}
-                  >
-                    {booking.status === "COMPLETED" || booking.paymentStatus === "COMPLETED"
-                      ? (booking.paymentMethod === "CASH" ? "Paid at Salon" : `Paid Online (${booking.paymentMethod || "UPI"})`)
-                      : (booking.paymentStatus || "PENDING")}
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-groomish-slate/70">
-                    <span>Services Subtotal:</span>
-                    <span className="font-semibold text-groomish-slate">₹{booking.totalAmount || 0}</span>
-                  </div>
-                  {booking.couponCode && (
-                    <div className="flex items-center justify-between text-groomish-green">
-                      <span>Coupon ({booking.couponCode}):</span>
-                      <span>-₹{booking.discountAmount || 0}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-2 border-t border-groomish-slate/10 text-sm font-bold text-groomish-slate">
-                    <span>Total Amount Due:</span>
-                    <span className="font-black text-xl text-groomish-orange font-heading">
-                      ₹{booking.pricePaid ?? booking.totalAmount ?? 0}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-groomish-cream/40 border border-groomish-slate/10 space-y-1 text-[11px] text-groomish-slate/70">
-                  <div className="flex justify-between">
-                    <span>Payment Method:</span>
-                    <span className="font-bold text-groomish-slate">{booking.paymentMethod || "CASH"}</span>
-                  </div>
-                  {booking.invoiceNumber && (
-                    <div className="flex justify-between">
-                      <span>Invoice #:</span>
-                      <span className="font-mono font-bold text-groomish-slate">{booking.invoiceNumber}</span>
-                    </div>
-                  )}
-                </div>
-
+              <InvoiceBreakdownCard
+                booking={booking}
+                className="rounded-3xl border border-groomish-slate/10 p-6 shadow-soft"
+              >
                 {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                   <button
                     disabled={actionLoading}
                     onClick={handleCompleteAndBill}
-                    className="w-full btn-primary text-xs py-3 rounded-2xl inline-flex items-center justify-center gap-2 font-bold shadow-soft"
+                    className="w-full btn-primary text-xs py-3 rounded-2xl inline-flex items-center justify-center gap-2 font-bold shadow-soft mt-1"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Finalize & Bill Client</span>
                   </button>
                 )}
-              </div>
+              </InvoiceBreakdownCard>
             </div>
           </div>
         </div>

@@ -23,6 +23,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import GroomCoinIcon from "../common/GroomCoinIcon";
+import InvoiceBreakdownCard from "../booking/InvoiceBreakdownCard";
+import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 
 export default function BookingDetailsModal({
   open,
@@ -365,32 +367,49 @@ export default function BookingDetailsModal({
               <span>Booked Salon Services</span>
             </h4>
             <div className="divide-y divide-groomish-slate/10 border border-groomish-slate/10 rounded-xl overflow-hidden bg-white text-xs">
-              {(booking.items && booking.items.length > 0) ? (
-                booking.items.map((item) => (
-                  <div key={item.id} className="p-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-groomish-slate">
-                        {item.serviceName || item.serviceNameSnapshot || "Salon Service"}
+              {(() => {
+                const serviceList = booking.items || booking.bookingItems || [];
+                const grouped = groupBookingServices(serviceList);
+                if (grouped.length > 0) {
+                  return grouped.map((grp, idx) => (
+                    <div key={grp.key || idx} className="p-3 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-groomish-slate flex items-center gap-1.5">
+                          <span>{grp.serviceName}</span>
+                          {grp.quantity > 1 && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-groomish-orangeLight text-groomish-orange">
+                              × {grp.quantity}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-groomish-slate/50">
+                          {grp.totalDuration} mins • Status: {grp.status || booking.status || "CONFIRMED"}
+                        </div>
                       </div>
-                      <div className="text-[11px] text-groomish-slate/50">
-                        {item.durationMinutes || item.serviceDurationSnapshot || 30} mins • Status: {item.status || "ACTIVE"}
+                      <div className="text-right">
+                        <div className="font-bold text-groomish-slate">
+                          ₹{grp.totalPrice}
+                        </div>
+                        {grp.totalMrp && grp.totalMrp > grp.totalPrice && (
+                          <div className="text-[10px] text-groomish-slate/40 line-through">
+                            ₹{grp.totalMrp}
+                          </div>
+                        )}
                       </div>
+                    </div>
+                  ));
+                }
+                return (
+                  <div className="p-3 flex items-center justify-between">
+                    <div className="font-bold text-groomish-slate">
+                      {booking.serviceName || "Primary Salon Service"}
                     </div>
                     <div className="font-bold text-groomish-slate">
-                      ₹{item.price ?? item.servicePriceSnapshot ?? 0}
+                      ₹{booking.totalAmount || 0}
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="p-3 flex items-center justify-between">
-                  <div className="font-bold text-groomish-slate">
-                    {booking.serviceName || "Primary Salon Service"}
-                  </div>
-                  <div className="font-bold text-groomish-slate">
-                    ₹{booking.totalAmount || 0}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 
@@ -410,12 +429,25 @@ export default function BookingDetailsModal({
                         Qty: {bp.quantity} × ₹{bp.unitPrice}
                       </div>
                     </div>
-                    <div className="font-bold text-groomish-slate">₹{bp.totalPrice}</div>
+                    <div className="text-right">
+                      <div className="font-bold text-groomish-slate">₹{bp.totalPrice}</div>
+                      {bp.mrp && Number(bp.mrp) > Number(bp.unitPrice) && (
+                        <div className="text-[10px] text-groomish-slate/40 line-through">
+                          ₹{Number(bp.mrp) * (bp.quantity || 1)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* Complete Invoice Breakdown matching Customer view */}
+          <InvoiceBreakdownCard
+            booking={booking}
+            className="rounded-2xl border border-groomish-slate/10 p-4 shadow-xs"
+          />
 
           {/* Admin Management & Update Controls Form */}
           <form onSubmit={handleSaveChanges} className="space-y-4 pt-3 border-t border-groomish-slate/10">

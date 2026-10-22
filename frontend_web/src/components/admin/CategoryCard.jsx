@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { deactivateCategoryApi } from "../../api/admin";
+import { deactivateCategoryApi, activateCategoryApi } from "../../api/admin";
 import EditCategoryModal from "../modals/EditCategoryModal";
 import CategoryServicesModal from "../modals/CategoryServicesModal";
 import { Layers, Edit3, Power, ListFilter, Trash2 } from "lucide-react";
@@ -12,10 +12,14 @@ export default function CategoryCard({ category, refresh }) {
   const [viewServicesOpen, setViewServicesOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleDeactivate = async () => {
+  const handleToggleActive = async () => {
     try {
       setLoading(true);
-      await deactivateCategoryApi(category.id);
+      if (category.active) {
+        await deactivateCategoryApi(category.id);
+      } else {
+        await activateCategoryApi(category.id);
+      }
       refresh();
     } catch (err) {
       await showAlert({
@@ -95,7 +99,7 @@ export default function CategoryCard({ category, refresh }) {
 
           <button
             disabled={loading}
-            onClick={handleDeactivate}
+            onClick={handleToggleActive}
             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition ${
               category.active
                 ? "bg-groomish-crimsonLight text-groomish-crimson hover:bg-groomish-crimson hover:text-white"

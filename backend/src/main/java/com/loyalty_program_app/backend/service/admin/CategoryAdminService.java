@@ -19,6 +19,8 @@ public interface CategoryAdminService {
 
     CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image, String imageUrl, Boolean active);
 
+    CategoryResponse updateCategoryStatus(UUID id, Boolean active);
+
     void softDeleteCategory(UUID id);
 
     CategoryResponse getCategory(UUID id);

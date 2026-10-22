@@ -380,23 +380,25 @@ export default function CategoryDetailPage() {
                           {service.description || "Signature styling delivered by certified salon experts."}
                         </p>
 
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-groomish-goldLight border border-groomish-gold/30 text-groomish-slate text-[10px] font-bold">
-                          <GroomCoinIcon className="w-3.5 h-3.5 shrink-0" />
-                          <span>Earn +{pointsEarned} Groom Coin{pointsEarned !== 1 ? "s" : ""}</span>
+                        <div className="pt-2">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-groomish-goldLight border border-groomish-gold/30 text-groomish-slate text-[10px] font-bold">
+                            <GroomCoinIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>Earn +{pointsEarned} Groom Coin{pointsEarned !== 1 ? "s" : ""}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Pricing & Actions */}
-                    <div className="p-5 pt-0 border-t border-groomish-slate/10 mt-2 flex items-center justify-between">
-                      <div>
-                        <div className="text-lg font-extrabold text-groomish-slate leading-none">
+                    <div className="p-4 sm:p-5 pt-3 border-t border-groomish-slate/10 flex items-center justify-between gap-2 mt-auto">
+                      <div className="min-w-0 pr-1">
+                        <div className="text-base sm:text-[17px] font-extrabold text-groomish-slate leading-tight whitespace-nowrap">
                           {service.subServices && service.subServices.length > 0
                             ? getServicePriceRange(service)
                             : `₹${service.price}`}
                         </div>
                         {(!service.subServices || service.subServices.length === 0) && service.mrp > service.price && (
-                          <div className="text-[11px] text-groomish-slateLight line-through mt-0.5">
+                          <div className="text-[11px] text-groomish-slateLight line-through">
                             ₹{service.mrp}
                           </div>
                         )}
@@ -406,10 +408,10 @@ export default function CategoryDetailPage() {
                         <button
                           type="button"
                           onClick={() => navigate(`/services/${service.id}`)}
-                          className="btn-primary text-xs px-3.5 py-2 flex items-center gap-1.5 shadow-sm"
+                          className="btn-primary text-xs px-3 py-2 flex items-center gap-1.5 shadow-sm shrink-0 whitespace-nowrap"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>View Options</span>
+                          <span>Options</span>
                         </button>
                       ) : items?.some(
                         (i) =>
@@ -419,7 +421,7 @@ export default function CategoryDetailPage() {
                         <button
                           type="button"
                           onClick={() => navigate("/cart")}
-                          className="btn-secondary text-xs px-3.5 py-2 flex items-center gap-1.5 bg-groomish-orangeLight/60 border border-groomish-orange/40 text-groomish-orange hover:bg-groomish-orange hover:text-white transition shadow-2xs font-bold"
+                          className="btn-secondary text-xs px-3 py-2 flex items-center gap-1.5 bg-groomish-orangeLight/60 border border-groomish-orange/40 text-groomish-orange hover:bg-groomish-orange hover:text-white transition shadow-2xs font-bold shrink-0 whitespace-nowrap"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />
                           <span>View Cart</span>
@@ -427,7 +429,7 @@ export default function CategoryDetailPage() {
                       ) : (
                         <button
                           onClick={() => handleAddToCart(service)}
-                          className="btn-primary text-xs px-3.5 py-2 flex items-center gap-1.5 shadow-sm"
+                          className="btn-primary text-xs px-3 py-2 flex items-center gap-1.5 shadow-sm shrink-0 whitespace-nowrap"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />
                           <span>Add Service</span>

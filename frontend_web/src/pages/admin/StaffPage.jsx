@@ -266,95 +266,93 @@ export default function StaffPage() {
                 {staff
                   .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                   .map((s) => (
-                  <tr key={s.id} className="hover:bg-groomish-cream/30 transition">
-                    <td className="py-4 px-6 font-bold text-groomish-slate flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-groomish-blueLight text-groomish-blue flex items-center justify-center font-extrabold text-xs">
-                        <UserCheck className="w-4 h-4" />
-                      </div>
-                      <span>{s.name}</span>
-                    </td>
-                    <td className="py-4 px-6">
-                      {s.storeName ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-groomish-slate bg-groomish-cream border border-groomish-slate/15">
-                          <MapPin className="w-3 h-3 text-groomish-orange shrink-0" />
-                          <span className="truncate max-w-[140px]">{s.storeName}</span>
-                          {s.storeCode && (
-                            <span className="text-[9px] font-mono text-groomish-orange bg-groomish-orange/10 px-1 rounded">
-                              {s.storeCode}
-                            </span>
-                          )}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-groomish-slate/40 italic">
-                          Unassigned
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-4 px-6 text-groomish-slate/80">{s.email}</td>
-                    <td className="py-4 px-6 text-groomish-slate/80">{s.phone || "—"}</td>
-                    <td className="py-4 px-6">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          s.active !== false
-                            ? "bg-groomish-greenLight text-groomish-green"
-                            : "bg-groomish-crimsonLight text-groomish-crimson"
-                        }`}
-                      >
-                        {s.active !== false ? "Active" : "Disabled"}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleOpenEdit(s)}
-                          className="p-2 rounded-xl text-groomish-slate bg-white hover:bg-groomish-orangeLight hover:text-groomish-orange border border-groomish-slate/15 hover:border-groomish-orange/40 transition shadow-2xs cursor-pointer active:scale-95"
-                          title="Edit Staff Member"
+                    <tr key={s.id} className="hover:bg-groomish-cream/30 transition">
+                      <td className="py-4 px-6 font-bold text-groomish-slate flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-groomish-blueLight text-groomish-blue flex items-center justify-center font-extrabold text-xs">
+                          <UserCheck className="w-4 h-4" />
+                        </div>
+                        <span>{s.name}</span>
+                      </td>
+                      <td className="py-4 px-6">
+                        {s.storeName ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-groomish-slate bg-groomish-cream border border-groomish-slate/15">
+                            <MapPin className="w-3 h-3 text-groomish-orange shrink-0" />
+                            <span className="truncate max-w-[140px]">{s.storeName}</span>
+                            {s.storeCode && (
+                              <span className="text-[9px] font-mono text-groomish-orange bg-groomish-orange/10 px-1 rounded">
+                                {s.storeCode}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-groomish-slate/40 italic">
+                            Unassigned
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 text-groomish-slate/80">{s.email}</td>
+                      <td className="py-4 px-6 text-groomish-slate/80">{s.phone || "—"}</td>
+                      <td className="py-4 px-6">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${s.active !== false
+                              ? "bg-groomish-greenLight text-groomish-green"
+                              : "bg-groomish-crimsonLight text-groomish-crimson"
+                            }`}
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
+                          {s.active !== false ? "Active" : "Disabled"}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenEdit(s)}
+                            className="p-2 rounded-xl text-groomish-slate bg-white hover:bg-groomish-orangeLight hover:text-groomish-orange border border-groomish-slate/15 hover:border-groomish-orange/40 transition shadow-2xs cursor-pointer active:scale-95"
+                            title="Edit Staff Member"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
 
-                        <button
-                          onClick={() => handleToggleActive(s.id)}
-                          className={`p-2 rounded-xl border transition shadow-2xs cursor-pointer active:scale-95 ${
-                            s.active !== false
-                              ? "bg-white text-groomish-crimson border-groomish-crimson/20 hover:bg-groomish-crimson/10"
-                              : "bg-white text-groomish-green border-groomish-green/20 hover:bg-groomish-green/10"
-                          }`}
-                          title={s.active !== false ? "Deactivate Staff" : "Activate Staff"}
-                        >
-                          <Power className="w-3.5 h-3.5" />
-                        </button>
+                          <button
+                            onClick={() => handleToggleActive(s.id)}
+                            className={`p-2 rounded-xl border transition shadow-2xs cursor-pointer active:scale-95 ${s.active !== false
+                                ? "bg-white text-groomish-crimson border-groomish-crimson/20 hover:bg-groomish-crimson/10"
+                                : "bg-white text-groomish-green border-groomish-green/20 hover:bg-groomish-green/10"
+                              }`}
+                            title={s.active !== false ? "Deactivate Staff" : "Activate Staff"}
+                          >
+                            <Power className="w-3.5 h-3.5" />
+                          </button>
 
-                        <button
-                          onClick={async () => {
-                            const ok = await showConfirm({
-                              title: "Force Delete Staff Member",
-                              message: `Are you sure you want to FORCE DELETE staff member "${s.name}"?\nThis permanently removes their staff profile.`,
-                              confirmText: "Force Delete Staff",
-                              variant: "danger",
-                            });
-                            if (!ok) return;
-
-                            try {
-                              await forceDeleteStaffApi(s.id);
-                              loadData();
-                            } catch (err) {
-                              await showAlert({
-                                title: "Deletion Failed",
-                                message: err.response?.data?.message || "Failed to force delete staff.",
+                          <button
+                            onClick={async () => {
+                              const ok = await showConfirm({
+                                title: "Force Delete Staff Member",
+                                message: `Are you sure you want to FORCE DELETE staff member "${s.name}"?\nThis permanently removes their staff profile.`,
+                                confirmText: "Force Delete Staff",
                                 variant: "danger",
                               });
-                            }
-                          }}
-                          className="p-2 rounded-xl border border-red-200 text-red-600 bg-white hover:bg-red-50 hover:border-red-300 transition shadow-2xs cursor-pointer active:scale-95"
-                          title="Force Delete Staff Member Permanently"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                              if (!ok) return;
+
+                              try {
+                                await forceDeleteStaffApi(s.id);
+                                loadData();
+                              } catch (err) {
+                                await showAlert({
+                                  title: "Deletion Failed",
+                                  message: err.response?.data?.message || "Failed to force delete staff.",
+                                  variant: "danger",
+                                });
+                              }
+                            }}
+                            className="p-2 rounded-xl border border-red-200 text-red-600 bg-white hover:bg-red-50 hover:border-red-300 transition shadow-2xs cursor-pointer active:scale-95"
+                            title="Force Delete Staff Member Permanently"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
@@ -445,7 +443,7 @@ export default function StaffPage() {
               </label>
               <div className="flex rounded-xl overflow-hidden border border-groomish-slate/15 bg-white focus-within:border-groomish-orange focus-within:ring-2 focus-within:ring-groomish-orange/20 transition-all">
                 <span className="inline-flex items-center px-3 bg-groomish-cream text-groomish-slate font-semibold text-xs border-r border-groomish-slate/15 select-none">
-                  🇮🇳 +91
+                  +91
                 </span>
                 <input
                   type="tel"

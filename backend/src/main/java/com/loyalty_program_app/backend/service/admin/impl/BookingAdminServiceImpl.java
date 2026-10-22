@@ -409,6 +409,8 @@ public class BookingAdminServiceImpl implements BookingAdminService {
 
         dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
         dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
+        dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
+        dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
         dto.setTotalAmount(b.getTotalAmount());
         dto.setPricePaid(b.getPricePaid() != null ? b.getPricePaid() : b.getTotalAmount());
         dto.setStatus(b.getStatus().name());
@@ -418,6 +420,7 @@ public class BookingAdminServiceImpl implements BookingAdminService {
 
         if (b.getPayment() != null) {
             dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
+            dto.setInvoiceNumber(b.getPayment().getInvoiceNumber());
             if (b.getStatus() == BookingStatus.COMPLETED) {
                 dto.setPaymentStatus("COMPLETED");
             } else if (b.getStatus() == BookingStatus.CANCELLED) {
@@ -515,8 +518,31 @@ public class BookingAdminServiceImpl implements BookingAdminService {
         BookingItemDetailsResponse dto = new BookingItemDetailsResponse();
         dto.setId(item.getId());
         dto.setServiceId(item.getService() != null ? item.getService().getId() : null);
-        dto.setServiceName(item.getServiceNameSnapshot() != null ? item.getServiceNameSnapshot() : (item.getService() != null ? item.getService().getName() : "Salon Service"));
-        dto.setPrice(item.getServicePriceSnapshot() != null ? item.getServicePriceSnapshot() : (item.getService() != null ? item.getService().getPrice() : 0.0));
+        String sName = item.getServiceNameSnapshot() != null ? item.getServiceNameSnapshot() : (item.getService() != null ? item.getService().getName() : "Salon Service");
+        dto.setServiceName(sName);
+        Double price = item.getServicePriceSnapshot() != null ? item.getServicePriceSnapshot() : (item.getService() != null ? item.getService().getPrice() : 0.0);
+        dto.setPrice(price != null ? price : 0.0);
+
+        Double subMrp = null;
+        if (item.getService() != null && item.getService().getSubServices() != null) {
+            for (com.loyalty_program_app.backend.model.SubService sub : item.getService().getSubServices()) {
+                if (sub.getName() != null && sName.toLowerCase().contains(sub.getName().toLowerCase())) {
+                    if (sub.getMrp() != null && sub.getMrp() > 0) {
+                        subMrp = sub.getMrp();
+                    }
+                    break;
+                }
+            }
+        }
+        double uMrp = subMrp != null ? subMrp
+                : (item.getService() != null && item.getService().getMrp() != null && item.getService().getMrp() > 0
+                        ? item.getService().getMrp()
+                        : dto.getPrice());
+        if (uMrp < dto.getPrice()) {
+            uMrp = dto.getPrice();
+        }
+        dto.setMrp(uMrp);
+
         dto.setDurationMinutes(item.getServiceDurationSnapshot() != null ? item.getServiceDurationSnapshot() : (item.getService() != null ? item.getService().getDurationMinutes() : 30));
         dto.setRewardCoins(item.getServiceRewardCoinsSnapshot() != null ? item.getServiceRewardCoinsSnapshot() : 0);
         dto.setImage(item.getService() != null ? item.getService().getImage() : null);
