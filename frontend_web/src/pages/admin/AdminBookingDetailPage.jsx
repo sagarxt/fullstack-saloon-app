@@ -547,7 +547,9 @@ export default function AdminBookingDetailPage() {
                               </>
                             )}
                             <span>•</span>
-                            <span className="capitalize">{grp.status || booking.status}</span>
+                            <span className={booking.status === "CANCELLED" || grp.status === "CANCELLED" ? "text-groomish-crimson font-bold uppercase" : "capitalize"}>
+                              {booking.status === "CANCELLED" || grp.status === "CANCELLED" ? "CANCELLED" : (grp.status || booking.status)}
+                            </span>
                           </p>
                         </div>
                       </div>
@@ -574,13 +576,25 @@ export default function AdminBookingDetailPage() {
                         <p className="font-bold text-xs text-groomish-slate">
                           {booking.serviceName || "Salon Service"}
                         </p>
-                        <p className="text-[11px] text-groomish-slate/50">
-                          {booking.totalDurationMinutes || 45} mins
+                        <p className="text-[11px] text-groomish-slate/50 flex items-center gap-1.5 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          <span>{booking.totalDurationMinutes || 45} mins</span>
+                          <span>•</span>
+                          <span className={booking.status === "CANCELLED" ? "text-groomish-crimson font-bold uppercase" : "capitalize"}>
+                            {booking.status === "CANCELLED" ? "CANCELLED" : booking.status}
+                          </span>
                         </p>
                       </div>
                     </div>
-                    <div className="text-right font-black font-heading text-sm text-groomish-slate">
-                      ₹{booking.totalAmount || 0}
+                    <div className="text-right">
+                      <span className="font-black font-heading text-sm text-groomish-slate block">
+                        ₹{booking.totalAmount || 0}
+                      </span>
+                      {booking.totalMrp && booking.totalMrp > booking.totalAmount && (
+                        <span className="text-[11px] text-groomish-slate/40 line-through block">
+                          ₹{booking.totalMrp}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

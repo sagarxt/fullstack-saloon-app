@@ -1,6 +1,7 @@
 package com.loyalty_program_app.backend.service.utils.impl;
 
 import com.cloudinary.Cloudinary;
+import com.cloudinary.Transformation;
 import com.loyalty_program_app.backend.service.utils.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +58,9 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             Map<String, Object> options = new HashMap<>();
             options.put("folder", targetFolder);
             options.put("resource_type", "auto");
+            options.put("transformation", new Transformation()
+                    .quality("auto").chain()
+                    .width(800).crop("scale"));
 
             if (publicId != null && !publicId.trim().isEmpty()) {
                 String cleanId = slugify(publicId);
@@ -80,6 +84,26 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             log.error("Cloudinary upload failed for folder '{}' with publicId '{}': {}", targetFolder, publicId, e.getMessage(), e);
             throw new RuntimeException("Failed to upload image to Cloudinary: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public String generateUrl(String publicId) {
+        if (publicId == null || publicId.isBlank()) return null;
+        return cloudinary.url()
+                .transformation(new Transformation()
+                        .quality("auto").chain()
+                        .width(800).crop("scale"))
+                .generate(publicId);
+    }
+
+    @Override
+    public String imageTag(String publicId) {
+        if (publicId == null || publicId.isBlank()) return "";
+        return cloudinary.url()
+                .transformation(new Transformation()
+                        .quality("auto").chain()
+                        .width(800).crop("scale"))
+                .imageTag(publicId);
     }
 
     /**

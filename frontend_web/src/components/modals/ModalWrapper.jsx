@@ -1,15 +1,17 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
-export default function ModalWrapper({ open, onClose, children, maxWidth = "max-w-lg" }) {
+export default function ModalWrapper({ open, isOpen, onClose, children, maxWidth = "max-w-lg", zIndex = "z-[9999]" }) {
+  const isModalOpen = Boolean(open ?? isOpen);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && open) {
+      if (e.key === "Escape" && isModalOpen) {
         onClose();
       }
     };
 
-    if (open) {
+    if (isModalOpen) {
       document.body.style.overflow = "hidden";
       document.documentElement.style.overflow = "hidden";
     }
@@ -20,12 +22,12 @@ export default function ModalWrapper({ open, onClose, children, maxWidth = "max-
       document.documentElement.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onClose]);
+  }, [isModalOpen, onClose]);
 
-  if (!open) return null;
+  if (!isModalOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in`}>
       {/* Full Viewport Backdrop */}
       <div
         className="fixed inset-0 bg-groomish-slate/75 backdrop-blur-sm transition-opacity"

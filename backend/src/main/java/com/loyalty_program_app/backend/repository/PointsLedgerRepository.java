@@ -27,6 +27,8 @@ public interface PointsLedgerRepository extends JpaRepository<PointsLedger, UUID
 
     List<PointsLedger> findByRelatedId(UUID relatedId);
 
+    List<PointsLedger> findByRelatedIdIn(java.util.Collection<UUID> relatedIds);
+
     java.util.Optional<PointsLedger> findFirstByRelatedId(UUID relatedId);
 }
 

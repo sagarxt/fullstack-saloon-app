@@ -102,7 +102,7 @@ export const KNOWN_BRANDS = {
 /**
  * Normalizes brand name and returns full brand details
  */
-export function getBrandInfo(rawBrandName) {
+export function getBrandInfo(rawBrandName, serverBrands = []) {
   if (!rawBrandName || !rawBrandName.trim()) {
     return {
       name: "Authentic Salon Brand",
@@ -118,7 +118,46 @@ export function getBrandInfo(rawBrandName) {
 
   const clean = rawBrandName.trim();
   const key = clean.toLowerCase();
+  const normKey = clean
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['’.\s-]/g, "")
+    .toLowerCase();
 
+  // 1. Priority: Match against server-uploaded brands from DB
+  if (Array.isArray(serverBrands) && serverBrands.length > 0) {
+    const serverMatch = serverBrands.find((b) => {
+      if (!b || !b.name) return false;
+      const bClean = b.name.trim();
+      const bKey = bClean.toLowerCase();
+      const bNorm = bClean
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/['’.\s-]/g, "")
+        .toLowerCase();
+      return (
+        bKey === key ||
+        bNorm === normKey ||
+        bKey.includes(key) ||
+        key.includes(bKey) ||
+        (normKey && bNorm && (bNorm.includes(normKey) || normKey.includes(bNorm)))
+      );
+    });
+    if (serverMatch) {
+      return {
+        name: serverMatch.name,
+        tagline: serverMatch.shortDescription || "Certified Authentic Salon Partner",
+        origin: "Authorized Partner",
+        verified: true,
+        logo: serverMatch.logo || null,
+        initials: getBrandInitials(serverMatch.name),
+        accentColor: "#F36A22",
+        badge: "100% Genuine",
+      };
+    }
+  }
+
+  // 2. Fallback: Known brands preset dictionary
   const found = KNOWN_BRANDS[key] || Object.entries(KNOWN_BRANDS).find(([k]) => key.includes(k) || k.includes(key))?.[1];
 
   if (found) {
@@ -161,7 +200,7 @@ export function extractBrandsFromProducts(products = [], serverBrands = []) {
   // Seed from server brands
   if (Array.isArray(serverBrands)) {
     serverBrands.filter(Boolean).forEach((b) => {
-      const clean = b.trim();
+      const clean = typeof b === "string" ? b.trim() : (b.name ? b.name.trim() : "");
       if (clean) {
         brandMap.set(clean.toLowerCase(), {
           rawName: clean,
@@ -189,7 +228,7 @@ export function extractBrandsFromProducts(products = [], serverBrands = []) {
   });
 
   return Array.from(brandMap.values()).map((item) => {
-    const info = getBrandInfo(item.rawName);
+    const info = getBrandInfo(item.rawName, serverBrands);
     return {
       ...info,
       productCount: item.count,

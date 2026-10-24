@@ -642,3 +642,53 @@
      - Added a "Retry" button to the branch selection modal if branches ever fail to load.
 
 
+
+---
+
+### Phase I: Persistent 100-Year Sessions, Cloudinary Transformations, Cancelled Item Status Parity, and Brand Showcase (Completed - October 25, 2026)
+1. **Permanent Persistent Session Login (Backend & Frontend)**:
+   - Updated `app.jwt.expiration-ms` from 1 hour (`3600000` ms) to **100 years** (`3153600000000` ms) in `application.properties`.
+   - Updated `JwtTokenProvider.validateToken`: catches `ExpiredJwtException` and safely returns claims, allowing existing users with legacy short-lived tokens to remain logged in indefinitely without premature 401 session logouts.
+   - User sessions now remain permanently authenticated across browser refreshes, device sleep, and backend restarts until explicit user sign out.
+
+2. **Cloudinary Automatic Quality & Scale Transformations**:
+   - Integrated user-specified Cloudinary configuration:
+     `cloudinary.url().transformation(new Transformation().quality("auto").chain().width(800).crop("scale")).imageTag("me/bridge")`
+   - Added automated transformation to upload options in `CloudinaryServiceImpl.java`, ensuring all uploaded images are automatically compressed with auto-quality and scaled to `w: 800`.
+   - Exposed `generateUrl(String publicId)` and `imageTag(String publicId)` in `CloudinaryService.java`.
+   - Verified via unit test (`CloudinaryTransformationTest.java`), generating transformed delivery URLs with `q_auto,c_scale,w_800`.
+   - Updated frontend `imageHelper.js` default transformation params to `{ width = 800, quality = "auto", crop = "scale" }`.
+
+3. **Cancelled Booking Service Item Status Synchronization**:
+   - Resolved the issue where cancelled bookings showed service items with `PENDING` status.
+   - Updated backend DTO mapping across `BookingAdminServiceImpl.java`, `StaffBookingServiceImpl.java`, and `CustomerBookingServiceImpl.java`: whenever the parent booking status is `CANCELLED`, item status is returned as `"CANCELLED"`.
+   - Synchronized database items for existing cancelled orders in `booking_items` to `CANCELLED`.
+   - In `AdminBookingDetailPage.jsx` and `StaffBookingDetailPage.jsx`, styled cancelled service items with bold red text (`text-groomish-crimson font-bold uppercase`).
+
+4. **Staff Booking Detail Strike-through MRP Parity**:
+   - In `StaffBookingDetailPage.jsx`, resolved the missing MRP bug by pointing `groupedServices` to `booking.items || booking.bookingItems || []`.
+   - Added strike-through original MRP display underneath the final price for both salon services and retail products matching the Admin Booking console.
+
+5. **Certified Brand Showcase & Normalized Accent Matching**:
+   - Overhauled `BrandShowcaseSection.jsx` to render 8 compact, rounded brand logo cards per row on the Home page and Products page.
+   - Enhanced `brandHelper.js` with normalized accent and punctuation stripping (e.g. matching "L'Oreal" with "L'Oréal Professionnel Paris").
+   - Added unique timestamp prefixing in `BrandsManagementModal.jsx` to prevent Cloudinary filename overwrites.
+
+6. **Discount Percentage Badges on Product & Service Cards**:
+   - Replaced photo count badges with top-right `{discountPercent}% OFF` badges across `ProductsPage.jsx`, `ProductDetailPage.jsx`, `ServicesPage.jsx`, and `CategoryDetailPage.jsx`.
+
+7. **Markdown Table Formatting & Flow Guide in `README.md`**:
+   - Fixed broken GitHub Markdown table syntax (column count mismatches between headers and delimiters) that caused raw pipe characters to collapse into unformatted text.
+   - Created a comprehensive **Application Pages & User Flow Directory** covering all 32 pages across Customer, Staff, and Admin portals with detailed user flows, core functionalities, and dedicated screenshot attachment placeholders.
+
+8. **Cancelled Order Revenue Exclusion & Sidebar UI Modernization**:
+   - **Revenue Calculation**: Excluded `BookingStatus.CANCELLED` from `totalRevenue` in `DashboardAdminServiceImpl.java` and `StaffDashboardServiceImpl.java`. Cancelled bookings no longer inflate salon revenue statistics.
+   - **Admin & Staff Sidebar Header (`AdminSidebar.jsx`, `StaffSidebar.jsx`)**:
+     - Updated brand logo to `https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png`.
+     - Streamlined the header to display **only** the logo. Removed "Groomish Now" text, "Admin Portal" / "Staff Portal" badge, and desktop collapse button (preserved mobile drawer close button).
+     - Scaled up the logo to span the full sidebar width proportionally (`w-full h-11 sm:h-12 max-h-[52px] object-contain`) and centered horizontally so it fits the width cleanly without distortion.
+   - **Sidebar Footer Clean-up**:
+     - Removed redundant desktop "Hide Sidebar" button (already available in Navbar).
+     - Removed "Customer Website" link button.
+   - **Active Appointment Card Removal**:
+     - Removed the "Active Appointment" status card from the sidebar navigation.

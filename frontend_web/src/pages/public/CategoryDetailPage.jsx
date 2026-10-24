@@ -331,6 +331,21 @@ export default function CategoryDetailPage() {
                   defaultServiceImages.UNISEX;
                 const pointsEarned = calculateGroomCoins(service.price, service.rewards);
 
+                const serviceDiscountPercent = (() => {
+                  if (service.subServices && service.subServices.length > 0) {
+                    const discounts = service.subServices
+                      .filter((s) => s.mrp && s.mrp > s.price)
+                      .map((s) => Math.round(((s.mrp - s.price) / s.mrp) * 100));
+                    if (discounts.length > 0) {
+                      return Math.max(...discounts);
+                    }
+                  }
+                  if (service.mrp && service.mrp > service.price) {
+                    return Math.round(((service.mrp - service.price) / service.mrp) * 100);
+                  }
+                  return 0;
+                })();
+
                 return (
                   <div
                     key={service.id}
@@ -355,6 +370,13 @@ export default function CategoryDetailPage() {
                         <span className="absolute top-3 left-3 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/90 text-groomish-slate shadow-sm backdrop-blur-sm">
                           {service.gender || "UNISEX"}
                         </span>
+
+                        {/* Discount Chip on Top Right */}
+                        {serviceDiscountPercent > 0 && (
+                          <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-crimson text-white shadow-sm z-10">
+                            {serviceDiscountPercent}% OFF
+                          </span>
+                        )}
 
                         {/* Duration */}
                         <span className="absolute bottom-3 left-3 flex items-center gap-1 text-[11px] font-semibold text-white bg-black/40 backdrop-blur-sm px-2.5 py-0.5 rounded-full">

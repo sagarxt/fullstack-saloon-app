@@ -8,7 +8,7 @@
 
 export function getOptimizedImageUrl(
   url,
-  { width = 800, quality = "auto", crop = "limit" } = {}
+  { width = 800, quality = "auto", crop = "scale" } = {}
 ) {
   if (!url || typeof url !== "string") return "";
 

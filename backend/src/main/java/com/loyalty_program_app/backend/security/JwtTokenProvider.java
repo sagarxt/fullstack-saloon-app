@@ -42,11 +42,16 @@ public class JwtTokenProvider {
     }
 
     public Claims validateToken(String token) {
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            return Jwts.parser()
+                    .verifyWith(key)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (io.jsonwebtoken.ExpiredJwtException ex) {
+            // Keep session active until user explicitly logs out
+            return ex.getClaims();
+        }
     }
 
     public String getUserId(String token) {

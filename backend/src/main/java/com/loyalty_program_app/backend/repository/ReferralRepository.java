@@ -10,4 +10,8 @@ import java.util.UUID;
 
 public interface ReferralRepository extends JpaRepository<Referral, UUID> {
     Page<Referral> findByReferrer(User referrer, Pageable pageable);
+
+    long countByReferrerId(UUID referrerId);
+
+    long countByReferrerIdAndRewardGivenTrue(UUID referrerId);
 }

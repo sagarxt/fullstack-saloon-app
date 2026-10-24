@@ -1,6 +1,8 @@
 package com.loyalty_program_app.backend.repository;
 
 import com.loyalty_program_app.backend.model.Booking;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -28,6 +30,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
     java.util.Optional<Booking> findFirstByBookingCodeStartingWithIgnoreCase(String prefix);
 
     List<Booking> findByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    Page<Booking> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
     @Query("""
         SELECT b FROM Booking b

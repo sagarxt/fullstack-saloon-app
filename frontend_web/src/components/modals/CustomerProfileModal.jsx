@@ -11,7 +11,13 @@ import {
   updateUserGroupsApi,
   getUserGroupsCatalogApi,
 } from "../../api/admin";
-import { updateCustomerByStaff } from "../../api/staff";
+import {
+  updateCustomerByStaff,
+  getCustomerHistoryByStaff,
+  getCustomerPointsByStaff,
+  getCustomerPointsHistoryByStaff,
+  getCustomerBookingsByStaff,
+} from "../../api/staff";
 import { extractList } from "../../utils/dataHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import { showAlert } from "../../context/ConfirmContext";
@@ -235,13 +241,25 @@ export default function CustomerProfileModal({
     if (!customerId) return;
     setLoading(true);
     try {
-      const [profileRes, pointsRes, historyRes, bookingsRes, catalogRes] = await Promise.all([
-        getCustomerProfileApi(customerId).catch(() => ({ data: initialData })),
-        getCustomerPointsApi(customerId).catch(() => ({ data: null })),
-        getCustomerPointsHistoryApi(customerId, 0, 50).catch(() => ({ data: [] })),
-        getCustomerBookingsApi(customerId, 0, 50).catch(() => ({ data: [] })),
-        getUserGroupsCatalogApi().catch(() => ({ data: [] })),
-      ]);
+      let profileRes, pointsRes, historyRes, bookingsRes, catalogRes;
+
+      if (isStaff) {
+        [profileRes, pointsRes, historyRes, bookingsRes] = await Promise.all([
+          getCustomerHistoryByStaff(customerId).catch(() => ({ data: initialData })),
+          getCustomerPointsByStaff(customerId).catch(() => ({ data: null })),
+          getCustomerPointsHistoryByStaff(customerId, 0, 50).catch(() => ({ data: [] })),
+          getCustomerBookingsByStaff(customerId, 0, 50).catch(() => ({ data: [] })),
+        ]);
+        catalogRes = { data: [] };
+      } else {
+        [profileRes, pointsRes, historyRes, bookingsRes, catalogRes] = await Promise.all([
+          getCustomerProfileApi(customerId).catch(() => ({ data: initialData })),
+          getCustomerPointsApi(customerId).catch(() => ({ data: null })),
+          getCustomerPointsHistoryApi(customerId, 0, 50).catch(() => ({ data: [] })),
+          getCustomerBookingsApi(customerId, 0, 50).catch(() => ({ data: [] })),
+          getUserGroupsCatalogApi().catch(() => ({ data: [] })),
+        ]);
+      }
 
       const prof = profileRes?.data || initialData;
       setProfile(prof);
@@ -726,6 +744,16 @@ export default function CustomerProfileModal({
                           <span className="text-groomish-slate/70 font-semibold flex items-center gap-1">
                             <MapPin className="w-3 h-3 text-groomish-slate/40" />
                             {b.storeName}
+                          </span>
+                        )}
+                        {isStaff && b.storeId && currentUser?.storeId && String(b.storeId) !== String(currentUser.storeId) && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            View Only (Other Branch)
+                          </span>
+                        )}
+                        {isStaff && b.storeId && currentUser?.storeId && String(b.storeId) === String(currentUser.storeId) && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            Your Branch
                           </span>
                         )}
                       </div>

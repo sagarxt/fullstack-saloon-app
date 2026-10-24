@@ -6,7 +6,7 @@ import AuthModal from "../../components/modals/AuthModal";
 import CustomSelect from "../../components/common/CustomSelect";
 import Pagination from "../../components/common/Pagination";
 import BrandShowcaseSection from "../../components/shop/BrandShowcaseSection";
-import { getPublicProducts, getProductCategories, getProductBrands } from "../../api/products";
+import { getPublicProducts, getProductCategories, getPublicBrands } from "../../api/products";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
 import { useGroomCoin } from "../../context/GroomCoinContext";
@@ -98,7 +98,7 @@ export default function ProductsPage() {
       const [prodsRes, catsRes, brandsRes] = await Promise.all([
         getPublicProducts(),
         getProductCategories().catch(() => ({ data: [] })),
-        getProductBrands().catch(() => ({ data: [] })),
+        getPublicBrands().catch(() => ({ data: [] })),
       ]);
       const rawProducts = extractList(prodsRes.data);
       // Strictly show only active products in shop
@@ -392,22 +392,15 @@ export default function ProductsPage() {
                               <span>{product.brand || "Groomish Pro"}</span>
                             </button>
 
-                            {/* Multi-image photo count badge */}
-                            {product.images && product.images.length > 1 && (
-                              <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-slate/85 backdrop-blur-sm text-white shadow-sm">
-                                {product.images.length} photos
-                              </span>
-                            )}
-
                             {/* In-Store Pickup Badge */}
                             <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-groomish-slateDark/80 text-white backdrop-blur-sm flex items-center gap-1">
                               <Store className="w-2.5 h-2.5 text-groomish-gold" />
                               <span>In-Store Pickup</span>
                             </span>
 
-                            {/* Discount Chip */}
-                            {discountPercent > 0 && !(product.images && product.images.length > 1) && (
-                              <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-crimson text-white shadow-sm">
+                            {/* Discount Chip on Top Right */}
+                            {discountPercent > 0 && (
+                              <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-crimson text-white shadow-sm z-10">
                                 {discountPercent}% OFF
                               </span>
                             )}

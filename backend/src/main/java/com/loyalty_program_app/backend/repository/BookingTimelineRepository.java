@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface BookingTimelineRepository extends JpaRepository<BookingTimeline, UUID> {
     List<BookingTimeline> findByBookingIdOrderByCreatedAtAsc(UUID bookingId);
+
+    List<BookingTimeline> findByBookingIdInOrderByCreatedAtAsc(java.util.Collection<UUID> bookingIds);
 }

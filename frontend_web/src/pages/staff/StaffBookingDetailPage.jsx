@@ -12,6 +12,7 @@ import {
   completeBookingAndSendBillByStaff,
   confirmBookingByStaff,
 } from "../../api/staff";
+import { useAuth } from "../../context/useAuth";
 import StaffSidebar from "../../components/staff/StaffSidebar";
 import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import BookingTimelineSection from "../../components/booking/BookingTimelineSection";
@@ -53,6 +54,7 @@ import {
 export default function StaffBookingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Mobile drawer state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -373,8 +375,9 @@ export default function StaffBookingDetailPage() {
   };
 
   const bookingCode = booking?.bookingCode || (booking?.id ? `GN-${booking.id.slice(0, 8).toUpperCase()}` : "");
-  const groupedServices = booking ? groupBookingServices(booking.bookingItems || []) : [];
-  const totalRawItems = booking?.bookingItems?.length || 0;
+  const groupedServices = booking ? groupBookingServices(booking.items || booking.bookingItems || []) : [];
+  const totalRawItems = (booking?.items || booking?.bookingItems || []).length;
+  const isOwnBranch = !user?.storeId || !booking?.storeId || String(user.storeId) === String(booking.storeId);
 
   if (loading) {
     return (
@@ -523,7 +526,14 @@ export default function StaffBookingDetailPage() {
 
             {/* Quick Staff Actions */}
             <div className="flex items-center gap-2 flex-wrap">
-              {booking.status === "PENDING" && (
+              {!isOwnBranch && (
+                <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <span>View-Only ({booking.storeName || "Other Branch"})</span>
+                </span>
+              )}
+
+              {isOwnBranch && booking.status === "PENDING" && (
                 <button
                   disabled={actionLoading}
                   onClick={handleConfirmBooking}
@@ -535,7 +545,7 @@ export default function StaffBookingDetailPage() {
                 </button>
               )}
 
-              {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
+              {isOwnBranch && booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                 <button
                   disabled={actionLoading}
                   onClick={handleCompleteAndBill}
@@ -546,7 +556,7 @@ export default function StaffBookingDetailPage() {
                 </button>
               )}
 
-              {booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (
+              {isOwnBranch && booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (
                 <button
                   disabled={actionLoading}
                   onClick={() => setCancelModalOpen(true)}
@@ -567,6 +577,20 @@ export default function StaffBookingDetailPage() {
               </button>
             </div>
           </div>
+
+          {/* VIEW-ONLY OTHER BRANCH BANNER */}
+          {!isOwnBranch && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div className="text-xs">
+                <span className="font-bold block">Branch View-Only Mode</span>
+                <span>
+                  This appointment belongs to <b>{booking.storeName || "another salon branch"}</b>.
+                  Stylists have read-only access to view customer services, bill breakdown, and timeline. Only stylists assigned to this branch can edit, add services, or cancel this booking.
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Success / Error Alerts */}
           {successMsg && (
@@ -602,13 +626,15 @@ export default function StaffBookingDetailPage() {
                   <strong>Online Payment Pending:</strong> This appointment is on hold awaiting online payment confirmation. You can confirm it once payment is completed or received at the counter.
                 </span>
               </div>
-              <button
-                onClick={handleConfirmBooking}
-                disabled={actionLoading}
-                className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition"
-              >
-                Confirm Booking Now
-              </button>
+              {isOwnBranch && (
+                <button
+                  onClick={handleConfirmBooking}
+                  disabled={actionLoading}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition"
+                >
+                  Confirm Booking Now
+                </button>
+              )}
             </div>
           )}
 
@@ -740,7 +766,7 @@ export default function StaffBookingDetailPage() {
                       Salon Services ({totalRawItems || 1})
                     </h3>
                   </div>
-                  {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
+                  {isOwnBranch && booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                     <button
                       onClick={handleOpenAddServiceModal}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-groomish-orange text-white text-xs font-bold hover:bg-groomish-orangeDark active:scale-95 transition shadow-soft"
@@ -786,6 +812,10 @@ export default function StaffBookingDetailPage() {
                                   </span>
                                 </>
                               )}
+                              <span>•</span>
+                              <span className={booking.status === "CANCELLED" || grp.status === "CANCELLED" ? "text-groomish-crimson font-bold uppercase" : "capitalize"}>
+                                {booking.status === "CANCELLED" || grp.status === "CANCELLED" ? "CANCELLED" : (grp.status || booking.status)}
+                              </span>
                             </p>
                           </div>
                         </div>
@@ -801,7 +831,7 @@ export default function StaffBookingDetailPage() {
                               </span>
                             )}
                           </div>
-                          {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && totalRawItems > 1 && (
+                          {isOwnBranch && booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && totalRawItems > 1 && (
                             <button
                               onClick={() => handleRemoveService(grp.itemIds[grp.itemIds.length - 1])}
                               className="p-1.5 text-groomish-slate/40 hover:text-groomish-crimson hover:bg-groomish-crimsonLight rounded-lg transition"
@@ -815,12 +845,34 @@ export default function StaffBookingDetailPage() {
                     ))
                   ) : (
                     <div className="p-4 flex items-center justify-between gap-4">
-                      <p className="font-bold text-xs text-groomish-slate">
-                        {booking.serviceName || "Salon Service"}
-                      </p>
-                      <span className="font-black font-heading text-sm text-groomish-slate">
-                        ₹{booking.totalAmount || 0}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange font-bold text-xs flex items-center justify-center shrink-0">
+                          #1
+                        </div>
+                        <div>
+                          <p className="font-bold text-xs text-groomish-slate">
+                            {booking.serviceName || "Salon Service"}
+                          </p>
+                          <p className="text-[11px] text-groomish-slate/50 flex items-center gap-1.5 mt-0.5">
+                            <Clock className="w-3 h-3" />
+                            <span>{booking.totalDurationMinutes || 45} mins</span>
+                            <span>•</span>
+                            <span className={booking.status === "CANCELLED" ? "text-groomish-crimson font-bold uppercase" : "capitalize"}>
+                              {booking.status === "CANCELLED" ? "CANCELLED" : booking.status}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black font-heading text-sm text-groomish-slate block">
+                          ₹{booking.totalAmount || 0}
+                        </span>
+                        {booking.totalMrp && booking.totalMrp > booking.totalAmount && (
+                          <span className="text-[11px] text-groomish-slate/40 line-through block">
+                            ₹{booking.totalMrp}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -832,10 +884,10 @@ export default function StaffBookingDetailPage() {
                   <div className="flex items-center gap-2">
                     <ShoppingBag className="w-4 h-4 text-groomish-blue" />
                     <h3 className="font-heading font-bold text-base text-groomish-slate">
-                      Retail Products ({booking.products?.length || 0})
+                      Retail Products ({(booking.products || booking.bookingProducts || []).length})
                     </h3>
                   </div>
-                  {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
+                  {isOwnBranch && booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                     <button
                       onClick={handleOpenAddProductModal}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-groomish-blue text-white text-xs font-bold hover:bg-sky-600 active:scale-95 transition shadow-soft"
@@ -846,9 +898,9 @@ export default function StaffBookingDetailPage() {
                   )}
                 </div>
 
-                {booking.products && booking.products.length > 0 ? (
+                {(booking.products || booking.bookingProducts) && (booking.products || booking.bookingProducts).length > 0 ? (
                   <div className="divide-y divide-groomish-slate/10 border border-groomish-slate/10 rounded-2xl overflow-hidden">
-                    {booking.products.map((prod, idx) => (
+                    {(booking.products || booking.bookingProducts).map((prod, idx) => (
                       <div
                         key={prod.id || idx}
                         className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
@@ -877,7 +929,7 @@ export default function StaffBookingDetailPage() {
                               </span>
                             )}
                           </div>
-                          {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
+                          {isOwnBranch && booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
                             <button
                               onClick={() => handleRemoveProduct(prod.id)}
                               className="p-1.5 text-groomish-slate/40 hover:text-groomish-crimson hover:bg-groomish-crimsonLight rounded-lg transition"

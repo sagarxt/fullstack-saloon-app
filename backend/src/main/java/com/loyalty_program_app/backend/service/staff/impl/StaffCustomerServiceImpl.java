@@ -23,6 +23,7 @@ public class StaffCustomerServiceImpl implements StaffCustomerService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final com.loyalty_program_app.backend.mapper.UserMapper userMapper;
 
     @Override
     public UserResponse createCustomer(UUID staffId, StaffCreateCustomerRequest request) {
@@ -121,22 +122,6 @@ public class StaffCustomerServiceImpl implements StaffCustomerService {
     }
 
     private UserResponse toDto(User user) {
-        UserResponse dto = new UserResponse();
-        dto.setId(user.getId());
-        dto.setName(user.getName());
-        dto.setEmail(user.getEmail());
-        dto.setPhone(user.getPhone());
-        dto.setImage(user.getImage());
-        dto.setGender(user.getGender() != null ? user.getGender().name() : null);
-        dto.setRole(user.getRole().name());
-        dto.setTier(user.getTier() != null ? user.getTier().name() : null);
-        dto.setPoints(user.getPoints());
-        dto.setLifetimePoints(user.getLifetimePoints() != null ? user.getLifetimePoints() : (user.getPoints() != null ? user.getPoints() : 0));
-        dto.setReferralCode(user.getReferralCode());
-        dto.setActive(user.isActive());
-        dto.setUserGroups(user.getUserGroups());
-        dto.setEffectiveGroups(user.getAllEffectiveGroups());
-        dto.setCreatedAt(user.getCreatedAt());
-        return dto;
+        return userMapper.toUserResponse(user);
     }
 }
