@@ -41,6 +41,7 @@ public class BookingAdminServiceImpl implements BookingAdminService {
     private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
     private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
     private final NotificationRepository notificationRepository;
+    private final com.loyalty_program_app.backend.mapper.BookingMapper bookingMapper;
 
     // ===================== ADVANCED SEARCH =====================
     @Override
@@ -150,6 +151,11 @@ public class BookingAdminServiceImpl implements BookingAdminService {
                 if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.PENDING) {
                     booking.getPayment().setStatus(PaymentStatus.CANCELLED);
                     paymentRepository.save(booking.getPayment());
+                }
+                List<BookingItem> bItems = bookingItemRepository.findByBookingId(booking.getId());
+                if (bItems != null) {
+                    bItems.forEach(bi -> bi.setStatus(BookingStatus.CANCELLED));
+                    bookingItemRepository.saveAll(bItems);
                 }
             } else if (newStatus == BookingStatus.COMPLETED) {
                 booking.setCompletedAt(LocalDateTime.now());
@@ -396,157 +402,10 @@ public class BookingAdminServiceImpl implements BookingAdminService {
     }
 
     private BookingResponse toBookingResponse(Booking b) {
-        BookingResponse dto = new BookingResponse();
-        dto.setId(b.getId());
-        dto.setBookingCode(b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase());
-
-        if (b.getUser() != null) {
-            dto.setUserId(b.getUser().getId());
-            dto.setUserName(b.getUser().getName());
-            dto.setUserEmail(b.getUser().getEmail());
-            dto.setUserPhone(b.getUser().getPhone());
-        }
-
-        dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
-        dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
-        dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
-        dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
-        dto.setTotalAmount(b.getTotalAmount());
-        dto.setPricePaid(b.getPricePaid() != null ? b.getPricePaid() : b.getTotalAmount());
-        dto.setStatus(b.getStatus().name());
-        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt() : null);
-        dto.setNote(b.getNote());
-        dto.setBookedBy(b.getBookedBy());
-
-        if (b.getPayment() != null) {
-            dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
-            dto.setInvoiceNumber(b.getPayment().getInvoiceNumber());
-            if (b.getStatus() == BookingStatus.COMPLETED) {
-                dto.setPaymentStatus("COMPLETED");
-            } else if (b.getStatus() == BookingStatus.CANCELLED) {
-                if (b.getPayment().getPaymentMethod() == PaymentMethod.CASH || b.getPayment().getStatus() == PaymentStatus.PENDING) {
-                    dto.setPaymentStatus("CANCELLED");
-                } else {
-                    dto.setPaymentStatus(b.getPayment().getStatus().name());
-                }
-            } else {
-                dto.setPaymentStatus(b.getPayment().getStatus() != null ? b.getPayment().getStatus().name() : "PENDING");
-            }
-        } else {
-            dto.setPaymentMethod("CASH");
-            if (b.getStatus() == BookingStatus.COMPLETED) {
-                dto.setPaymentStatus("COMPLETED");
-            } else if (b.getStatus() == BookingStatus.CANCELLED) {
-                dto.setPaymentStatus("CANCELLED");
-            } else {
-                dto.setPaymentStatus("PENDING");
-            }
-        }
-
-        if (b.getStore() != null) {
-            dto.setStoreId(b.getStore().getId());
-            dto.setStoreName(b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : b.getStore().getName());
-            dto.setStoreAddress(b.getStoreAddressSnapshot() != null ? b.getStoreAddressSnapshot() : b.getStore().getAddress());
-        } else if (b.getStoreNameSnapshot() != null) {
-            dto.setStoreName(b.getStoreNameSnapshot());
-            dto.setStoreAddress(b.getStoreAddressSnapshot());
-        }
-
-        // Map items safely
-        List<BookingItem> items = b.getBookingItems();
-        if ((items == null || items.isEmpty()) && bookingItemRepository != null) {
-            items = bookingItemRepository.findByBookingId(b.getId());
-        }
-        if (items != null && !items.isEmpty()) {
-            dto.setItems(items.stream().map(this::toBookingItemDetailsResponse).collect(Collectors.toList()));
-            dto.setServiceName(items.get(0).getServiceNameSnapshot());
-            dto.setServiceId(items.get(0).getService() != null ? items.get(0).getService().getId() : null);
-        } else {
-            dto.setItems(new ArrayList<>());
-        }
-
-        // Map products safely
-        List<BookingProduct> prods = bookingProductRepository != null ? bookingProductRepository.findByBookingId(b.getId()) : null;
-        if (prods != null && !prods.isEmpty()) {
-            dto.setProducts(prods.stream().map(bp -> BookingProductResponse.builder()
-                    .id(bp.getId())
-                    .productId(bp.getProduct() != null ? bp.getProduct().getId() : null)
-                    .productName(bp.getProductNameSnapshot())
-                    .brand(bp.getProduct() != null ? bp.getProduct().getBrand() : null)
-                    .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
-                    .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
-                    .unitPrice(bp.getUnitPriceSnapshot())
-                    .mrp(bp.getProduct() != null && bp.getProduct().getMrp() != null ? bp.getProduct().getMrp() : bp.getUnitPriceSnapshot())
-                    .quantity(bp.getQuantity())
-                    .totalPrice(bp.getTotalPrice())
-                    .build()).collect(Collectors.toList()));
-        } else {
-            dto.setProducts(new ArrayList<>());
-        }
-
-        int resolvedPoints = 0;
-        if (b.getStatus() == BookingStatus.COMPLETED) {
-            List<PointsLedger> ledgers = pointsLedgerRepository.findByRelatedId(b.getId());
-            if (ledgers != null && !ledgers.isEmpty()) {
-                resolvedPoints = ledgers.stream().mapToInt(l -> l.getChangeAmount() != null ? l.getChangeAmount() : 0).sum();
-            }
-        }
-        if (resolvedPoints <= 0 && b.getExpectedRewardPoints() != null && b.getExpectedRewardPoints() > 0) {
-            resolvedPoints = b.getExpectedRewardPoints();
-        }
-        if (resolvedPoints <= 0) {
-            double pAmount = dto.getPricePaid() != null ? dto.getPricePaid() : 0.0;
-            double multiplier = 1.0;
-            if (b.getUser() != null && b.getUser().getTier() != null) {
-                switch (b.getUser().getTier()) {
-                    case DIAMOND -> multiplier = 2.0;
-                    case PLATINUM -> multiplier = 1.5;
-                    case GOLD -> multiplier = 1.25;
-                    case SILVER -> multiplier = 1.0;
-                }
-            }
-            resolvedPoints = Math.max(1, (int) Math.round((pAmount / 100.0) * multiplier));
-        }
-        dto.setExpectedRewardPoints(resolvedPoints);
-        dto.setPointsConfirmed(b.getStatus() == BookingStatus.COMPLETED);
-        dto.setTimeline(bookingTimelineService.getTimelineForBooking(b));
-
-        return dto;
+        return bookingMapper.toBookingResponse(b);
     }
 
     private BookingItemDetailsResponse toBookingItemDetailsResponse(BookingItem item) {
-        BookingItemDetailsResponse dto = new BookingItemDetailsResponse();
-        dto.setId(item.getId());
-        dto.setServiceId(item.getService() != null ? item.getService().getId() : null);
-        String sName = item.getServiceNameSnapshot() != null ? item.getServiceNameSnapshot() : (item.getService() != null ? item.getService().getName() : "Salon Service");
-        dto.setServiceName(sName);
-        Double price = item.getServicePriceSnapshot() != null ? item.getServicePriceSnapshot() : (item.getService() != null ? item.getService().getPrice() : 0.0);
-        dto.setPrice(price != null ? price : 0.0);
-
-        Double subMrp = null;
-        if (item.getService() != null && item.getService().getSubServices() != null) {
-            for (com.loyalty_program_app.backend.model.SubService sub : item.getService().getSubServices()) {
-                if (sub.getName() != null && sName.toLowerCase().contains(sub.getName().toLowerCase())) {
-                    if (sub.getMrp() != null && sub.getMrp() > 0) {
-                        subMrp = sub.getMrp();
-                    }
-                    break;
-                }
-            }
-        }
-        double uMrp = subMrp != null ? subMrp
-                : (item.getService() != null && item.getService().getMrp() != null && item.getService().getMrp() > 0
-                        ? item.getService().getMrp()
-                        : dto.getPrice());
-        if (uMrp < dto.getPrice()) {
-            uMrp = dto.getPrice();
-        }
-        dto.setMrp(uMrp);
-
-        dto.setDurationMinutes(item.getServiceDurationSnapshot() != null ? item.getServiceDurationSnapshot() : (item.getService() != null ? item.getService().getDurationMinutes() : 30));
-        dto.setRewardCoins(item.getServiceRewardCoinsSnapshot() != null ? item.getServiceRewardCoinsSnapshot() : 0);
-        dto.setImage(item.getService() != null ? item.getService().getImage() : null);
-        dto.setStatus(item.getStatus() != null ? item.getStatus().name() : "PENDING");
-        return dto;
+        return bookingMapper.toBookingItemDetailsResponse(item);
     }
 }

@@ -33,4 +33,12 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<String> findDistinctBrands();
 
     List<Product> findByBrandIgnoreCaseAndActiveTrue(String brand);
+
+    List<Product> findByBrandIgnoreCase(String brand);
+
+    long countByBrandIgnoreCase(String brand);
+
+    long countByCategoryIgnoreCase(String category);
+
+    List<Product> findByCategoryIgnoreCase(String category);
 }

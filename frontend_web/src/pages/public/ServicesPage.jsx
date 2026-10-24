@@ -322,6 +322,24 @@ export default function PublicServicesPage() {
                         (!activeSub || !i.subServiceName || i.subServiceName === activeSub.name)
                     );
 
+                    const serviceDiscountPercent = (() => {
+                      if (activeSub && activeSub.mrp && activeSub.mrp > activeSub.price) {
+                        return Math.round(((activeSub.mrp - activeSub.price) / activeSub.mrp) * 100);
+                      }
+                      if (!hasSubServices && service.mrp && service.mrp > service.price) {
+                        return Math.round(((service.mrp - service.price) / service.mrp) * 100);
+                      }
+                      if (hasSubServices) {
+                        const discounts = service.subServices
+                          .filter((s) => s.mrp && s.mrp > s.price)
+                          .map((s) => Math.round(((s.mrp - s.price) / s.mrp) * 100));
+                        if (discounts.length > 0) {
+                          return Math.max(...discounts);
+                        }
+                      }
+                      return 0;
+                    })();
+
                     return (
                       <div
                         key={service.id}
@@ -351,6 +369,13 @@ export default function PublicServicesPage() {
                                 {categoryName}
                               </span>
                             </div>
+
+                            {/* Discount Chip on Top Right */}
+                            {serviceDiscountPercent > 0 && (
+                              <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-crimson text-white shadow-sm z-10">
+                                {serviceDiscountPercent}% OFF
+                              </span>
+                            )}
 
                             <div className="absolute bottom-3 left-3 text-white flex items-center gap-1 text-xs font-semibold">
                               <Clock className="w-3.5 h-3.5 text-groomish-gold" />

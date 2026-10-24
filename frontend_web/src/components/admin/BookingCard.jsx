@@ -2,7 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { updateBookingStatus } from "../../api/admin";
 import CustomerProfileModal from "../modals/CustomerProfileModal";
-import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, MapPin, User, Trash2 } from "lucide-react";
+import GroomCoinIcon from "../common/GroomCoinIcon";
+import { getBranchNavigationUrl } from "../../utils/mapHelper";
+import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
+import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, MapPin, User, Trash2, Scissors, Navigation, Sparkles } from "lucide-react";
 import { forceDeleteBookingApi } from "../../api/maintenance";
 import { showConfirm, showAlert } from "../../context/ConfirmContext";
 
@@ -33,12 +36,48 @@ export default function BookingCard({ booking, refresh }) {
         return "bg-groomish-greenLight text-groomish-green border-groomish-green/30";
       case "COMPLETED":
         return "bg-groomish-blueLight text-groomish-blue border-groomish-blue/30";
+      case "MODIFIED":
+        return "bg-purple-100 text-purple-700 border-purple-200";
       case "CANCELLED":
         return "bg-groomish-crimsonLight text-groomish-crimson border-groomish-crimson/30";
       default:
         return "bg-groomish-goldLight text-groomish-slate border-groomish-gold/40";
     }
   };
+
+  const rawServices = booking.items || booking.bookingItems || [];
+  const groupedServices = groupBookingServices(rawServices);
+  const rawProducts = booking.products || booking.bookingProducts || [];
+
+  // Unified list: grouped services first, then products
+  const unifiedItems = [
+    ...groupedServices.map((g) => ({
+      name: g.serviceName,
+      quantity: g.quantity,
+      type: "SERVICE",
+    })),
+    ...rawProducts.map((p) => ({
+      name: p.productName || p.productNameSnapshot || p.product?.name || "Retail Product",
+      quantity: p.quantity || 1,
+      type: "PRODUCT",
+    })),
+  ];
+
+  if (unifiedItems.length === 0 && booking.serviceName) {
+    unifiedItems.push({
+      name: booking.serviceName,
+      quantity: 1,
+      type: "SERVICE",
+    });
+  }
+
+  const firstItem = unifiedItems[0];
+  const primaryName = firstItem?.name || "Salon Service";
+  const primaryType = firstItem?.type || "SERVICE";
+  const primaryQty = firstItem?.quantity || 1;
+
+  // Additional items count (e.g. +1, +2)
+  const additionalCount = unifiedItems.length > 1 ? unifiedItems.length - 1 : 0;
 
   const formattedDate = booking.scheduledAt
     ? new Date(booking.scheduledAt).toLocaleString(undefined, {
@@ -47,11 +86,33 @@ export default function BookingCard({ booking, refresh }) {
       })
     : "Date pending";
 
+  const isTodayBooking = (() => {
+    if (!booking.scheduledAt) return false;
+    const d = new Date(booking.scheduledAt);
+    const now = new Date();
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  })();
+
+  const isTodayActive =
+    isTodayBooking &&
+    (booking.status === "CONFIRMED" ||
+      booking.status === "MODIFIED" ||
+      booking.status === "PENDING");
+
+  const rewardCoins =
+    booking.expectedRewardPoints != null && booking.expectedRewardPoints > 0
+      ? booking.expectedRewardPoints
+      : Math.max(1, Math.round((booking.pricePaid ?? booking.totalAmount ?? 0) / 100));
+
   return (
     <>
       <div className="bg-white rounded-2xl border border-groomish-slate/10 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-soft hover:shadow-card transition">
         <div className="space-y-1.5 flex-1">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <span
               className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getStatusBadge(
                 booking.status
@@ -66,6 +127,12 @@ export default function BookingCard({ booking, refresh }) {
             >
               {booking.bookingCode || (booking.id ? `GN-${booking.id.slice(0, 8).toUpperCase()}` : "GN-NEW")}
             </Link>
+            {isTodayActive && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white shadow-xs flex items-center gap-1 animate-pulse">
+                <Sparkles className="w-3 h-3" />
+                Today's Slot
+              </span>
+            )}
             {(booking.bookedBy || booking.userName) && (
               <span className="text-xs text-groomish-slate/70 font-semibold flex items-center gap-1">
                 <span>•</span>
@@ -86,20 +153,52 @@ export default function BookingCard({ booking, refresh }) {
             )}
           </div>
 
+          {/* Service / Product Heading with Multiplier and +1, +2 */}
+          <h3 className="font-heading font-bold text-base text-groomish-slate flex items-center gap-2 flex-wrap">
+            {primaryType === "PRODUCT" ? (
+              <ShoppingBag className="w-4 h-4 text-groomish-orange shrink-0" />
+            ) : (
+              <Scissors className="w-4 h-4 text-groomish-orange shrink-0" />
+            )}
+            <span className="font-bold text-groomish-slate">{primaryName}</span>
+            {primaryQty > 1 && (
+              <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-orange text-white">
+                × {primaryQty}
+              </span>
+            )}
+            {additionalCount > 0 && (
+              <span className="text-xs font-bold text-groomish-orange bg-groomish-orangeLight border border-groomish-orange/20 px-2 py-0.5 rounded-full">
+                +{additionalCount}
+              </span>
+            )}
+          </h3>
+
           <div className="flex items-center gap-4 text-xs text-groomish-slate/60 flex-wrap">
             <span className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-groomish-slate/40" />
               {formattedDate}
             </span>
             {booking.storeName && (
-              <span className="flex items-center gap-1.5 text-groomish-orange font-bold">
+              <a
+                href={getBranchNavigationUrl(booking)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1.5 text-groomish-orange font-bold hover:underline"
+                title="Click to view branch location on Google Maps"
+              >
                 <MapPin className="w-3.5 h-3.5" />
                 {booking.storeName}
-              </span>
+                <Navigation className="w-3 h-3 text-groomish-orange/70" />
+              </a>
             )}
             <span className="flex items-center gap-1.5 font-bold text-groomish-slate">
               <CreditCard className="w-3.5 h-3.5 text-groomish-slate/40" />
               ₹{booking.pricePaid ?? booking.totalAmount}
+            </span>
+            <span className="flex items-center gap-1 text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">
+              <GroomCoinIcon className="w-3 h-3" />
+              +{rewardCoins} Coins
             </span>
           </div>
         </div>

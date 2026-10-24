@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import AuthModal from "../../components/modals/AuthModal";
-import { getPublicProduct, getPublicProducts } from "../../api/products";
+import { getPublicProduct, getPublicProducts, getPublicBrands } from "../../api/products";
 import { getPublicCoupons } from "../../api/public";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
@@ -41,6 +41,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [coupons, setCoupons] = useState([]);
+  const [serverBrands, setServerBrands] = useState([]);
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
@@ -58,15 +59,17 @@ export default function ProductDetailPage() {
     setSelectedImageIdx(0);
     setQuantity(1);
     try {
-      const [prodRes, allProdsRes, coupRes] = await Promise.all([
+      const [prodRes, allProdsRes, coupRes, brandsRes] = await Promise.all([
         getPublicProduct(productId).catch(() => ({ data: null })),
         getPublicProducts().catch(() => ({ data: [] })),
         getPublicCoupons().catch(() => ({ data: [] })),
+        getPublicBrands().catch(() => ({ data: [] })),
       ]);
 
       const curProd = prodRes?.data || null;
       setProduct(curProd);
       setCoupons(extractList(coupRes?.data));
+      setServerBrands(extractList(brandsRes?.data));
 
       if (curProd) {
         const all = extractList(allProdsRes?.data);
@@ -162,13 +165,14 @@ export default function ProductDetailPage() {
       : 0;
   const coinsEarned = calculateCoins(product.price);
   const brandName = product.brand || "Groomish Pro";
-  const brandInfo = getBrandInfo(brandName);
+  const brandInfo = getBrandInfo(brandName, serverBrands);
+  const brandLogo = product.brandLogo || brandInfo?.logo || null;
 
   return (
-    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-clip">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-full overflow-x-hidden">
+      <main className="flex-1 w-full max-w-full">
         {/* BREADCRUMBS */}
         <div className="bg-white border-b border-groomish-slate/10 py-2.5 sm:py-3 w-full overflow-hidden">
           <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center gap-1.5 sm:gap-2 text-xs text-groomish-slate/60 overflow-x-auto no-scrollbar whitespace-nowrap">
@@ -203,8 +207,8 @@ export default function ProductDetailPage() {
         </div>
 
         {/* HERO / PRODUCT DETAILS SECTION */}
-        <section className="py-3.5 sm:py-7 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 w-full max-w-full overflow-x-hidden min-w-0">
-          <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full max-w-full min-w-0">
+        <section className="py-3.5 sm:py-7 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 w-full max-w-full min-w-0">
+          <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full max-w-full min-w-0 items-start">
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-5 w-full max-w-full min-w-0">
               {/* Image Preview Card */}
@@ -224,7 +228,15 @@ export default function ProductDetailPage() {
                     className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/95 text-groomish-slate backdrop-blur-md shadow-sm border border-groomish-slate/10 hover:border-groomish-orange hover:text-groomish-orange transition flex items-center gap-1.5"
                     title={`Browse all ${brandName} products`}
                   >
-                    <ShieldCheck className="w-3.5 h-3.5 text-groomish-green" />
+                    {brandLogo ? (
+                      <img
+                        src={getOptimizedImageUrl(brandLogo, { width: 40 })}
+                        alt={brandName}
+                        className="w-3.5 h-3.5 object-contain rounded-full"
+                      />
+                    ) : (
+                      <ShieldCheck className="w-3.5 h-3.5 text-groomish-green" />
+                    )}
                     <span>{brandName}</span>
                   </Link>
                   <span className="px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold bg-groomish-orange text-white shadow-sm">
@@ -293,9 +305,9 @@ export default function ProductDetailPage() {
                 <div className="p-4 rounded-2xl bg-groomish-cream/70 border border-groomish-slate/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
                     <div className="w-12 h-12 rounded-xl bg-white border border-groomish-slate/15 p-1.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
-                      {brandInfo.logo ? (
+                      {brandLogo ? (
                         <img
-                          src={getOptimizedImageUrl(brandInfo.logo, { width: 96 })}
+                          src={getOptimizedImageUrl(brandLogo, { width: 96 })}
                           alt={`${brandName} Logo`}
                           className="max-h-full max-w-full object-contain"
                         />
@@ -388,17 +400,19 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* RIGHT SIDEBAR: STICKY PRICING & PURCHASE CARD (STICKY UNTIL DETAILS END) */}
-            <div className="lg:col-span-5 relative w-full max-w-full min-w-0">
-              <div className="lg:sticky lg:top-24 space-y-4 w-full min-w-0">
-                <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-card space-y-4 w-full min-w-0">
+            {/* RIGHT SIDEBAR: STICKY PRICING & PURCHASE CARD + AVAILABLE OFFERS & PROMOTIONAL COUPONS */}
+            <div
+              className="lg:col-span-5 lg:sticky lg:self-start space-y-3.5 w-full min-w-0"
+              style={{ top: "min(5rem, calc(100vh - 100% - 1.5rem))" }}
+            >
+              <div className="bg-white rounded-2xl p-4 sm:p-5 border border-groomish-slate/10 shadow-card space-y-3.5 w-full min-w-0">
                 <div>
                   <span className="text-[10px] uppercase font-bold tracking-wider text-groomish-slate/50 block mb-1">
                     Product Price & Availability
                   </span>
 
                   <div className="flex items-baseline gap-3">
-                    <span className="text-4xl font-heading font-extrabold text-groomish-slate">
+                    <span className="text-3xl sm:text-4xl font-heading font-extrabold text-groomish-slate">
                       ₹{product.price}
                     </span>
                     {product.mrp && product.mrp > product.price && (
@@ -418,22 +432,22 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Groom Coin Bonus Banner */}
-                <div className="p-4 rounded-2xl bg-groomish-goldLight border border-groomish-gold/30 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-groomish-gold/20 flex items-center justify-center shrink-0">
-                    <GroomCoinIcon className="w-6 h-6" />
+                <div className="p-3 rounded-xl bg-groomish-goldLight border border-groomish-gold/30 flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-groomish-gold/20 flex items-center justify-center shrink-0">
+                    <GroomCoinIcon className="w-5 h-5" />
                   </div>
                   <div>
                     <span className="text-xs font-bold text-groomish-slate block flex items-center gap-1.5">
                       Earn +{coinsEarned * quantity} Groom Coins
                     </span>
-                    <span className="text-[11px] text-groomish-slate/70">
+                    <span className="text-[10.5px] text-groomish-slate/70">
                       Redeem Groom Coins for discounts & complimentary salon treatments.
                     </span>
                   </div>
                 </div>
 
                 {/* Quantity Stepper */}
-                <div className="p-3.5 rounded-2xl bg-groomish-cream/60 border border-groomish-slate/10 flex items-center justify-between">
+                <div className="p-2.5 rounded-xl bg-groomish-cream/60 border border-groomish-slate/10 flex items-center justify-between">
                   <span className="text-xs font-bold text-groomish-slate">
                     Select Quantity:
                   </span>
@@ -515,23 +529,23 @@ export default function ProductDetailPage() {
                 </div>
 
                 {/* Trust Points */}
-                <div className="space-y-2.5 pt-2 text-xs text-groomish-slate/70">
+                <div className="space-y-1.5 pt-1 text-[11.5px] text-groomish-slate/70">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-groomish-green shrink-0" />
+                    <ShieldCheck className="w-3.5 h-3.5 text-groomish-green shrink-0" />
                     <span>100% Genuine certified formula</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Store className="w-4 h-4 text-groomish-orange shrink-0" />
+                    <Store className="w-3.5 h-3.5 text-groomish-orange shrink-0" />
                     <span>Pickup available across all salon branches</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-groomish-blue shrink-0" />
+                    <Sparkles className="w-3.5 h-3.5 text-groomish-blue shrink-0" />
                     <span>Pay online (UPI / Card) or pay at reception counter</span>
                   </div>
                 </div>
 
                 {/* Concierge Support Contact */}
-                <div className="pt-4 border-t border-groomish-slate/10 text-center text-xs text-groomish-slate/60">
+                <div className="pt-2.5 border-t border-groomish-slate/10 text-center text-[11px] text-groomish-slate/60">
                   <span>Questions about this beauty product?</span>
                   <p className="font-bold text-groomish-orange mt-0.5 flex items-center justify-center gap-1.5">
                     <PhoneCall className="w-3.5 h-3.5" />
@@ -542,8 +556,8 @@ export default function ProductDetailPage() {
 
               {/* AVAILABLE OFFERS & PROMOTIONAL COUPONS (RIGHT SIDEBAR BELOW PURCHASE CARD) */}
               {(coupons.length > 0 || coinsEarned > 0) && (
-                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-groomish-slate/10 shadow-card space-y-4 w-full min-w-0">
-                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3 gap-2 flex-wrap">
+                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-groomish-slate/10 shadow-card space-y-3 w-full min-w-0">
+                  <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-2.5 gap-2 flex-wrap">
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
                         <Tag className="w-3.5 h-3.5" />
@@ -633,8 +647,7 @@ export default function ProductDetailPage() {
               )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
         {/* RELATED PRODUCTS SECTION */}
         {relatedProducts.length > 0 && (
@@ -683,6 +696,11 @@ export default function ProductDetailPage() {
                           <span className="absolute top-3 left-3 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-white/95 text-groomish-slate shadow-xs border border-groomish-slate/10">
                             {rel.brand || "Groomish Pro"}
                           </span>
+                          {rel.mrp && rel.mrp > rel.price && (
+                            <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-groomish-crimson text-white shadow-xs">
+                              {Math.round(((rel.mrp - rel.price) / rel.mrp) * 100)}% OFF
+                            </span>
+                          )}
                         </div>
 
                         {/* Title: Clickable to product detail */}

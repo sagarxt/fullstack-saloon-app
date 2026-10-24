@@ -22,4 +22,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findByPhoneContainingIgnoreCase(String phone);
 
     boolean existsByEmail(String email);
+
+    long countByCreatedBy(UUID createdBy);
 }

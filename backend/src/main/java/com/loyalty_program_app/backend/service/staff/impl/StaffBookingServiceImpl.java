@@ -35,6 +35,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
     private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
     private final PointsLedgerRepository pointsLedgerRepository;
     private final com.loyalty_program_app.backend.service.utils.EmailService emailService;
+    private final com.loyalty_program_app.backend.mapper.BookingMapper bookingMapper;
 
     @Override
     public BookingResponse createBookingForCustomer(UUID staffId, StaffCreateBookingRequest request) {
@@ -239,6 +240,15 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         return toDto(saved);
     }
 
+    private void validateStaffBranchAccess(User staff, Booking booking, String actionName) {
+        if (staff != null && staff.getStore() != null && booking != null && booking.getStore() != null) {
+            if (!staff.getStore().getId().equals(booking.getStore().getId())) {
+                throw new RuntimeException("Stylists can only " + actionName + " appointments for their assigned branch (" +
+                        staff.getStore().getName() + "). This appointment belongs to " + booking.getStore().getName() + ".");
+            }
+        }
+    }
+
     @Override
     public BookingResponse updateBookingForCustomer(UUID staffId, UUID bookingId, CustomerUpdateBookingRequest request) {
         User staff = userRepository.findById(staffId)
@@ -246,6 +256,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        validateStaffBranchAccess(staff, booking, "reschedule or modify");
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new RuntimeException("Cannot modify completed/cancelled booking");
@@ -303,8 +315,15 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
+        validateStaffBranchAccess(staff, booking, "cancel");
+
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(LocalDateTime.now());
+        List<BookingItem> items = bookingItemRepository.findByBookingId(booking.getId());
+        if (items != null) {
+            items.forEach(bi -> bi.setStatus(BookingStatus.CANCELLED));
+            bookingItemRepository.saveAll(items);
+        }
         if (note != null && !note.isBlank()) {
             booking.setNote(note);
         }
@@ -341,14 +360,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
     @Override
     public Page<BookingResponse> getCustomerBookings(UUID customerId, Pageable pageable) {
-        Page<Booking> page = bookingRepository.findAll(pageable);
-
-        var filtered = page.getContent().stream()
-                .filter(b -> b.getUser().getId().equals(customerId))
-                .map(this::toDto)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(filtered, pageable, filtered.size());
+        Page<Booking> page = bookingRepository.findByUserIdOrderByCreatedAtDesc(customerId, pageable);
+        return page.map(this::toDto);
     }
 
     @Override
@@ -365,6 +378,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        validateStaffBranchAccess(staff, booking, "add services to");
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new RuntimeException("Cannot add service to " + booking.getStatus() + " booking");
@@ -430,6 +445,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        validateStaffBranchAccess(staff, booking, "remove services from");
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new RuntimeException("Cannot remove service from " + booking.getStatus() + " booking");
@@ -549,150 +566,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
     }
 
     private BookingResponse toDto(Booking b) {
-        BookingResponse dto = new BookingResponse();
-        dto.setId(b.getId());
-        dto.setBookingCode(b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase());
-        dto.setUserId(b.getUser() != null ? b.getUser().getId() : null);
-        dto.setUserName(b.getUser() != null ? b.getUser().getName() : null);
-        dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
-        dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
-        dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
-        dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
-        dto.setTotalAmount(b.getTotalAmount());
-        dto.setPricePaid(b.getPricePaid());
-        dto.setStatus(b.getStatus().name());
-        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt() : null);
-        dto.setBookedBy(b.getBookedBy());
-
-        if (b.getPayment() != null) {
-            dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
-            dto.setInvoiceNumber(b.getPayment().getInvoiceNumber());
-            if (b.getStatus() == BookingStatus.COMPLETED) {
-                dto.setPaymentStatus("COMPLETED");
-            } else if (b.getStatus() == BookingStatus.CANCELLED) {
-                if (b.getPayment().getPaymentMethod() == com.loyalty_program_app.backend.enums.PaymentMethod.CASH ||
-                    b.getPayment().getStatus() == com.loyalty_program_app.backend.enums.PaymentStatus.PENDING) {
-                    dto.setPaymentStatus("CANCELLED");
-                } else {
-                    dto.setPaymentStatus(b.getPayment().getStatus().name());
-                }
-            } else {
-                dto.setPaymentStatus(b.getPayment().getStatus() != null ? b.getPayment().getStatus().name() : "PENDING");
-            }
-        } else {
-            dto.setPaymentMethod("CASH");
-            if (b.getStatus() == BookingStatus.COMPLETED) {
-                dto.setPaymentStatus("COMPLETED");
-            } else if (b.getStatus() == BookingStatus.CANCELLED) {
-                dto.setPaymentStatus("CANCELLED");
-            } else {
-                dto.setPaymentStatus("PENDING");
-            }
-        }
-
-        if (b.getStore() != null) {
-            dto.setStoreId(b.getStore().getId());
-            dto.setStoreName(b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : b.getStore().getName());
-            dto.setStoreAddress(b.getStoreAddressSnapshot() != null ? b.getStoreAddressSnapshot() : b.getStore().getAddress());
-        } else if (b.getStoreNameSnapshot() != null) {
-            dto.setStoreName(b.getStoreNameSnapshot());
-            dto.setStoreAddress(b.getStoreAddressSnapshot());
-        }
-
-        if (b.getBookingItems() != null && !b.getBookingItems().isEmpty()) {
-            BookingItem first = b.getBookingItems().get(0);
-            dto.setServiceId(first.getService() != null ? first.getService().getId() : null);
-            dto.setServiceName(first.getServiceNameSnapshot());
-
-            dto.setItems(b.getBookingItems().stream().map(it -> {
-                BookingItemDetailsResponse itDto = new BookingItemDetailsResponse();
-                itDto.setId(it.getId());
-                itDto.setServiceId(it.getService() != null ? it.getService().getId() : null);
-                String sName = it.getServiceNameSnapshot() != null ? it.getServiceNameSnapshot() : (it.getService() != null ? it.getService().getName() : "Salon Service");
-                itDto.setServiceName(sName);
-                Double itemPrice = it.getServicePriceSnapshot();
-                if ((itemPrice == null || itemPrice == 0.0) && it.getService() != null && it.getService().getPrice() != null) {
-                    itemPrice = it.getService().getPrice();
-                }
-                itDto.setPrice(itemPrice != null ? itemPrice : 0.0);
-
-                Double subMrp = null;
-                if (it.getService() != null && it.getService().getSubServices() != null) {
-                    for (com.loyalty_program_app.backend.model.SubService sub : it.getService().getSubServices()) {
-                        if (sub.getName() != null && sName.toLowerCase().contains(sub.getName().toLowerCase())) {
-                            if (sub.getMrp() != null && sub.getMrp() > 0) {
-                                subMrp = sub.getMrp();
-                            }
-                            break;
-                        }
-                    }
-                }
-                double uMrp = subMrp != null ? subMrp
-                        : (it.getService() != null && it.getService().getMrp() != null && it.getService().getMrp() > 0
-                                ? it.getService().getMrp()
-                                : itDto.getPrice());
-                if (uMrp < itDto.getPrice()) {
-                    uMrp = itDto.getPrice();
-                }
-                itDto.setMrp(uMrp);
-
-                itDto.setDurationMinutes(it.getServiceDurationSnapshot());
-                itDto.setRewardCoins(it.getServiceRewardCoinsSnapshot() != null ? it.getServiceRewardCoinsSnapshot() : 0);
-                itDto.setImage(it.getService() != null ? it.getService().getImage() : null);
-                itDto.setStatus(it.getStatus() != null ? it.getStatus().name() : null);
-                return itDto;
-            }).collect(Collectors.toList()));
-        } else {
-            dto.setItems(new ArrayList<>());
-        }
-
-        List<BookingProduct> prods = bookingProductRepository.findByBookingId(b.getId());
-        if (prods != null && !prods.isEmpty()) {
-            dto.setProducts(prods.stream().map(bp -> com.loyalty_program_app.backend.dto.product.BookingProductResponse.builder()
-                    .id(bp.getId())
-                    .productId(bp.getProduct() != null ? bp.getProduct().getId() : null)
-                    .productName(bp.getProductNameSnapshot())
-                    .brand(bp.getProduct() != null ? bp.getProduct().getBrand() : null)
-                    .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
-                    .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
-                    .unitPrice(bp.getUnitPriceSnapshot())
-                    .mrp(bp.getProduct() != null && bp.getProduct().getMrp() != null ? bp.getProduct().getMrp() : bp.getUnitPriceSnapshot())
-                    .quantity(bp.getQuantity())
-                    .totalPrice(bp.getTotalPrice())
-                    .build()).collect(Collectors.toList()));
-        } else {
-            dto.setProducts(new ArrayList<>());
-        }
-
-        int resolvedPoints = 0;
-        if (b.getStatus() == BookingStatus.COMPLETED) {
-            List<PointsLedger> ledgers = pointsLedgerRepository.findByRelatedId(b.getId());
-            if (ledgers != null && !ledgers.isEmpty()) {
-                resolvedPoints = ledgers.stream().mapToInt(l -> l.getChangeAmount() != null ? l.getChangeAmount() : 0).sum();
-            }
-        }
-        if (resolvedPoints <= 0 && b.getExpectedRewardPoints() != null && b.getExpectedRewardPoints() > 0) {
-            resolvedPoints = b.getExpectedRewardPoints();
-        }
-        if (resolvedPoints <= 0) {
-            double pAmount = dto.getPricePaid() != null ? dto.getPricePaid() : 0.0;
-            double multiplier = 1.0;
-            if (b.getUser() != null && b.getUser().getTier() != null) {
-                switch (b.getUser().getTier()) {
-                    case DIAMOND -> multiplier = 2.0;
-                    case PLATINUM -> multiplier = 1.5;
-                    case GOLD -> multiplier = 1.25;
-                    case SILVER -> multiplier = 1.0;
-                }
-            }
-            resolvedPoints = Math.max(1, (int) Math.round((pAmount / 100.0) * multiplier));
-        }
-        dto.setExpectedRewardPoints(resolvedPoints);
-        dto.setPointsConfirmed(b.getStatus() == BookingStatus.COMPLETED);
-
-        dto.setTimeline(bookingTimelineService.getTimelineForBooking(b));
-
-        return dto;
+        return bookingMapper.toBookingResponse(b);
     }
 
     @Override
@@ -702,6 +576,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        validateStaffBranchAccess(staff, booking, "confirm");
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new RuntimeException("Cannot confirm a " + booking.getStatus() + " booking");
@@ -753,6 +629,8 @@ public class StaffBookingServiceImpl implements StaffBookingService {
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        validateStaffBranchAccess(staff, booking, "start");
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new RuntimeException("Cannot start a " + booking.getStatus() + " booking");

@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import GroomCoinIcon from "../common/GroomCoinIcon";
 import { getBranchNavigationUrl } from "../../utils/mapHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
-import { Calendar, Clock, CreditCard, ChevronRight, Scissors, MapPin, Navigation, Sparkles } from "lucide-react";
+import { Calendar, Clock, CreditCard, ChevronRight, Scissors, MapPin, Navigation, Sparkles, ShoppingBag } from "lucide-react";
 
 export default function BookingCard({ booking, refresh }) {
   const navigate = useNavigate();
@@ -22,23 +22,39 @@ export default function BookingCard({ booking, refresh }) {
     }
   };
 
-  const groupedServices = groupBookingServices(booking.items || []);
-  const firstGroup = groupedServices[0];
-  const firstItem = booking.items?.[0];
+  const rawServices = booking.items || booking.bookingItems || [];
+  const groupedServices = groupBookingServices(rawServices);
+  const rawProducts = booking.products || booking.bookingProducts || [];
 
-  const serviceName =
-    firstGroup?.serviceName ||
-    firstItem?.serviceName ||
-    firstItem?.serviceNameSnapshot ||
-    firstItem?.service?.name ||
-    booking.serviceName ||
-    (booking.products?.length > 0
-      ? booking.products[0]?.productName || "Retail Product"
-      : "Salon Service");
+  // Unified list: grouped services first, then products
+  const unifiedItems = [
+    ...groupedServices.map((g) => ({
+      name: g.serviceName,
+      quantity: g.quantity,
+      type: "SERVICE",
+    })),
+    ...rawProducts.map((p) => ({
+      name: p.productName || p.productNameSnapshot || p.product?.name || "Retail Product",
+      quantity: p.quantity || 1,
+      type: "PRODUCT",
+    })),
+  ];
 
-  const additionalCount = groupedServices.length > 1
-    ? groupedServices.length - 1
-    : (booking.items?.length > 1 ? booking.items.length - 1 : 0);
+  if (unifiedItems.length === 0 && booking.serviceName) {
+    unifiedItems.push({
+      name: booking.serviceName,
+      quantity: 1,
+      type: "SERVICE",
+    });
+  }
+
+  const firstItem = unifiedItems[0];
+  const primaryName = firstItem?.name || "Salon Service";
+  const primaryType = firstItem?.type || "SERVICE";
+  const primaryQty = firstItem?.quantity || 1;
+
+  // Additional items count (e.g. +1, +2)
+  const additionalCount = unifiedItems.length > 1 ? unifiedItems.length - 1 : 0;
 
   // Format date
   const formattedDate = booking.scheduledAt ? new Date(booking.scheduledAt).toLocaleString(undefined, {
@@ -90,19 +106,21 @@ export default function BookingCard({ booking, refresh }) {
           )}
         </div>
 
-        <h3 className="font-heading font-bold text-base text-groomish-slate flex items-center gap-2">
-          <Scissors className="w-4 h-4 text-groomish-orange shrink-0" />
-          <span className="font-bold text-groomish-slate">{serviceName}</span>
-          {/* <span>
-            {firstGroup?.quantity > 1 && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-orange text-white">
-                × {firstGroup.quantity}
-              </span>
-            )}
-          </span> */}
+        <h3 className="font-heading font-bold text-base text-groomish-slate flex items-center gap-2 flex-wrap">
+          {primaryType === "PRODUCT" ? (
+            <ShoppingBag className="w-4 h-4 text-groomish-orange shrink-0" />
+          ) : (
+            <Scissors className="w-4 h-4 text-groomish-orange shrink-0" />
+          )}
+          <span className="font-bold text-groomish-slate">{primaryName}</span>
+          {primaryQty > 1 && (
+            <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-orange text-white">
+              × {primaryQty}
+            </span>
+          )}
           {additionalCount > 0 && (
-            <span className="text-xs font-normal text-groomish-slate/60">
-              +{additionalCount} more
+            <span className="text-xs font-bold text-groomish-orange bg-groomish-orangeLight border border-groomish-orange/20 px-2 py-0.5 rounded-full">
+              +{additionalCount}
             </span>
           )}
         </h3>

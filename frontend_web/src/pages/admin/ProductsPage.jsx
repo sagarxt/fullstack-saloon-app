@@ -4,6 +4,8 @@ import {
   createAdminProduct,
   updateAdminProduct,
   deleteAdminProduct,
+  getAdminProductCategories,
+  createAdminProductCategory,
 } from "../../api/products";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import CloudinaryMultiImageUploader from "../../components/common/CloudinaryMultiImageUploader";
@@ -26,7 +28,12 @@ import {
   Tag,
   DollarSign,
   Store,
+  Award,
+  Layers,
+  X,
 } from "lucide-react";
+import BrandsManagementModal from "../../components/modals/BrandsManagementModal";
+import { getAdminBrands } from "../../api/brand";
 
 const PAGE_SIZE = 20;
 
@@ -41,11 +48,21 @@ export default function ProductsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [brandsModalOpen, setBrandsModalOpen] = useState(false);
+  const [brandsList, setBrandsList] = useState([]);
+
+  // DB-backed Product Categories (No hardcoded defaults)
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatDesc, setNewCatDesc] = useState("");
+  const [savingCat, setSavingCat] = useState(false);
+  const [catModalError, setCatModalError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
     brand: "",
-    category: "Hair Care",
+    category: "",
     price: "",
     mrp: "",
     volumeOrSize: "",
@@ -60,15 +77,31 @@ export default function ProductsPage() {
   const [stores, setStores] = useState([]);
   const [selectedStoreId, setSelectedStoreId] = useState("GLOBAL");
 
+  const loadCategories = async () => {
+    try {
+      const res = await getAdminProductCategories();
+      const list = Array.isArray(res.data) ? res.data : [];
+      setCategoriesList(list);
+      return list;
+    } catch (err) {
+      console.error("Failed to load product categories:", err);
+      return [];
+    }
+  };
+
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const [res, storeRes] = await Promise.all([
+      const [res, storeRes, brandsRes, catsRes] = await Promise.all([
         getAdminProducts(0, 200),
         storeApi.getAdminStores().catch(() => ({ data: [] })),
+        getAdminBrands().catch(() => ({ data: [] })),
+        getAdminProductCategories().catch(() => ({ data: [] })),
       ]);
       setProducts(extractList(res.data));
       setStores(Array.isArray(storeRes.data) ? storeRes.data : []);
+      setBrandsList(Array.isArray(brandsRes.data) ? brandsRes.data : []);
+      setCategoriesList(Array.isArray(catsRes.data) ? catsRes.data : []);
     } catch (err) {
       console.error(err);
       setProducts([]);
@@ -92,7 +125,7 @@ export default function ProductsPage() {
     setForm({
       name: "",
       brand: "",
-      category: "Hair Care",
+      category: "",
       price: "",
       mrp: "",
       volumeOrSize: "",
@@ -117,7 +150,7 @@ export default function ProductsPage() {
     setForm({
       name: p.name || "",
       brand: p.brand || "",
-      category: p.category || "Hair Care",
+      category: p.category || "",
       price: p.price ?? "",
       mrp: p.mrp ?? "",
       volumeOrSize: p.volumeOrSize || "",
@@ -133,10 +166,46 @@ export default function ProductsPage() {
     setModalOpen(true);
   };
 
+  const handleCreateCategory = async (e) => {
+    if (e) e.preventDefault();
+    if (!newCatName.trim()) {
+      setCatModalError("Category name is required.");
+      return;
+    }
+    setSavingCat(true);
+    setCatModalError("");
+    try {
+      const res = await createAdminProductCategory({
+        name: newCatName.trim(),
+        description: newCatDesc.trim(),
+        active: true,
+      });
+      const saved = res.data;
+      await loadCategories();
+      setForm((prev) => ({ ...prev, category: saved?.name || newCatName.trim() }));
+      setNewCatName("");
+      setNewCatDesc("");
+      setCategoryModalOpen(false);
+    } catch (err) {
+      console.error("Failed to create product category:", err);
+      setCatModalError(err.response?.data?.message || "Failed to create category in database.");
+    } finally {
+      setSavingCat(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.price) {
       setError("Product name and price are required.");
+      return;
+    }
+    if (!form.brand) {
+      setError("Please select a brand from the dropdown.");
+      return;
+    }
+    if (!form.category) {
+      setError("Please select or create a category.");
       return;
     }
 
@@ -253,16 +322,25 @@ export default function ProductsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={loadProducts}
             className="p-2.5 rounded-2xl bg-white border border-groomish-slate/15 text-groomish-slate hover:bg-groomish-cream transition"
+            title="Refresh catalog"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-groomish-orange" : ""}`} />
           </button>
           <button
+            onClick={() => setBrandsModalOpen(true)}
+            className="btn-secondary text-xs px-4 py-2.5 flex items-center gap-1.5 shadow-2xs hover:border-groomish-orange/50 transition cursor-pointer"
+            title="View, add, modify, and remove product brands and 1:1 logos"
+          >
+            <Award className="w-4 h-4 text-groomish-orange" />
+            <span>View Brands</span>
+          </button>
+          <button
             onClick={handleOpenCreate}
-            className="btn-primary text-xs px-4 py-2.5 flex items-center gap-1.5"
+            className="btn-primary text-xs px-4 py-2.5 flex items-center gap-1.5 shadow-soft"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Product</span>
@@ -330,7 +408,7 @@ export default function ProductsPage() {
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
-          {["ALL", "Hair Care", "Skin & Facial", "Beard Care", "Styling"].map((cat) => (
+          {["ALL", ...categoriesList.map((c) => c.name)].map((cat) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -406,8 +484,26 @@ export default function ProductsPage() {
                         </div>
                         <div>
                           <p className="font-bold text-groomish-slate">{p.name}</p>
-                          <p className="text-[10px] text-groomish-slate/50">
-                            {p.brand} • {p.volumeOrSize || "Standard"}
+                          <p className="text-[10px] text-groomish-slate/60 flex items-center gap-1 mt-0.5">
+                            {(() => {
+                              const matched = brandsList.find(
+                                (b) => b.name?.toLowerCase() === (p.brand || "").toLowerCase()
+                              );
+                              return (
+                                <>
+                                  {matched?.logo && (
+                                    <img
+                                      src={matched.logo}
+                                      alt={p.brand}
+                                      className="w-3.5 h-3.5 rounded-sm object-contain bg-white border border-groomish-slate/15 shrink-0"
+                                    />
+                                  )}
+                                  <span className="font-semibold text-groomish-slate/80">{p.brand || "Unbranded"}</span>
+                                </>
+                              );
+                            })()}
+                            <span>•</span>
+                            <span>{p.volumeOrSize || "Standard"}</span>
                           </p>
                         </div>
                       </div>
@@ -549,33 +645,105 @@ export default function ProductsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
-                  Brand Name
-                </label>
-                <input
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-groomish-slate/70">
+                    Brand Name <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setBrandsModalOpen(true)}
+                    className="text-[10px] text-groomish-orange hover:underline font-bold flex items-center gap-0.5 cursor-pointer"
+                    title="Upload or manage brands list"
+                  >
+                    <Award className="w-3 h-3" />
+                    <span>Manage Brands</span>
+                  </button>
+                </div>
+                <CustomSelect
+                  name="brand"
                   value={form.brand}
-                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                  className="input-groomish"
-                  placeholder="e.g. Groomish Pro / L'Oréal"
+                  onChange={(e) => {
+                    const val = typeof e === "object" && e !== null ? (e.target?.value ?? e.value) : e;
+                    setForm({ ...form, brand: val });
+                  }}
+                  options={[
+                    { value: "", label: "-- Select Brand --" },
+                    ...brandsList.map((b) => ({
+                      value: b.name,
+                      label: b.name,
+                    })),
+                  ]}
+                  placeholder="Select Brand Name"
+                  searchable={brandsList.length > 3}
                 />
+                {brandsList.length === 0 && (
+                  <div className="flex items-center justify-between mt-1 text-[10px] text-amber-600 bg-amber-50/80 p-1.5 rounded-lg border border-amber-200/60">
+                    <span>No brands uploaded yet.</span>
+                    <button
+                      type="button"
+                      onClick={() => setBrandsModalOpen(true)}
+                      className="font-bold underline text-groomish-orange hover:text-groomish-orange/80 cursor-pointer"
+                    >
+                      + Add Brand
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
-                  Category
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-groomish-slate/70">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewCatName("");
+                      setNewCatDesc("");
+                      setCatModalError("");
+                      setCategoryModalOpen(true);
+                    }}
+                    className="text-[10px] text-groomish-green hover:underline font-bold flex items-center gap-0.5 cursor-pointer"
+                    title="Add a new product category to the database"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>+ Add Category</span>
+                  </button>
+                </div>
                 <CustomSelect
                   name="category"
                   value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  onChange={(e) => {
+                    const val = typeof e === "object" && e !== null ? (e.target?.value ?? e.value) : e;
+                    setForm({ ...form, category: val });
+                  }}
                   options={[
-                    "Hair Care",
-                    "Skin & Facial",
-                    "Beard Care",
-                    "Styling",
-                    "Body & Spa",
+                    { value: "", label: "-- Select Category --" },
+                    ...categoriesList.map((c) => ({
+                      value: c.name,
+                      label: c.name,
+                    })),
                   ]}
+                  placeholder="Select Product Category"
+                  searchable={categoriesList.length > 3}
                 />
+                {categoriesList.length === 0 && (
+                  <div className="flex items-center justify-between mt-1 text-[10px] text-amber-600 bg-amber-50/80 p-1.5 rounded-lg border border-amber-200/60">
+                    <span>No categories in DB yet.</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewCatName("");
+                        setNewCatDesc("");
+                        setCatModalError("");
+                        setCategoryModalOpen(true);
+                      }}
+                      className="font-bold underline text-groomish-green hover:text-groomish-green/80 cursor-pointer"
+                    >
+                      + Create Category
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -699,6 +867,93 @@ export default function ProductsPage() {
                 className="btn-primary flex-1 py-3"
               >
                 {actionLoading ? "Saving..." : editingProduct ? "Save Changes" : "Create Product"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </ModalWrapper>
+
+      {/* VIEW / MANAGE BRANDS MODAL */}
+      <BrandsManagementModal
+        open={brandsModalOpen}
+        onClose={() => setBrandsModalOpen(false)}
+        onBrandsUpdated={(newList) => setBrandsList(newList)}
+      />
+
+      {/* ADD PRODUCT CATEGORY MODAL */}
+      <ModalWrapper
+        open={categoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+        maxWidth="max-w-md"
+        zIndex="z-[10001]"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="border-b border-groomish-slate/10 pb-3 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full inline-block mb-1 border border-emerald-200/60">
+                Database Catalog
+              </span>
+              <h2 className="text-lg font-heading font-bold text-groomish-slate">
+                Add New Product Category
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCategoryModalOpen(false)}
+              className="p-1 rounded-lg text-groomish-slate/50 hover:bg-groomish-cream hover:text-groomish-slate transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateCategory} className="space-y-4">
+            {catModalError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-2xl text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{catModalError}</span>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
+                Category Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="e.g. Hair Care, Skin & Facial, Beard Grooming"
+                className="input-groomish"
+                required
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-groomish-slate/70 mb-1">
+                Description <span className="text-groomish-slate/40 text-[10px]">(Optional)</span>
+              </label>
+              <textarea
+                rows={2}
+                value={newCatDesc}
+                onChange={(e) => setNewCatDesc(e.target.value)}
+                placeholder="Short description of products under this category..."
+                className="input-groomish resize-none"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-groomish-slate/10">
+              <button
+                type="button"
+                onClick={() => setCategoryModalOpen(false)}
+                className="btn-secondary text-xs px-4 py-2 cursor-pointer"
+                disabled={savingCat}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 cursor-pointer"
+                disabled={savingCat}
+              >
+                {savingCat ? "Saving to DB..." : "Save Category"}
               </button>
             </div>
           </form>

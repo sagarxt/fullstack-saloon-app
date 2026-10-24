@@ -38,30 +38,28 @@ public class CustomerHomeServiceImpl implements CustomerHomeService {
         String gender = user.getGender() != null ? user.getGender().name() : "NOT_SPECIFIED";
 
         // Banners
-        List<BannerResponse> banners = bannerRepository.findAll().stream()
-                .filter(Banner::isActive)
-                .sorted(Comparator.comparing(Banner::getCreatedAt).reversed())
+        List<BannerResponse> banners = bannerRepository.findByActiveTrueOrderByCreatedAtDesc().stream()
                 .limit(10)
                 .map(this::toBannerDto)
                 .toList();
 
         // Categories
-        List<CategoryResponse> categories = categoryRepository.findAll().stream()
-                .filter(Category::isActive)
+        List<CategoryResponse> categories = categoryRepository.findByActiveTrue().stream()
                 .limit(20)
                 .map(this::toCategoryDto)
                 .toList();
 
+        // Active services (single query instead of multiple full table scans)
+        List<ServiceEntity> activeServices = serviceRepository.findByActiveTrue();
+
         // Popular services (generic)
-        List<ServiceResponse> popular = serviceRepository.findAll().stream()
-                .filter(ServiceEntity::isActive)
+        List<ServiceResponse> popular = activeServices.stream()
                 .limit(20)
                 .map(this::toServiceDto)
                 .toList();
 
         // Personalized Services
-        List<ServiceResponse> personalized = serviceRepository.findAll().stream()
-                .filter(ServiceEntity::isActive)
+        List<ServiceResponse> personalized = activeServices.stream()
                 .filter(s -> {
                     if (gender.equals("MALE")) return s.getGender().name().equals("MALE") || s.getGender().name().equals("UNISEX");
                     if (gender.equals("FEMALE")) return s.getGender().name().equals("FEMALE") || s.getGender().name().equals("UNISEX");

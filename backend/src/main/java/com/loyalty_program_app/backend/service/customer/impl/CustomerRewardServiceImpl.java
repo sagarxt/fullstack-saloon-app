@@ -34,8 +34,7 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<RewardResponse> filtered = rewardRepository.findAll().stream()
-                .filter(Reward::isActive)
+        List<RewardResponse> filtered = rewardRepository.findByActiveTrue().stream()
                 .filter(r -> r.getExpiryDate() == null || r.getExpiryDate().isAfter(LocalDateTime.now()))
                 .filter(r -> r.getStock() == null || r.getStock() > 0)
                 .filter(r -> r.getPointsRequired() != null && r.getPointsRequired() <= user.getPoints())
@@ -51,8 +50,7 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
 
     @Override
     public Page<RewardResponse> getAllActiveRewards(Pageable pageable) {
-        List<RewardResponse> filtered = rewardRepository.findAll().stream()
-                .filter(Reward::isActive)
+        List<RewardResponse> filtered = rewardRepository.findByActiveTrue().stream()
                 .filter(r -> r.getExpiryDate() == null || r.getExpiryDate().isAfter(LocalDateTime.now()))
                 .map(this::toDto)
                 .toList();

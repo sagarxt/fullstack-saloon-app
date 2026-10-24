@@ -16,8 +16,32 @@ export const searchProducts = (q) =>
 export const getProductCategories = () =>
   axiosClient.get("/public/products/categories");
 
+export const getPublicProductCategories = () =>
+  axiosClient.get("/public/product-categories");
+
 export const getProductBrands = () =>
   axiosClient.get("/public/products/brands");
+
+export {
+  getAdminBrands,
+  createAdminBrand,
+  updateAdminBrand,
+  deleteAdminBrand,
+  getPublicBrands,
+} from "./brand";
+
+/* ADMIN PRODUCT CATEGORY APIS */
+export const getAdminProductCategories = () =>
+  axiosClient.get("/admin/product-categories");
+
+export const createAdminProductCategory = (data) =>
+  axiosClient.post("/admin/product-categories", data);
+
+export const updateAdminProductCategory = (id, data) =>
+  axiosClient.put(`/admin/product-categories/${id}`, data);
+
+export const deleteAdminProductCategory = (id) =>
+  axiosClient.delete(`/admin/product-categories/${id}`);
 
 /* ADMIN PRODUCT APIS */
 export const getAdminProducts = (page = 0, size = 20) =>

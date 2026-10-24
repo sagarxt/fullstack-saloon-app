@@ -3,13 +3,14 @@ package com.loyalty_program_app.backend.service.admin.impl;
 import com.loyalty_program_app.backend.dto.booking.BookingItemResponse;
 import com.loyalty_program_app.backend.dto.booking.BookingResponse;
 import com.loyalty_program_app.backend.dto.dashboard.DashboardResponse;
+import com.loyalty_program_app.backend.enums.BookingStatus;
 import com.loyalty_program_app.backend.enums.Role;
 import com.loyalty_program_app.backend.model.Booking;
 import com.loyalty_program_app.backend.model.BookingItem;
 import com.loyalty_program_app.backend.repository.BookingRepository;
 import com.loyalty_program_app.backend.repository.UserRepository;
 import com.loyalty_program_app.backend.service.admin.DashboardAdminService;
-import lombok.RequiredArgsConstructor;
+import com.loyalty_program_app.backend.mapper.BookingMapper;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -19,11 +20,19 @@ import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class DashboardAdminServiceImpl implements DashboardAdminService {
 
     private final UserRepository userRepository;
     private final BookingRepository bookingRepository;
+    private final BookingMapper bookingMapper;
+
+    public DashboardAdminServiceImpl(UserRepository userRepository,
+                                     BookingRepository bookingRepository,
+                                     BookingMapper bookingMapper) {
+        this.userRepository = userRepository;
+        this.bookingRepository = bookingRepository;
+        this.bookingMapper = bookingMapper;
+    }
 
     @Override
     public DashboardResponse getDashboardData() {
@@ -41,6 +50,7 @@ public class DashboardAdminServiceImpl implements DashboardAdminService {
         // ========== TOTAL REVENUE ==========
         double totalRevenue = bookingRepository.findAll()
                 .stream()
+                .filter(b -> b.getStatus() != BookingStatus.CANCELLED)
                 .filter(b -> b.getPricePaid() != null)
                 .mapToDouble(Booking::getPricePaid)
                 .sum();
@@ -62,62 +72,9 @@ public class DashboardAdminServiceImpl implements DashboardAdminService {
         dto.setTodaysBookings(todaysBookings);
 
         // ========== RECENT BOOKINGS (latest 10 by creation date) ==========
-        var recentBookings = bookingRepository.findAll(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt")))
-                .getContent()
-                .stream()
-                .map(this::toBookingResponse)
-                .collect(Collectors.toList());
+        var bookings = bookingRepository.findAll(PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdAt"))).getContent();
+        dto.setRecentBookings(bookingMapper.toBookingResponseList(bookings));
 
-        dto.setRecentBookings(recentBookings);
-
-        return dto;
-    }
-
-    // ========== MANUAL MAPPERS ==========
-
-    private BookingResponse toBookingResponse(Booking b) {
-        BookingResponse dto = new BookingResponse();
-        dto.setId(b.getId());
-        dto.setBookingCode(b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase());
-        if (b.getUser() != null) {
-            dto.setUserId(b.getUser().getId());
-            dto.setUserName(b.getUser().getName());
-            dto.setUserEmail(b.getUser().getEmail());
-            dto.setUserPhone(b.getUser().getPhone());
-        }
-        dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
-        dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
-        dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
-        dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
-        dto.setInvoiceNumber(b.getPayment() != null ? b.getPayment().getInvoiceNumber() : null);
-        dto.setTotalAmount(b.getTotalAmount());
-        dto.setPricePaid(b.getPricePaid() != null ? b.getPricePaid() : b.getTotalAmount());
-        dto.setStatus(b.getStatus().name());
-        dto.setScheduledAt(b.getScheduledAt() != null ? b.getScheduledAt() : null);
-        dto.setNote(b.getNote());
-        dto.setBookedBy(b.getBookedBy());
-        dto.setCreatedAt(b.getCreatedAt());
-
-        if (b.getStore() != null) {
-            dto.setStoreId(b.getStore().getId());
-            dto.setStoreName(b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : b.getStore().getName());
-            dto.setStoreAddress(b.getStoreAddressSnapshot() != null ? b.getStoreAddressSnapshot() : b.getStore().getAddress());
-        } else if (b.getStoreNameSnapshot() != null) {
-            dto.setStoreName(b.getStoreNameSnapshot());
-            dto.setStoreAddress(b.getStoreAddressSnapshot());
-        }
-
-        return dto;
-    }
-
-    private BookingItemResponse toBookingItemResponse(BookingItem item) {
-        BookingItemResponse dto = new BookingItemResponse();
-        dto.setId(item.getId());
-        dto.setServiceId(item.getService().getId());
-        dto.setServiceName(item.getServiceNameSnapshot());
-        dto.setServicePrice(item.getServicePriceSnapshot());
-        dto.setDuration(item.getServiceDurationSnapshot());
-        dto.setStatus(item.getStatus().name());
         return dto;
     }
 }

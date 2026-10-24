@@ -30,6 +30,8 @@ import StaffBranchServicesTab from "../../components/staff/StaffBranchServicesTa
 import StaffBranchInventoryTab from "../../components/staff/StaffBranchInventoryTab";
 import StaffBranchAnalyticsTab from "../../components/staff/StaffBranchAnalyticsTab";
 import StaffProfileTab from "../../components/staff/StaffProfileTab";
+import StaffCustomersTab from "../../components/staff/StaffCustomersTab";
+import StaffBookingCard from "../../components/staff/StaffBookingCard";
 import StaffSidebar from "../../components/staff/StaffSidebar";
 import { showAlert } from "../../context/ConfirmContext";
 import {
@@ -71,15 +73,17 @@ export default function StaffDashboard() {
   const [searchParams] = useSearchParams();
 
   const tabParam = searchParams.get("tab");
-  const initialFilter = tabParam === "analytics"
-    ? "BRANCH_ANALYTICS"
-    : tabParam === "services"
-      ? "BRANCH_SERVICES"
-      : tabParam === "inventory"
-        ? "BRANCH_INVENTORY"
-        : tabParam === "profile"
-          ? "BRANCH_PROFILE"
-          : "TODAY";
+  const initialFilter = tabParam === "customers"
+    ? "BRANCH_CUSTOMERS"
+    : tabParam === "analytics"
+      ? "BRANCH_ANALYTICS"
+      : tabParam === "services"
+        ? "BRANCH_SERVICES"
+        : tabParam === "inventory"
+          ? "BRANCH_INVENTORY"
+          : tabParam === "profile"
+            ? "BRANCH_PROFILE"
+            : "TODAY";
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -119,11 +123,12 @@ export default function StaffDashboard() {
   }, []);
 
   useEffect(() => {
-    if (tabParam === "analytics") setFilter("BRANCH_ANALYTICS");
+    if (tabParam === "customers") setFilter("BRANCH_CUSTOMERS");
+    else if (tabParam === "analytics") setFilter("BRANCH_ANALYTICS");
     else if (tabParam === "services") setFilter("BRANCH_SERVICES");
     else if (tabParam === "inventory") setFilter("BRANCH_INVENTORY");
     else if (tabParam === "profile") setFilter("BRANCH_PROFILE");
-    else if (!tabParam && (filter === "BRANCH_ANALYTICS" || filter === "BRANCH_SERVICES" || filter === "BRANCH_INVENTORY" || filter === "BRANCH_PROFILE")) {
+    else if (!tabParam && (filter === "BRANCH_CUSTOMERS" || filter === "BRANCH_ANALYTICS" || filter === "BRANCH_SERVICES" || filter === "BRANCH_INVENTORY" || filter === "BRANCH_PROFILE")) {
       setFilter("TODAY");
     }
   }, [tabParam]);
@@ -719,6 +724,18 @@ export default function StaffDashboard() {
           </button>
           <button
             onClick={() => {
+              navigate("/staff/dashboard?tab=customers");
+              setFilter("BRANCH_CUSTOMERS");
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${filter === "BRANCH_CUSTOMERS"
+              ? "bg-groomish-orange text-white"
+              : "text-white/70 hover:bg-white/10"
+              }`}
+          >
+            Customers
+          </button>
+          <button
+            onClick={() => {
               navigate("/staff/dashboard?tab=analytics");
               setFilter("BRANCH_ANALYTICS");
             }}
@@ -769,7 +786,15 @@ export default function StaffDashboard() {
 
         {/* MAIN CONTENT */}
         <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-5 space-y-4">
-          {filter === "BRANCH_PROFILE" ? (
+          {filter === "BRANCH_CUSTOMERS" ? (
+            <StaffCustomersTab
+              onOpenRegisterModal={() => {
+                setClientError("");
+                setClientSuccess("");
+                setClientModalOpen(true);
+              }}
+            />
+          ) : filter === "BRANCH_PROFILE" ? (
             <StaffProfileTab
               onNavigateTab={(tab) => {
                 if (tab === "services") {
@@ -1035,180 +1060,22 @@ export default function StaffDashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="divide-y divide-groomish-slate/10">
+                  <div className="p-4 sm:p-5 space-y-3">
                     {bookingList
                       .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-                      .map((b) => {
-                        const firstItem = b.items?.[0];
-                        const serviceName = firstItem?.serviceNameSnapshot || "Salon Care";
-                        const timeStr = b.scheduledAt
-                          ? new Date(b.scheduledAt).toLocaleTimeString("en-IN", {
-                            hour: "numeric",
-                            minute: "2-digit",
-                            hour12: true,
-                          })
-                          : "Scheduled";
-                        const dateStr = b.scheduledAt
-                          ? new Date(b.scheduledAt).toLocaleDateString([], {
-                            month: "short",
-                            day: "numeric",
-                          })
-                          : "Today";
-
-                        return (
-                          <div
-                            key={b.id}
-                            className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-groomish-cream/40 transition"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-2xl bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
-                                <Scissors className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h3 className="font-heading font-bold text-sm text-groomish-slate">
-                                    {serviceName}
-                                  </h3>
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${b.status === "CONFIRMED"
-                                      ? "bg-groomish-greenLight text-groomish-green"
-                                      : b.status === "COMPLETED"
-                                        ? "bg-groomish-blueLight text-groomish-blue"
-                                        : b.status === "MODIFIED"
-                                          ? "bg-purple-100 text-purple-700"
-                                          : b.status === "CANCELLED"
-                                            ? "bg-groomish-crimsonLight text-groomish-crimson"
-                                            : "bg-amber-100 text-amber-800"
-                                      }`}
-                                  >
-                                    {b.status === "PENDING" ? "PENDING (ONLINE PAYMENT)" : b.status}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                  <Link
-                                    to={`/staff/bookings/${b.id}`}
-                                    className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-[11px] font-extrabold bg-groomish-slate/5 text-groomish-slate border border-groomish-slate/15 tracking-wider hover:text-groomish-orange hover:border-groomish-orange/30 transition"
-                                    title="Click to view appointment details"
-                                  >
-                                    {b.bookingCode || (b.id ? `GN-${b.id.slice(0, 8).toUpperCase()}` : "GN-NEW")}
-                                  </Link>
-                                  <span className="text-xs text-groomish-slate/60 flex items-center gap-1">
-                                    {/* <span>Client:</span> */}
-                                    {/* {b.userId ? (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCustomerHistory(b)}
-                                className="font-bold text-groomish-slate hover:text-groomish-orange hover:underline underline-offset-2 transition text-left"
-                                title="Click to view client profile, orders & rewards"
-                              >
-                                {b.bookedBy || b.userName || "Walk-In Client"}
-                              </button>
-                            ) : (
-                              <b>{b.bookedBy || b.userName || "Walk-In Client"}</b>
-                            )} */}
-                                  </span>
-                                  {b.userId && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenCustomerHistory(b)}
-                                      className="inline-flex items-center gap-1 text-[11px] font-bold text-groomish-orange hover:text-groomish-orangeDark bg-groomish-orange/10 hover:bg-groomish-orange/20 px-2 py-0.5 rounded-full transition"
-                                      title="View client profile, orders & loyalty rewards"
-                                    >
-                                      <Crown className="w-3 h-3 text-groomish-gold fill-groomish-gold" />
-                                      <span>Profile & Rewards</span>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
-                              <div className="text-right">
-                                <div className="font-mono text-xs font-bold text-groomish-slate flex items-center gap-1 justify-end">
-                                  <Clock className="w-3.5 h-3.5 text-groomish-orange" />
-                                  <span>{timeStr}</span>
-                                  <span className="text-groomish-slate/40 text-[10px]">({dateStr})</span>
-                                </div>
-                                <div className="text-xs font-extrabold text-groomish-orange mt-0.5">
-                                  ₹{b.pricePaid ?? b.totalAmount}
-                                </div>
-                              </div>
-
-                              {/* Actions */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {b.status !== "CANCELLED" && b.status !== "COMPLETED" && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenReschedule(b)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white text-groomish-slate border border-groomish-slate/15 hover:border-groomish-orange hover:text-groomish-orange font-bold text-xs transition shadow-soft"
-                                    title="Reschedule appointment date & time"
-                                  >
-                                    <CalendarClock className="w-3.5 h-3.5 text-groomish-orange" />
-                                    <span>Reschedule</span>
-                                  </button>
-                                )}
-
-                                {b.status !== "CANCELLED" && (
-                                  <button
-                                    onClick={() => handleOpenBilling(b)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-groomish-cream text-groomish-slate border border-groomish-slate/15 hover:border-groomish-orange hover:bg-groomish-orange/10 font-bold text-xs transition shadow-soft"
-                                    title="Add salon products & finalize bill"
-                                  >
-                                    <ShoppingBag className="w-3.5 h-3.5 text-groomish-orange" />
-                                    <span>Bill & Products</span>
-                                  </button>
-                                )}
-
-                                {(b.status === "CONFIRMED" || b.status === "MODIFIED") && (
-                                  <button
-                                    disabled={actionLoading}
-                                    onClick={() => handleMarkComplete(b.id)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 transition shadow-soft"
-                                    title="Complete appointment and dispatch bill email"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>Complete</span>
-                                  </button>
-                                )}
-
-                                {b.status === "PENDING" && (
-                                  <>
-                                    <button
-                                      disabled={actionLoading}
-                                      onClick={() => handleConfirm(b.id)}
-                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 transition shadow-soft"
-                                      title="Confirm appointment (payment verified at salon)"
-                                    >
-                                      <Check className="w-3.5 h-3.5" />
-                                      <span>Confirm</span>
-                                    </button>
-                                    <button
-                                      disabled={actionLoading}
-                                      onClick={() => handleCancel(b.id)}
-                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-crimsonLight text-groomish-crimson font-bold text-xs hover:bg-groomish-crimson hover:text-white transition"
-                                      title="Cancel appointment"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                      <span>Cancel</span>
-                                    </button>
-                                  </>
-                                )}
-
-                                <button
-                                  type="button"
-                                  onClick={() => navigate(`/staff/bookings/${b.id}`)}
-                                  className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1"
-                                  title="Click to view appointment details"
-                                >
-                                  <span>Details</span>
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      .map((b) => (
+                        <StaffBookingCard
+                          key={b.id}
+                          booking={b}
+                          onOpenReschedule={handleOpenReschedule}
+                          onOpenBilling={handleOpenBilling}
+                          onConfirm={handleConfirm}
+                          onComplete={handleMarkComplete}
+                          onCancel={handleCancel}
+                          actionLoading={actionLoading}
+                          refresh={loadDashboard}
+                        />
+                      ))}
                   </div>
                 )}
 
@@ -1401,15 +1268,25 @@ export default function StaffDashboard() {
                             )}
                           </div>
                           <p className="text-[10px] text-groomish-slate/50">
-                            {grp.durationMinutes} mins
+                            {grp.totalDuration || grp.durationMinutes} mins
                             {grp.quantity > 1 && ` (₹${grp.unitPrice} each)`}
-                            {" • Status: "}{grp.status || "CONFIRMED"}
+                            {" • Status: "}
+                            <span className={billingBooking.status === "CANCELLED" || grp.status === "CANCELLED" ? "text-groomish-crimson font-bold uppercase" : ""}>
+                              {billingBooking.status === "CANCELLED" || grp.status === "CANCELLED" ? "CANCELLED" : (grp.status || "CONFIRMED")}
+                            </span>
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-extrabold text-groomish-slate">₹{grp.totalPrice}</span>
+                        <div className="text-right">
+                          <span className="font-extrabold text-groomish-slate block">₹{grp.totalPrice}</span>
+                          {grp.totalMrp && grp.totalMrp > grp.totalPrice && (
+                            <span className="text-[10px] text-groomish-slate/40 line-through block">
+                              ₹{grp.totalMrp}
+                            </span>
+                          )}
+                        </div>
                         {billingBooking.status !== "COMPLETED" && billingBooking.items.length > 1 && (
                           <button
                             type="button"
@@ -1487,12 +1364,24 @@ export default function StaffDashboard() {
                           </p>
                           <p className="text-[10px] text-groomish-slate/50">
                             Qty: {bp.quantity} × ₹{bp.unitPrice}
+                            {bp.mrp && bp.mrp > bp.unitPrice && (
+                              <span className="text-groomish-slate/40 line-through ml-1">
+                                (MRP ₹{bp.mrp})
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-extrabold text-groomish-slate">₹{bp.totalPrice}</span>
+                        <div className="text-right">
+                          <span className="font-extrabold text-groomish-slate block">₹{bp.totalPrice}</span>
+                          {bp.mrp && bp.mrp > bp.unitPrice && (
+                            <span className="text-[10px] text-groomish-slate/40 line-through block">
+                              ₹{bp.mrp * (bp.quantity || 1)}
+                            </span>
+                          )}
+                        </div>
                         {billingBooking.status !== "COMPLETED" && (
                           <button
                             type="button"

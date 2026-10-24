@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -16,7 +15,7 @@ export default function BrandShowcaseSection({
   totalProductsCount = 0,
 }) {
   const [page, setPage] = useState(1);
-  const BRANDS_PER_PAGE = 4;
+  const BRANDS_PER_PAGE = 8;
 
   const totalPages = Math.max(1, Math.ceil(brands.length / BRANDS_PER_PAGE));
   const currentBrands = brands.slice(
@@ -37,18 +36,18 @@ export default function BrandShowcaseSection({
   }
 
   return (
-    <section className="bg-white rounded-3xl p-6 sm:p-8 border border-groomish-slate/10 shadow-soft space-y-6">
+    <section className="bg-white rounded-3xl p-5 sm:p-6 border border-groomish-slate/10 shadow-soft space-y-4">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-groomish-slate/10 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-groomish-slate/10 pb-3">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-groomish-orange mb-1">
-            <Award className="w-4 h-4 text-groomish-orange" />
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-groomish-orange mb-0.5">
+            <Award className="w-3.5 h-3.5 text-groomish-orange" />
             <span>Brand Hierarchy & Authenticity Guarantee</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-groomish-slate">
+          <h2 className="text-lg sm:text-xl font-heading font-extrabold text-groomish-slate">
             Shop by Certified Salon Brands
           </h2>
-          <p className="text-xs text-groomish-slate/60 mt-0.5">
+          <p className="text-[11px] text-groomish-slate/60">
             Every product is sourced directly from authorized salon distributors with batch authentication.
           </p>
         </div>
@@ -95,8 +94,8 @@ export default function BrandShowcaseSection({
         </div>
       </div>
 
-      {/* Brand Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Brand Cards Grid - 8 brands in one row on desktop */}
+      <div className="grid grid-cols-2 xs:grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3">
         {currentBrands.map((b) => {
           const isSelected =
             selectedBrand !== "ALL" &&
@@ -106,24 +105,25 @@ export default function BrandShowcaseSection({
             <div
               key={b.name}
               onClick={() => onSelectBrand(isSelected ? "ALL" : b.name)}
-              className={`group cursor-pointer rounded-2xl p-4 border transition-all duration-300 relative flex flex-col items-center text-center justify-between ${
+              title={b.name}
+              className={`group cursor-pointer rounded-2xl p-2.5 sm:p-3 border transition-all duration-200 relative flex flex-col items-center text-center justify-center ${
                 isSelected
-                  ? "bg-groomish-orangeLight/40 border-groomish-orange ring-2 ring-groomish-orange/20 shadow-card -translate-y-0.5"
-                  : "bg-white border-groomish-slate/10 hover:border-groomish-orange/40 hover:shadow-soft"
+                  ? "bg-groomish-orangeLight/40 border-groomish-orange ring-2 ring-groomish-orange/30 shadow-card -translate-y-0.5"
+                  : "bg-white border-groomish-slate/10 hover:border-groomish-orange/50 hover:shadow-soft hover:-translate-y-0.5"
               }`}
             >
               {/* Selected Tick Indicator */}
               {isSelected && (
-                <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-groomish-orange text-white flex items-center justify-center shadow-xs">
-                  <Check className="w-3 h-3 stroke-[3]" />
+                <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-groomish-orange text-white flex items-center justify-center shadow-xs">
+                  <Check className="w-2.5 h-2.5 stroke-[3]" />
                 </div>
               )}
 
               {/* Brand Logo / Monogram Frame */}
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white border border-groomish-slate/15 p-2 flex items-center justify-center shadow-xs mb-3 group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white border border-groomish-slate/15 p-2 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                 {b.logo ? (
                   <img
-                    src={getOptimizedImageUrl(b.logo, { width: 160 })}
+                    src={getOptimizedImageUrl(b.logo, { width: 140 })}
                     alt={`${b.name} Logo`}
                     loading="lazy"
                     decoding="async"
@@ -135,7 +135,7 @@ export default function BrandShowcaseSection({
                   />
                 ) : null}
                 <div
-                  className={`w-full h-full rounded-xl flex items-center justify-center font-heading font-extrabold text-lg sm:text-xl text-white ${
+                  className={`w-full h-full rounded-full flex items-center justify-center font-heading font-extrabold text-sm sm:text-base text-white ${
                     b.logo ? "hidden" : ""
                   }`}
                   style={{
@@ -146,19 +146,10 @@ export default function BrandShowcaseSection({
                 </div>
               </div>
 
-              {/* Brand Details */}
-              <div className="space-y-1 w-full">
-                <h3 className="font-heading font-extrabold text-sm text-groomish-slate truncate group-hover:text-groomish-orange transition-colors">
-                  {b.name}
-                </h3>
-                <p className="text-[10px] text-groomish-slate/60 truncate">
-                  {b.tagline || "Salon Formulated"}
-                </p>
-                <div className="pt-2 flex items-center justify-center gap-1.5 text-[10px] font-bold text-groomish-green">
-                  <ShieldCheck className="w-3 h-3 shrink-0" />
-                  <span>Authorized • {b.productCount || 0} items</span>
-                </div>
-              </div>
+              {/* Brand Name */}
+              <span className="font-heading font-extrabold text-[11px] sm:text-xs text-groomish-slate truncate w-full mt-2 group-hover:text-groomish-orange transition-colors">
+                {b.name}
+              </span>
             </div>
           );
         })}

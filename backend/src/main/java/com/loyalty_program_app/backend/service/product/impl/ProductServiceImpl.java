@@ -45,6 +45,7 @@ public class ProductServiceImpl implements ProductService {
     private final com.loyalty_program_app.backend.service.BranchCatalogService branchCatalogService;
     private final PaymentRepository paymentRepository;
     private final com.loyalty_program_app.backend.service.LoyaltyConfigService loyaltyConfigService;
+    private final com.loyalty_program_app.backend.mapper.BookingMapper bookingMapper;
 
     @Override
     public List<ProductResponse> getAllActiveProducts() {
@@ -484,57 +485,6 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private BookingResponse toBookingResponse(Booking b) {
-        BookingResponse dto = new BookingResponse();
-        dto.setId(b.getId());
-        dto.setBookingCode(b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase());
-        dto.setUserId(b.getUser() != null ? b.getUser().getId() : null);
-        dto.setUserName(b.getUser() != null ? b.getUser().getName() : null);
-        dto.setPaymentId(b.getPayment() != null ? b.getPayment().getId() : null);
-        dto.setCouponId(b.getCoupon() != null ? b.getCoupon().getId() : null);
-        dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
-        dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
-        dto.setTotalAmount(b.getTotalAmount());
-        dto.setPricePaid(b.getPricePaid());
-        dto.setStatus(b.getStatus() != null ? b.getStatus().name() : null);
-        dto.setScheduledAt(b.getScheduledAt());
-        dto.setBookedBy(b.getBookedBy());
-
-        if (b.getPayment() != null) {
-            dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
-            dto.setPaymentStatus(b.getPayment().getStatus() != null ? b.getPayment().getStatus().name() : (b.getStatus() == BookingStatus.COMPLETED ? "COMPLETED" : "PENDING"));
-            dto.setInvoiceNumber(b.getPayment().getInvoiceNumber());
-        } else if (b.getStatus() == BookingStatus.COMPLETED) {
-            dto.setPaymentMethod("CASH");
-            dto.setPaymentStatus("COMPLETED");
-        }
-
-        if (b.getBookingItems() != null && !b.getBookingItems().isEmpty()) {
-            BookingItem first = b.getBookingItems().get(0);
-            dto.setServiceId(first.getService() != null ? first.getService().getId() : null);
-            dto.setServiceName(first.getServiceNameSnapshot());
-        }
-
-        // Map attached products
-        List<BookingProduct> prods = bookingProductRepository.findByBookingId(b.getId());
-        if (prods != null && !prods.isEmpty()) {
-            dto.setProducts(prods.stream().map(bp -> BookingProductResponse.builder()
-                    .id(bp.getId())
-                    .productId(bp.getProduct() != null ? bp.getProduct().getId() : null)
-                    .productName(bp.getProductNameSnapshot())
-                    .brand(bp.getProduct() != null ? bp.getProduct().getBrand() : null)
-                    .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
-                    .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
-                    .unitPrice(bp.getUnitPriceSnapshot())
-                    .mrp(bp.getProduct() != null && bp.getProduct().getMrp() != null ? bp.getProduct().getMrp() : bp.getUnitPriceSnapshot())
-                    .quantity(bp.getQuantity())
-                    .totalPrice(bp.getTotalPrice())
-                    .build()).collect(Collectors.toList()));
-        } else {
-            dto.setProducts(new ArrayList<>());
-        }
-
-        dto.setTimeline(bookingTimelineService.getTimelineForBooking(b));
-
-        return dto;
+        return bookingMapper.toBookingResponse(b);
     }
 }

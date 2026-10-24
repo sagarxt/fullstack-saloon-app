@@ -28,6 +28,7 @@ public class UserAdminServiceImpl implements UserAdminService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final EmailTemplateService templateService;
+    private final com.loyalty_program_app.backend.mapper.UserMapper userMapper;
 
     // ------------------------------------------
     // LIST USERS WITH SEARCH + FILTERS
@@ -130,8 +131,8 @@ public class UserAdminServiceImpl implements UserAdminService {
 
     @Override
     public java.util.Map<String, Object> sendEmailToUserGroup(String userGroup, String subject, String message, String couponCode) {
-        List<User> customers = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.ROLE_CUSTOMER && u.isActive())
+        List<User> customers = userRepository.findByRole(Role.ROLE_CUSTOMER).stream()
+                .filter(User::isActive)
                 .filter(u -> userGroup == null || userGroup.isBlank() || userGroup.equalsIgnoreCase("ALL") || u.getAllEffectiveGroups().contains(userGroup.toUpperCase().trim()))
                 .toList();
 
@@ -337,27 +338,6 @@ public class UserAdminServiceImpl implements UserAdminService {
     // MANUAL MAPPER
     // ------------------------------------------
     private UserResponse toDto(User user) {
-        UserResponse dto = new UserResponse();
-        dto.setId(user.getId());
-        dto.setName(user.getName());
-        dto.setEmail(user.getEmail());
-        dto.setPhone(user.getPhone());
-        dto.setImage(user.getImage());
-        dto.setGender(user.getGender().name());
-        dto.setRole(user.getRole().name());
-        dto.setTier(user.getTier().name());
-        dto.setPoints(user.getPoints());
-        dto.setLifetimePoints(user.getLifetimePoints() != null ? user.getLifetimePoints() : (user.getPoints() != null ? user.getPoints() : 0));
-        dto.setReferralCode(user.getReferralCode());
-        dto.setActive(user.isActive());
-        dto.setCreatedAt(user.getCreatedAt());
-        dto.setUserGroups(user.getUserGroups() != null ? new java.util.HashSet<>(user.getUserGroups()) : new java.util.HashSet<>());
-        dto.setEffectiveGroups(user.getAllEffectiveGroups());
-        if (user.getStore() != null) {
-            dto.setStoreId(user.getStore().getId());
-            dto.setStoreName(user.getStore().getName());
-            dto.setStoreCode(user.getStore().getCode());
-        }
-        return dto;
+        return userMapper.toUserResponse(user);
     }
 }

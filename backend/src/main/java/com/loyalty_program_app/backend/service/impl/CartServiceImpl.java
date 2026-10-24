@@ -41,6 +41,7 @@ public class CartServiceImpl implements CartService {
     private final BookingTimelineService bookingTimelineService;
     private final BranchCatalogService branchCatalogService;
     private final LoyaltyConfigService loyaltyConfigService;
+    private final com.loyalty_program_app.backend.mapper.BookingMapper bookingMapper;
 
     public CartServiceImpl(
             CartRepository cartRepository,
@@ -59,7 +60,8 @@ public class CartServiceImpl implements CartService {
             EmailService emailService,
             BookingTimelineService bookingTimelineService,
             BranchCatalogService branchCatalogService,
-            LoyaltyConfigService loyaltyConfigService) {
+            LoyaltyConfigService loyaltyConfigService,
+            com.loyalty_program_app.backend.mapper.BookingMapper bookingMapper) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.userRepository = userRepository;
@@ -77,6 +79,7 @@ public class CartServiceImpl implements CartService {
         this.bookingTimelineService = bookingTimelineService;
         this.branchCatalogService = branchCatalogService;
         this.loyaltyConfigService = loyaltyConfigService;
+        this.bookingMapper = bookingMapper;
     }
 
     /* =====================================================
@@ -855,48 +858,10 @@ public class CartServiceImpl implements CartService {
     }
 
     private BookingResponse toBookingResponse(Booking b, String serviceNames) {
-        BookingResponse dto = new BookingResponse();
-        dto.setId(b.getId());
-        dto.setBookingCode(b.getBookingCode());
-        dto.setScheduledAt(b.getScheduledAt());
-        dto.setTotalAmount(b.getTotalAmount());
-        dto.setPricePaid(b.getPricePaid());
-        dto.setStatus(b.getStatus().name());
-        dto.setServiceName(serviceNames);
-        dto.setNote(b.getNote());
-        dto.setBookedBy(b.getBookedBy());
-
-        if (b.getStore() != null) {
-            dto.setStoreId(b.getStore().getId());
-            dto.setStoreName(b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : b.getStore().getName());
-            dto.setStoreAddress(b.getStoreAddressSnapshot() != null ? b.getStoreAddressSnapshot() : b.getStore().getAddress());
-        } else if (b.getStoreNameSnapshot() != null) {
-            dto.setStoreName(b.getStoreNameSnapshot());
-            dto.setStoreAddress(b.getStoreAddressSnapshot());
+        BookingResponse dto = bookingMapper.toBookingResponse(b);
+        if (serviceNames != null && !serviceNames.isBlank() && (dto.getServiceName() == null || dto.getServiceName().isBlank())) {
+            dto.setServiceName(serviceNames);
         }
-
-        if (b.getPayment() != null) {
-            dto.setPaymentId(b.getPayment().getId());
-            dto.setPaymentMethod(b.getPayment().getPaymentMethod().name());
-            dto.setPaymentStatus(b.getPayment().getStatus().name());
-        }
-
-        List<BookingProduct> prods = bookingProductRepository.findByBookingId(b.getId());
-        if (prods != null && !prods.isEmpty()) {
-            dto.setProducts(prods.stream().map(bp -> com.loyalty_program_app.backend.dto.product.BookingProductResponse.builder()
-                    .id(bp.getId())
-                    .productId(bp.getProduct() != null ? bp.getProduct().getId() : null)
-                    .productName(bp.getProductNameSnapshot())
-                    .brand(bp.getProduct() != null ? bp.getProduct().getBrand() : null)
-                    .volumeOrSize(bp.getProduct() != null ? bp.getProduct().getVolumeOrSize() : null)
-                    .image(bp.getProduct() != null ? bp.getProduct().getImage() : null)
-                    .unitPrice(bp.getUnitPriceSnapshot())
-                    .quantity(bp.getQuantity())
-                    .totalPrice(bp.getTotalPrice())
-                    .build()).collect(Collectors.toList()));
-        }
-
-        dto.setTimeline(bookingTimelineService.getTimelineForBooking(b));
         return dto;
     }
 }

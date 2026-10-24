@@ -30,6 +30,7 @@ public class AuthService {
     private final com.loyalty_program_app.backend.service.utils.OtpService otpService;
     private final com.loyalty_program_app.backend.repository.PointsLedgerRepository pointsLedgerRepository;
     private final com.loyalty_program_app.backend.repository.NotificationRepository notificationRepository;
+    private final com.loyalty_program_app.backend.mapper.UserMapper userMapper;
 
     // ----------------------------------------------------------
     // VERIFY REFERRAL CODE
@@ -237,18 +238,6 @@ public class AuthService {
 
     // MANUAL MAPPER (Entity → Response DTO)
     private UserResponse toUserResponse(User user) {
-        UserResponse dto = new UserResponse();
-        dto.setId(user.getId());
-        dto.setName(user.getName());
-        dto.setEmail(user.getEmail());
-        dto.setPhone(user.getPhone());
-        dto.setImage(user.getImage());
-        dto.setGender(user.getGender() != null ? user.getGender().name() : null);
-        dto.setRole(user.getRole().name());
-        dto.setTier(user.getTier().name());
-        dto.setPoints(user.getPoints());
-        dto.setReferralCode(user.getReferralCode());
-        dto.setActive(user.isActive());
-        return dto;
+        return userMapper.toUserResponse(user);
     }
 }

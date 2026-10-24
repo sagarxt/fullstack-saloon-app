@@ -31,14 +31,9 @@ public class CustomerReferralServiceImpl implements CustomerReferralService {
             userRepository.save(referrer);
         }
 
-        long total = referralRepository.findAll().stream()
-                .filter(r -> r.getReferrer().getId().equals(userId))
-                .count();
+        long total = referralRepository.countByReferrerId(userId);
 
-        long rewarded = referralRepository.findAll().stream()
-                .filter(r -> r.getReferrer().getId().equals(userId))
-                .filter(Referral::isRewardGiven)
-                .count();
+        long rewarded = referralRepository.countByReferrerIdAndRewardGivenTrue(userId);
 
         ReferralCodeResponse dto = new ReferralCodeResponse();
         dto.setReferralCode(referrer.getReferralCode());

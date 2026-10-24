@@ -12,7 +12,6 @@ import {
   Gift,
   CreditCard,
   Star,
-  ExternalLink,
   LogOut,
   Shield,
   Package,
@@ -20,7 +19,6 @@ import {
   Database,
   HelpCircle,
   X,
-  PanelLeftClose,
 } from "lucide-react";
 import DatabaseResetModal from "../modals/DatabaseResetModal";
 
@@ -71,48 +69,29 @@ export default function AdminSidebar({
       >
         <div className="flex-1 overflow-y-auto">
           {/* Brand Header */}
-          <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+          <div className="px-4 py-3 sm:py-3.5 border-b border-white/10 flex items-center justify-between gap-2">
             <div
               onClick={() => {
                 navigate("/");
                 onClose?.();
               }}
-              className="flex items-center gap-3 cursor-pointer group"
+              className="w-full flex items-center justify-center cursor-pointer group"
             >
               <img
-                src="/groomish_logo_2.png"
+                src="https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png"
                 alt="Groomish"
-                className="h-8 sm:h-9 w-auto object-contain transition-transform group-hover:scale-105"
+                className="w-full h-11 sm:h-12 max-h-[52px] object-contain transition-transform group-hover:scale-102"
               />
-              <div>
-                <span className="font-heading font-extrabold text-sm tracking-wide block text-white">
-                  Groomish Now
-                </span>
-                <span className="text-[10px] uppercase tracking-wider font-bold text-groomish-orange bg-groomish-orange/20 px-2 py-0.5 rounded-full inline-block">
-                  Admin Portal
-                </span>
-              </div>
             </div>
 
             {/* Mobile Close Button */}
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition lg:hidden cursor-pointer"
+              className="p-1.5 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition lg:hidden cursor-pointer shrink-0"
               aria-label="Close menu"
             >
               <X className="w-5 h-5" />
-            </button>
-
-            {/* Desktop Hide Button */}
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="hidden lg:flex p-1.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
-              title="Hide sidebar (Ctrl+B)"
-              aria-label="Hide sidebar"
-            >
-              <PanelLeftClose className="w-4 h-4" />
             </button>
           </div>
 
@@ -163,20 +142,6 @@ export default function AdminSidebar({
 
         {/* Footer Info & Maintenance Trigger */}
         <div className="p-4 border-t border-white/10 space-y-2 shrink-0 bg-groomish-slate">
-          {/* Hide Sidebar button on Desktop Footer */}
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className="hidden lg:flex w-full items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-white/60 hover:text-white hover:bg-white/10 transition cursor-pointer"
-            title="Hide sidebar to maximize screen space"
-          >
-            <span className="flex items-center gap-2">
-              <PanelLeftClose className="w-4 h-4 text-groomish-orange" />
-              <span>Hide Sidebar</span>
-            </span>
-            <span className="text-[9px] text-white/40 uppercase font-mono">Ctrl+B</span>
-          </button>
-
           {/* Database Reset Action Button */}
           <button
             type="button"
@@ -194,21 +159,6 @@ export default function AdminSidebar({
             <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-extrabold">
               RESET
             </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              navigate("/");
-              onClose?.();
-            }}
-            className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-semibold text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <ExternalLink className="w-4 h-4" />
-              <span>Customer Website</span>
-            </span>
-            <span className="text-[10px] text-white/40">↗</span>
           </button>
 
           <button

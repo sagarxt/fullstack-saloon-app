@@ -24,6 +24,15 @@ export const getCustomerBookingsByStaff = (customerId, page = 0, size = 20) =>
   axiosClient.get(`/staff/bookings/customer/${customerId}?page=${page}&size=${size}`);
 
 /* STAFF CUSTOMERS */
+export const getStaffCustomers = (search = "", active = null, page = 0, size = 20) => {
+  const params = new URLSearchParams();
+  if (search) params.append("search", search);
+  if (active !== null && active !== undefined) params.append("active", active);
+  params.append("page", page);
+  params.append("size", size);
+  return axiosClient.get(`/staff/customers?${params.toString()}`);
+};
+
 export const createCustomerByStaff = (data) =>
   axiosClient.post("/staff/customers", data);
 
@@ -38,6 +47,9 @@ export const getCustomerPointsByStaff = (id) =>
 
 export const getCustomerPointsHistoryByStaff = (id, page = 0, size = 20) =>
   axiosClient.get(`/staff/customers/${id}/points/history?page=${page}&size=${size}`);
+
+export const startBookingByStaff = (bookingId) =>
+  axiosClient.post(`/staff/bookings/${bookingId}/start`);
 
 /* STAFF SERVICES */
 export const getStaffServices = () =>
