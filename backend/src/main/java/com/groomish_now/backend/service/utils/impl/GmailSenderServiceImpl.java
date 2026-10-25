@@ -3,15 +3,11 @@ package com.groomish_now.backend.service.utils.impl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.groomish_now.backend.service.utils.GmailSenderService;
-import jakarta.mail.Session;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -21,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
-import java.util.Properties;
 
 @Service
 @RequiredArgsConstructor
@@ -69,21 +64,17 @@ public class GmailSenderServiceImpl implements GmailSenderService {
     private void sendWithRetry(String to, String subject, String htmlContent, boolean retryOnUnauthorized) throws Exception {
         String accessToken = getValidAccessToken();
 
-        // 1. Build MimeMessage
-        Properties props = new Properties();
-        Session session = Session.getInstance(props, null);
-        MimeMessage mimeMessage = new MimeMessage(session);
-        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, StandardCharsets.UTF_8.name());
-        helper.setFrom(senderEmail, "Groomish Now");
-        helper.setTo(to);
-        helper.setSubject(subject);
-        helper.setText(htmlContent, true);
+        // Build RFC 2822 MIME message directly (Standard RFC-compliant for text/html)
+        String encodedSubject = "=?UTF-8?B?" + Base64.getEncoder().encodeToString(subject.getBytes(StandardCharsets.UTF_8)) + "?=";
+        String rawEmail = "From: Groomish Now <" + senderEmail + ">\r\n"
+                + "To: " + to + "\r\n"
+                + "Subject: " + encodedSubject + "\r\n"
+                + "MIME-Version: 1.0\r\n"
+                + "Content-Type: text/html; charset=UTF-8\r\n\r\n"
+                + htmlContent;
 
-        // 2. Encode to raw RFC 2822 Base64URL string (Gmail API requirement)
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        mimeMessage.writeTo(buffer);
-        String rawBase64Url = Base64.getUrlEncoder().withoutPadding().encodeToString(buffer.toByteArray());
-
+        // Encode to raw RFC 2822 Base64URL string (Gmail API requirement)
+        String rawBase64Url = Base64.getUrlEncoder().withoutPadding().encodeToString(rawEmail.getBytes(StandardCharsets.UTF_8));
         String jsonPayload = objectMapper.writeValueAsString(Map.of("raw", rawBase64Url));
 
         // 3. Send over HTTPS Port 443
