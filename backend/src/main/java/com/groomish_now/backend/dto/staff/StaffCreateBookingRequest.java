@@ -1,0 +1,17 @@
+package com.groomish_now.backend.dto.staff;
+
+import lombok.Data;
+
+import java.util.List;
+import java.util.UUID;
+
+@Data
+public class StaffCreateBookingRequest {
+    private UUID customerId;
+    private List<UUID> serviceIds;
+    private String scheduledAt;   // ISO string
+    private String note;
+    private String couponCode;    // optional
+    private UUID storeId;
+}
+

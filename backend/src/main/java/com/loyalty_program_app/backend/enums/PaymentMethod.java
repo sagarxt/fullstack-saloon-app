@@ -1,5 +1,0 @@
-package com.loyalty_program_app.backend.enums;
-
-public enum PaymentMethod {
-    CASH, UPI, CARD, VOUCHER, ONLINE
-}

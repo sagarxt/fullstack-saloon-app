@@ -1,0 +1,36 @@
+package com.groomish_now.backend.service.review;
+
+import com.groomish_now.backend.dto.review.ServiceRatingSummaryResponse;
+import com.groomish_now.backend.dto.review.ServiceReviewRequest;
+import com.groomish_now.backend.dto.review.ServiceReviewResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.UUID;
+
+public interface ServiceReviewService {
+
+    ServiceReviewResponse createReview(UUID userId, ServiceReviewRequest request);
+
+    Page<ServiceReviewResponse> getReviewsForService(UUID serviceId, Pageable pageable);
+
+    ServiceRatingSummaryResponse getRatingSummary(UUID serviceId);
+
+    Page<ServiceReviewResponse> getReviewsForProduct(UUID productId, Pageable pageable);
+
+    ServiceRatingSummaryResponse getProductRatingSummary(UUID productId);
+
+    Page<ServiceReviewResponse> getReviewsForStore(UUID storeId, Pageable pageable);
+
+    ServiceRatingSummaryResponse getStoreRatingSummary(UUID storeId);
+
+    java.util.List<ServiceReviewResponse> getReviewsForBooking(UUID bookingId);
+
+    java.util.List<ServiceReviewResponse> getCustomerReviewsForBooking(UUID userId, UUID bookingId);
+
+    Page<ServiceReviewResponse> getMyReviews(UUID userId, Pageable pageable);
+
+    void deleteReview(UUID reviewId, UUID userId, boolean isAdmin);
+
+    Page<ServiceReviewResponse> getAllReviewsForAdmin(Pageable pageable);
+}

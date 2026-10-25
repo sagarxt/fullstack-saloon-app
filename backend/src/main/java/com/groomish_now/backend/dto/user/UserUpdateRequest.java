@@ -1,0 +1,15 @@
+package com.groomish_now.backend.dto.user;
+
+import lombok.Data;
+
+@Data
+public class UserUpdateRequest {
+    private String name;
+    private String email;
+    private String phone;
+    private String password; // optional, hashed only if provided
+    private String gender;
+    private java.util.UUID storeId;
+    private Boolean active;
+    private java.util.Set<String> userGroups;
+}
