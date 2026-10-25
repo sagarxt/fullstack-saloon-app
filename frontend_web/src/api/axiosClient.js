@@ -1,8 +1,22 @@
 import axios from "axios";
 import { toastEmitter } from "../utils/toastEmitter";
 
+const rawApiUrl =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "/api/v1";
+
+const normalizeBaseUrl = (url) => {
+  if (!url) return "/api/v1";
+  let cleaned = url.replace(/\/+$/, "");
+  if (cleaned.startsWith("http") && !cleaned.includes("/api/v1")) {
+    cleaned += "/api/v1";
+  }
+  return cleaned;
+};
+
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "/api/v1",
+  baseURL: normalizeBaseUrl(rawApiUrl),
 });
 
 // Attach token to every outgoing request
