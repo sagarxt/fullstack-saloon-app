@@ -32,15 +32,11 @@ server.tomcat.max-http-form-post-size=100MB
 app.jwt.secret=
 app.jwt.expiration-ms=3153600000000
 
-# MAIL CONFIGURATION - Gmail(SMTP)
-spring.mail.host=smtp.gmail.com
-spring.mail.port=587
-spring.mail.username=
-spring.mail.password=
-spring.mail.properties.mail.smtp.auth=true
-spring.mail.properties.mail.smtp.starttls.enable=true
-# Optional: Set the sender email for SimpleMailMessage, though spring.mail.username is often used as default
-spring.mail.properties.mail.smtp.from=
+# GMAIL REST API CONFIGURATION (HTTPS Port 443 - Supported on Render free tier)
+gmail.api.client-id=${GMAIL_CLIENT_ID:}
+gmail.api.client-secret=${GMAIL_CLIENT_SECRET:}
+gmail.api.refresh-token=${GMAIL_REFRESH_TOKEN:}
+gmail.api.sender-email=${GMAIL_SENDER_EMAIL:testmailemployee@gmail.com}
 
 
 # SPRING SECURITY
