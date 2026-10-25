@@ -1,0 +1,29 @@
+package com.groomish_now.backend.service.admin;
+
+import com.groomish_now.backend.dto.category.CategoryResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.UUID;
+
+public interface CategoryAdminService {
+
+    CategoryResponse createCategory(String name, String description, MultipartFile image);
+
+    CategoryResponse createCategory(String name, String description, MultipartFile image, String imageUrl);
+
+    CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image);
+
+    CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image, String imageUrl);
+
+    CategoryResponse updateCategory(UUID id, String name, String description, MultipartFile image, String imageUrl, Boolean active);
+
+    CategoryResponse updateCategoryStatus(UUID id, Boolean active);
+
+    void softDeleteCategory(UUID id);
+
+    CategoryResponse getCategory(UUID id);
+
+    Page<CategoryResponse> listCategories(String search, Boolean active, Pageable pageable);
+}

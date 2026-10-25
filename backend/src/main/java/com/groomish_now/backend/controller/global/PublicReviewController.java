@@ -1,0 +1,72 @@
+package com.groomish_now.backend.controller.global;
+
+import com.groomish_now.backend.dto.review.ServiceRatingSummaryResponse;
+import com.groomish_now.backend.dto.review.ServiceReviewResponse;
+import com.groomish_now.backend.service.review.ServiceReviewService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/public/reviews")
+@RequiredArgsConstructor
+public class PublicReviewController {
+
+    private final ServiceReviewService reviewService;
+
+    @GetMapping("/service/{serviceId}")
+    public ResponseEntity<Page<ServiceReviewResponse>> getReviewsForService(
+            @PathVariable UUID serviceId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(reviewService.getReviewsForService(serviceId, pageable));
+    }
+
+    @GetMapping("/service/{serviceId}/summary")
+    public ResponseEntity<ServiceRatingSummaryResponse> getRatingSummary(
+            @PathVariable UUID serviceId
+    ) {
+        return ResponseEntity.ok(reviewService.getRatingSummary(serviceId));
+    }
+
+    @GetMapping("/product/{productId}")
+    public ResponseEntity<Page<ServiceReviewResponse>> getReviewsForProduct(
+            @PathVariable UUID productId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(reviewService.getReviewsForProduct(productId, pageable));
+    }
+
+    @GetMapping("/product/{productId}/summary")
+    public ResponseEntity<ServiceRatingSummaryResponse> getProductRatingSummary(
+            @PathVariable UUID productId
+    ) {
+        return ResponseEntity.ok(reviewService.getProductRatingSummary(productId));
+    }
+
+    @GetMapping("/store/{storeId}")
+    public ResponseEntity<Page<ServiceReviewResponse>> getReviewsForStore(
+            @PathVariable UUID storeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(reviewService.getReviewsForStore(storeId, pageable));
+    }
+
+    @GetMapping("/store/{storeId}/summary")
+    public ResponseEntity<ServiceRatingSummaryResponse> getStoreRatingSummary(
+            @PathVariable UUID storeId
+    ) {
+        return ResponseEntity.ok(reviewService.getStoreRatingSummary(storeId));
+    }
+}

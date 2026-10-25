@@ -1,0 +1,15 @@
+package com.groomish_now.backend.repository;
+
+import com.groomish_now.backend.model.BookingProduct;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface BookingProductRepository extends JpaRepository<BookingProduct, UUID> {
+    List<BookingProduct> findByBookingId(UUID bookingId);
+
+    List<BookingProduct> findByBookingIdIn(java.util.Collection<UUID> bookingIds);
+}
