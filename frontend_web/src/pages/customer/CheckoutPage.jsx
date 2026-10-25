@@ -784,9 +784,9 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* HEADER */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-3">
-          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-groomish-slate tracking-tight">
+        {/* HEADER - COMPACT */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-2">
+          <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-groomish-slate tracking-tight">
             Checkout & Appointment Scheduling
           </h1>
           <p className="text-xs text-groomish-slate/60 mt-0.5">
@@ -798,9 +798,9 @@ export default function CheckoutPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3">
           <form onSubmit={handleSubmitCheckout} className="grid lg:grid-cols-12 gap-5 items-start">
             {/* LEFT COLUMN: SCHEDULING, REDEMPTION & PAYMENT */}
-            <div className="lg:col-span-8 space-y-4">
+            <div className="lg:col-span-8 space-y-3.5">
               {/* 1. SALON LOCATION & BRANCH */}
-              <div className="bg-white rounded-3xl p-4 sm:p-5 border border-groomish-slate/10 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-groomish-slate/10 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-groomish-cream text-groomish-orange flex items-center justify-center shrink-0">
                     <Store className="w-5 h-5" />
@@ -843,7 +843,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* 2. DATE & SLOT SELECTION */}
-              <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-soft space-y-4">
+              <div className="bg-white rounded-2xl p-4 sm:p-5 border border-groomish-slate/10 shadow-soft space-y-3.5">
                 <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-groomish-orange" />
@@ -1117,8 +1117,8 @@ export default function CheckoutPage() {
             </div>
 
             {/* RIGHT COLUMN: ITEMS SUMMARY & CTA */}
-            <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-5">
-              <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-card space-y-5">
+            <div className="lg:col-span-4 lg:sticky lg:top-20 lg:self-start space-y-4 z-20">
+              <div className="bg-white rounded-2xl p-4 sm:p-5 border border-groomish-slate/10 shadow-card space-y-4">
                 <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
                   <h3 className="font-heading font-extrabold text-base text-groomish-slate">
                     Appointment & Order Summary

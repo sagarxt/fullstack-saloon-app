@@ -216,8 +216,8 @@ export default function CartPage() {
             const reason = isOutOfStock
               ? "Out of stock at this branch"
               : isInsufficient
-              ? `Only ${p.stockQuantity} in stock at this branch`
-              : "Not carried at this branch";
+                ? `Only ${p.stockQuantity} in stock at this branch`
+                : "Not carried at this branch";
             unavailable.push({ ...item, reason });
             newUnavailableMap[item.id] = { reason, isOutOfStock: true };
           }
@@ -455,9 +455,8 @@ export default function CartPage() {
                         return (
                           <div
                             key={item.id}
-                            className={`py-4 first:pt-0 last:pb-0 space-y-3 rounded-2xl transition ${
-                              unavailableInfo ? "bg-red-50/70 p-3 border border-red-200" : ""
-                            }`}
+                            className={`py-4 first:pt-0 last:pb-0 space-y-3 rounded-2xl transition ${unavailableInfo ? "bg-red-50/70 p-3 border border-red-200" : ""
+                              }`}
                           >
                             <div className="flex items-start gap-4 justify-between">
                               <div className="flex items-start gap-3.5 min-w-0">
@@ -550,31 +549,31 @@ export default function CartPage() {
                                   </button>
                                 </div>
 
-                              <button
-                                type="button"
-                                onClick={() => removeItem(item.id, item.serviceName)}
-                                className="p-1.5 rounded-full hover:bg-groomish-crimson/10 text-groomish-slate/40 hover:text-groomish-crimson transition ml-1"
-                                title="Remove service"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeItem(item.id, item.serviceName)}
+                                  className="p-1.5 rounded-full hover:bg-groomish-crimson/10 text-groomish-slate/40 hover:text-groomish-crimson transition ml-1"
+                                  title="Remove service"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
 
-                            {/* Note input */}
-                            <div className="flex-1 sm:max-w-xs">
-                              <input
-                                type="text"
-                                placeholder="Add preference note (e.g. low fade, sensitive skin)..."
-                                value={notesState[item.id] !== undefined ? notesState[item.id] : (item.customNotes || "")}
-                                onChange={(e) => setNotesState({ ...notesState, [item.id]: e.target.value })}
-                                onBlur={() => handleNoteBlur(item)}
-                                className="w-full px-3 py-1 text-xs rounded-xl bg-groomish-cream border border-transparent focus:border-groomish-orange focus:bg-white outline-none transition placeholder:text-groomish-slate/40"
-                              />
+                              {/* Note input */}
+                              <div className="flex-1 sm:max-w-xs">
+                                <input
+                                  type="text"
+                                  placeholder="Add preference note (e.g. low fade, sensitive skin)..."
+                                  value={notesState[item.id] !== undefined ? notesState[item.id] : (item.customNotes || "")}
+                                  onChange={(e) => setNotesState({ ...notesState, [item.id]: e.target.value })}
+                                  onBlur={() => handleNoteBlur(item)}
+                                  className="w-full px-3 py-1 text-xs rounded-xl bg-groomish-cream border border-transparent focus:border-groomish-orange focus:bg-white outline-none transition placeholder:text-groomish-slate/40"
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -625,9 +624,8 @@ export default function CartPage() {
                         return (
                           <div
                             key={item.id}
-                            className={`py-4 first:pt-0 last:pb-0 space-y-3 rounded-2xl transition ${
-                              unavailableInfo ? "bg-red-50/70 p-3 border border-red-200" : ""
-                            }`}
+                            className={`py-4 first:pt-0 last:pb-0 space-y-3 rounded-2xl transition ${unavailableInfo ? "bg-red-50/70 p-3 border border-red-200" : ""
+                              }`}
                           >
                             <div className="flex items-start gap-4 justify-between">
                               <div className="flex items-start gap-3.5 min-w-0">
@@ -722,14 +720,14 @@ export default function CartPage() {
                                 </button>
                               </div>
 
-                            <span className="text-[11px] font-bold text-groomish-slate flex items-center gap-1">
-                              <GroomCoinIcon className="w-3.5 h-3.5" />
-                              <span>+{calculateCoins(item.totalPrice)} Groom Coins</span>
-                            </span>
+                              <span className="text-[11px] font-bold text-groomish-slate flex items-center gap-1">
+                                <GroomCoinIcon className="w-3.5 h-3.5" />
+                                <span>+{calculateCoins(item.totalPrice)} Groom Coins</span>
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -817,7 +815,7 @@ export default function CartPage() {
                     <GroomCoinIcon className="w-5 h-5 shrink-0" />
                     <div>
                       <span className="text-xs font-bold text-groomish-slate block">
-                        Earn +{estimatedPoints} Groom Coins
+                        Earn {estimatedPoints} Groom Coins
                       </span>
                       <span className="text-[10px] text-groomish-slate/70">
                         Credited directly to Groom Coin wallet upon appointment completion.
@@ -923,11 +921,10 @@ export default function CartPage() {
                   key={cat}
                   type="button"
                   onClick={() => setSelectedServiceCategory(cat)}
-                  className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap transition ${
-                    selectedServiceCategory === cat
+                  className={`text-[11px] font-bold px-3 py-1 rounded-full whitespace-nowrap transition ${selectedServiceCategory === cat
                       ? "bg-groomish-orange text-white shadow-soft"
                       : "bg-groomish-cream hover:bg-groomish-slate/10 text-groomish-slate/70"
-                  }`}
+                    }`}
                 >
                   {cat === "ALL" ? "All Services" : cat}
                 </button>
@@ -1000,11 +997,10 @@ export default function CartPage() {
                                       [srv.id]: sub,
                                     }))
                                   }
-                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition ${
-                                    isSelected
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition ${isSelected
                                       ? "bg-groomish-orange text-white"
                                       : "bg-groomish-cream text-groomish-slate hover:bg-groomish-orangeLight hover:text-groomish-orange"
-                                  }`}
+                                    }`}
                                 >
                                   {sub.name} (₹{sub.price})
                                 </button>

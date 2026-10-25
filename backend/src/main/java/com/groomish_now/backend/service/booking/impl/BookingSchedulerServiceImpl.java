@@ -85,7 +85,7 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
 
                     Notification notif = Notification.builder()
                             .user(b.getUser())
-                            .title("Booking in 30 Minutes ⏰")
+                            .title("Booking in 30 Minutes!")
                             .message("Your booking (" + displayCode + ") for " + serviceName + " at " + storeName + " will start in 30 minutes. See you soon!")
                             .type(NotificationType.BOOKING)
                             .referenceId(b.getId())
@@ -110,7 +110,7 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
 
                     Notification notif = Notification.builder()
                             .user(b.getUser())
-                            .title("Your Booking Starts Now! ✂️")
+                            .title("Your Booking Starts Now!")
                             .message("Hi " + b.getUser().getName() + ", your booking (" + displayCode + ") is starting now at " + storeName + ". Our stylists are ready for you!")
                             .type(NotificationType.BOOKING)
                             .referenceId(b.getId())
@@ -146,7 +146,7 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
 
                     Notification notif = Notification.builder()
                             .user(b.getUser())
-                            .title("Action Required: Missed Check-In ⚠️")
+                            .title("Action Required: Missed Check-In!")
                             .message("Your booking (" + displayCode + ") scheduled at " + scheduledAt.toLocalTime() + " has passed. Please visit by " + cutoffStr + " or reschedule to prevent automatic cancellation.")
                             .type(NotificationType.BOOKING)
                             .referenceId(b.getId())
@@ -192,7 +192,7 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
 
                     Notification notif = Notification.builder()
                             .user(b.getUser())
-                            .title("Booking Auto-Cancelled ❌")
+                            .title("Booking Auto-Cancelled!")
                             .message("Your booking (" + displayCode + ") was automatically cancelled as it was not attended or rescheduled within 2 hours of the slot.")
                             .type(NotificationType.BOOKING)
                             .referenceId(b.getId())

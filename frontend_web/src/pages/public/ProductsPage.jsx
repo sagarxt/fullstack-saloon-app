@@ -199,45 +199,45 @@ export default function ProductsPage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* HERO SECTION */}
-        <section className="bg-gradient-to-b from-white to-groomish-cream/40 border-b border-groomish-slate/10 py-12 sm:py-16">
+        {/* HERO SECTION - COMPACT & HIGH-CONVERTING UX */}
+        <section className="bg-gradient-to-b from-white to-groomish-cream/40 border-b border-groomish-slate/10 py-4 sm:py-5">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-groomish-orangeLight text-groomish-orange mb-3">
-                  <ShoppingBag className="w-3.5 h-3.5" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-groomish-orangeLight text-groomish-orange mb-1">
+                  <ShoppingBag className="w-3 h-3" />
                   Salon Retail Collection
                 </span>
-                <h1 className="text-3xl sm:text-5xl font-heading font-extrabold text-groomish-slate tracking-tight">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-heading font-extrabold text-groomish-slate tracking-tight">
                   Beauty Shop & In-Store Pickup
                 </h1>
-                <p className="mt-2 text-sm sm:text-base text-groomish-slate/70 leading-relaxed">
-                  Professional hair serums, clinical facial cleansers, and styling formulations. Pick up your products directly at our salon during your appointment or visit anytime.
+                <p className="mt-0.5 text-xs text-groomish-slate/60 leading-relaxed hidden sm:block">
+                  Professional hair serums, clinical facial cleansers, and styling formulations. Pick up your products directly at our salon.
                 </p>
               </div>
 
-              {/* In-Store Notice Pill */}
-              <div className="flex items-center gap-3 bg-white p-3.5 rounded-2xl border border-groomish-slate/10 shadow-soft max-w-sm">
-                <div className="w-10 h-10 rounded-xl bg-groomish-cream text-groomish-orange flex items-center justify-center shrink-0">
-                  <Store className="w-5 h-5" />
+              {/* In-Store Notice Pill - Compact */}
+              <div className="flex items-center gap-2.5 bg-white px-3 py-2 rounded-xl border border-groomish-slate/10 shadow-2xs self-start sm:self-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
+                  <Store className="w-4 h-4" />
                 </div>
                 <div className="text-xs">
-                  <p className="font-bold text-groomish-slate">In-Store Pickup Exclusively</p>
-                  <p className="text-groomish-slate/60 text-[11px] mt-0.5">
-                    Reserve online, collect at the front desk or add to your service appointment.
+                  <p className="font-bold text-groomish-slate text-[11px] leading-tight">In-Store Pickup Exclusively</p>
+                  <p className="text-groomish-slate/50 text-[10px] mt-0.5 leading-tight">
+                    Reserve online, collect at the front desk
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* SEARCH & FILTERS BAR */}
-            <div className="mt-10 flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-3xl border border-groomish-slate/10 shadow-soft">
+            {/* SEARCH & FILTERS BAR - COMPACT */}
+            <div className="mt-3.5 sm:mt-4 flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between bg-white p-2.5 sm:p-3 rounded-2xl border border-groomish-slate/10 shadow-soft">
               {/* Category Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
                 <button
                   onClick={() => setSelectedCategory("ALL")}
-                  className={`px-4 py-2 rounded-full text-xs font-bold shrink-0 transition ${selectedCategory === "ALL"
-                      ? "bg-groomish-slate text-white shadow-sm"
+                  className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition ${selectedCategory === "ALL"
+                      ? "bg-groomish-slate text-white shadow-xs"
                       : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
                     }`}
                 >
@@ -247,8 +247,8 @@ export default function ProductsPage() {
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold shrink-0 transition ${selectedCategory.toLowerCase() === cat.toLowerCase()
-                        ? "bg-groomish-slate text-white shadow-sm"
+                    className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition ${selectedCategory.toLowerCase() === cat.toLowerCase()
+                        ? "bg-groomish-slate text-white shadow-xs"
                         : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
                       }`}
                   >
@@ -258,23 +258,23 @@ export default function ProductsPage() {
               </div>
 
               {/* Search & Sort Controls */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
-                <div className="relative flex-1 md:w-64">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-groomish-slate/40 pointer-events-none" />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto justify-end">
+                <div className="relative flex-1 md:w-56">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-groomish-slate/40 pointer-events-none" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search hair serum, cleanser..."
-                    className="w-full pl-9 pr-3 py-2 rounded-full bg-groomish-cream text-xs text-groomish-slate outline-none border border-transparent focus:border-groomish-orange transition"
+                    className="w-full pl-8 pr-3 py-1.5 rounded-full bg-groomish-cream text-xs text-groomish-slate outline-none border border-transparent focus:border-groomish-orange transition"
                   />
                 </div>
 
-                <div className="w-full sm:w-48">
+                <div className="w-full sm:w-44">
                   <CustomSelect
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="rounded-full bg-groomish-cream border-transparent py-2"
+                    className="rounded-full bg-groomish-cream border-transparent py-1.5 text-xs"
                     options={[
                       { value: "DEFAULT", label: "Recommended" },
                       { value: "PRICE_LOW", label: "Price: Low to High" },
@@ -288,7 +288,7 @@ export default function ProductsPage() {
         </section>
 
         {/* PRODUCTS & BRANDS SECTION */}
-        <section className="py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <section className="py-4 sm:py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-5">
           {/* BRAND HIERARCHY & LOGOS SHOWCASE WITH PAGINATION */}
           <BrandShowcaseSection
             brands={brandList}
@@ -340,7 +340,7 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                 {sortedProducts
                   .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                   .map((product) => {
@@ -364,7 +364,7 @@ export default function ProductsPage() {
                           {/* Image Thumbnail */}
                           <div
                             onClick={() => navigate(`/products/${product.id}`)}
-                            className="relative h-52 overflow-hidden bg-white flex items-center justify-center p-4 cursor-pointer"
+                            className="relative h-44 sm:h-48 overflow-hidden bg-white flex items-center justify-center p-3 cursor-pointer"
                           >
                             <img
                               src={getOptimizedImageUrl(
@@ -385,7 +385,7 @@ export default function ProductsPage() {
                                 e.stopPropagation();
                                 handleSelectBrand(product.brand || "Groomish Pro");
                               }}
-                              className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/95 text-groomish-slate shadow-sm border border-groomish-slate/10 hover:border-groomish-orange hover:text-groomish-orange transition-all flex items-center gap-1 z-10"
+                              className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-white/95 text-groomish-slate shadow-sm border border-groomish-slate/10 hover:border-groomish-orange hover:text-groomish-orange transition-all flex items-center gap-1 z-10"
                               title={`Filter by ${product.brand || "Groomish Pro"}`}
                             >
                               <ShieldCheck className="w-3 h-3 text-groomish-green shrink-0" />
@@ -393,22 +393,22 @@ export default function ProductsPage() {
                             </button>
 
                             {/* In-Store Pickup Badge */}
-                            <span className="absolute bottom-3 left-3 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-groomish-slateDark/80 text-white backdrop-blur-sm flex items-center gap-1">
+                            <span className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-groomish-slateDark/80 text-white backdrop-blur-sm flex items-center gap-1">
                               <Store className="w-2.5 h-2.5 text-groomish-gold" />
                               <span>In-Store Pickup</span>
                             </span>
 
                             {/* Discount Chip on Top Right */}
                             {discountPercent > 0 && (
-                              <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-groomish-crimson text-white shadow-sm z-10">
+                              <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold bg-groomish-crimson text-white shadow-sm z-10">
                                 {discountPercent}% OFF
                               </span>
                             )}
                           </div>
 
                           {/* Content */}
-                          <div className="p-5 space-y-2">
-                            <div className="flex items-center justify-between text-[11px] font-semibold text-groomish-slate/50">
+                          <div className="p-3.5 sm:p-4 space-y-1.5">
+                            <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-semibold text-groomish-slate/50">
                               <span>{product.category || "Salon Care"}</span>
                               {product.volumeOrSize && (
                                 <span className="font-mono">{product.volumeOrSize}</span>
@@ -417,7 +417,7 @@ export default function ProductsPage() {
 
                             <h3
                               onClick={() => navigate(`/products/${product.id}`)}
-                              className="font-heading font-bold text-base text-groomish-slate group-hover:text-groomish-orange transition-colors line-clamp-1 cursor-pointer"
+                              className="font-heading font-bold text-sm sm:text-base text-groomish-slate group-hover:text-groomish-orange transition-colors line-clamp-1 cursor-pointer"
                             >
                               {product.name}
                             </h3>
@@ -427,7 +427,7 @@ export default function ProductsPage() {
                             </p>
 
                             {/* Groom Coin badge */}
-                            <div className="pt-1 flex items-center gap-1.5 text-[11px] font-bold text-groomish-orange">
+                            <div className="pt-0.5 flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-groomish-orange">
                               <GroomCoinIcon className="w-3.5 h-3.5 shrink-0" />
                               <span>Earn {coinsEarned} Groom Coin{coinsEarned !== 1 ? "s" : ""}</span>
                             </div>
@@ -435,7 +435,7 @@ export default function ProductsPage() {
                         </div>
 
                         {/* Bottom Pricing & Action */}
-                        <div className="p-5 pt-0 border-t border-groomish-slate/10 mt-2 flex items-center justify-between">
+                        <div className="p-3.5 sm:p-4 pt-0 border-t border-groomish-slate/10 mt-1 flex items-center justify-between">
                           <div>
                             <div className="text-lg font-extrabold text-groomish-slate">
                               ₹{product.price}

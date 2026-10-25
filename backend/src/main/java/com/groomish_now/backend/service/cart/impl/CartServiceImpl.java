@@ -18,6 +18,7 @@ import com.groomish_now.backend.service.cart.CartService;
 import com.groomish_now.backend.service.loyalty.LoyaltyConfigService;
 import com.groomish_now.backend.service.utils.EmailService;
 import com.groomish_now.backend.util.BookingCodeGenerator;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
@@ -46,45 +48,6 @@ public class CartServiceImpl implements CartService {
     private final BranchCatalogService branchCatalogService;
     private final LoyaltyConfigService loyaltyConfigService;
     private final BookingMapper bookingMapper;
-
-    public CartServiceImpl(
-            CartRepository cartRepository,
-            CartItemRepository cartItemRepository,
-            UserRepository userRepository,
-            ServiceRepository serviceRepository,
-            ProductRepository productRepository,
-            StoreRepository storeRepository,
-            CouponRepository couponRepository,
-            RedeemedVoucherRepository redeemedVoucherRepository,
-            BookingRepository bookingRepository,
-            BookingItemRepository bookingItemRepository,
-            BookingProductRepository bookingProductRepository,
-            PaymentRepository paymentRepository,
-            NotificationRepository notificationRepository,
-            EmailService emailService,
-            BookingTimelineService bookingTimelineService,
-            BranchCatalogService branchCatalogService,
-            LoyaltyConfigService loyaltyConfigService,
-            BookingMapper bookingMapper) {
-        this.cartRepository = cartRepository;
-        this.cartItemRepository = cartItemRepository;
-        this.userRepository = userRepository;
-        this.serviceRepository = serviceRepository;
-        this.productRepository = productRepository;
-        this.storeRepository = storeRepository;
-        this.couponRepository = couponRepository;
-        this.redeemedVoucherRepository = redeemedVoucherRepository;
-        this.bookingRepository = bookingRepository;
-        this.bookingItemRepository = bookingItemRepository;
-        this.bookingProductRepository = bookingProductRepository;
-        this.paymentRepository = paymentRepository;
-        this.notificationRepository = notificationRepository;
-        this.emailService = emailService;
-        this.bookingTimelineService = bookingTimelineService;
-        this.branchCatalogService = branchCatalogService;
-        this.loyaltyConfigService = loyaltyConfigService;
-        this.bookingMapper = bookingMapper;
-    }
 
     /* =====================================================
        GET OR CREATE CART
