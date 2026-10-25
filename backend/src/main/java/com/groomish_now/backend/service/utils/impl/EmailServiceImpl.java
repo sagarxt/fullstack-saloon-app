@@ -4,12 +4,10 @@ import com.groomish_now.backend.dto.mail.BillItemDto;
 import com.groomish_now.backend.dto.mail.BookingEmailDto;
 import com.groomish_now.backend.service.utils.EmailService;
 import com.groomish_now.backend.service.utils.EmailTemplateService;
-import jakarta.mail.internet.MimeMessage;
+import com.groomish_now.backend.service.utils.GmailSenderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -22,10 +20,10 @@ import java.util.List;
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
-    private final JavaMailSender mailSender;
+    private final GmailSenderService gmailSenderService;
     private final EmailTemplateService templateService;
 
-    @Value("${spring.mail.username:testmailemployee@gmail.com}")
+    @Value("${gmail.api.sender-email:testmailemployee@gmail.com}")
     private String fromEmail;
 
     @Value("${app.frontend.url:http://localhost:5173}")
@@ -40,15 +38,8 @@ public class EmailServiceImpl implements EmailService {
     public void sendHtmlEmail(String to, String subject, String htmlContent) {
         try {
             String sanitizedSubject = sanitizeSubject(subject);
-            log.info("Sending real-time Groomish Now email to: {}, Subject: {}", to, sanitizedSubject);
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(fromEmail, "Groomish Now");
-            helper.setTo(to);
-            helper.setSubject(sanitizedSubject);
-            helper.setText(htmlContent, true);
-            mailSender.send(message);
-            log.info("Groomish Now email successfully sent to: {}", to);
+            log.info("Dispatching Groomish Now email via Gmail API to: {}, Subject: {}", to, sanitizedSubject);
+            gmailSenderService.sendHtmlEmail(to, sanitizedSubject, htmlContent);
         } catch (Exception e) {
             log.error("Failed to send Groomish Now email to {}: {}", to, e.getMessage());
         }
