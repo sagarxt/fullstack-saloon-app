@@ -144,33 +144,33 @@ export default function MyBookingsPage() {
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
       <Navbar />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Page Header - Compact */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-groomish-orange mb-1">
-              <Calendar className="w-4 h-4" />
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-groomish-orange mb-0.5">
+              <Calendar className="w-3.5 h-3.5" />
               <span>Salon Appointments</span>
             </div>
-            <h1 className="text-3xl font-heading font-extrabold text-groomish-slate">
+            <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-groomish-slate">
               My Bookings
             </h1>
-            <p className="text-sm text-groomish-slate/60 mt-1">
+            <p className="text-xs text-groomish-slate/60 mt-0.5">
               Track upcoming visits, reschedule appointments, and view your Groom Coins receipt.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={loadBookings}
-              className="p-2.5 rounded-2xl bg-white border border-groomish-slate/15 text-groomish-slate hover:bg-groomish-cream transition"
+              className="p-2 rounded-xl bg-white border border-groomish-slate/15 text-groomish-slate hover:bg-groomish-cream transition"
               title="Refresh bookings"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-groomish-orange" : ""}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-groomish-orange" : ""}`} />
             </button>
             <button
               onClick={() => navigate("/#services")}
-              className="btn-primary text-xs px-5 py-2.5"
+              className="btn-primary text-xs px-4 py-2"
             >
               <Scissors className="w-3.5 h-3.5" />
               <span>Book New Service</span>
@@ -178,15 +178,15 @@ export default function MyBookingsPage() {
           </div>
         </div>
 
-        {/* Controls: Filter Tabs + Search Input */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        {/* Controls: Filter Tabs + Search Input - Compact */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
           {/* Filter Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-white rounded-2xl border border-groomish-slate/10 shadow-soft overflow-x-auto">
+          <div className="flex items-center gap-1 p-0.5 bg-white rounded-xl border border-groomish-slate/10 shadow-2xs overflow-x-auto">
             <button
               onClick={() => setFilter("ALL")}
-              className={`px-3 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition whitespace-nowrap ${
                 filter === "ALL"
-                  ? "bg-groomish-slate text-white shadow-soft"
+                  ? "bg-groomish-slate text-white shadow-2xs"
                   : "text-groomish-slate/60 hover:text-groomish-slate"
               }`}
             >
@@ -194,9 +194,9 @@ export default function MyBookingsPage() {
             </button>
             <button
               onClick={() => setFilter("UPCOMING")}
-              className={`px-3 py-2 text-xs font-bold rounded-xl transition whitespace-nowrap ${
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition whitespace-nowrap ${
                 filter === "UPCOMING"
-                  ? "bg-groomish-orange text-white shadow-soft"
+                  ? "bg-groomish-orange text-white shadow-2xs"
                   : "text-groomish-slate/60 hover:text-groomish-slate"
               }`}
             >

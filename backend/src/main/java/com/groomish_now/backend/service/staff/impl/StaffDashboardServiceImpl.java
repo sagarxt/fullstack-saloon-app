@@ -16,6 +16,7 @@ import com.groomish_now.backend.repository.BookingRepository;
 import com.groomish_now.backend.repository.PaymentRepository;
 import com.groomish_now.backend.repository.UserRepository;
 import com.groomish_now.backend.service.staff.StaffDashboardService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -24,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class StaffDashboardServiceImpl implements StaffDashboardService {
 
     private final BookingRepository bookingRepository;
@@ -32,21 +34,6 @@ public class StaffDashboardServiceImpl implements StaffDashboardService {
     private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final BookingMapper bookingMapper;
-
-    public StaffDashboardServiceImpl(
-            BookingRepository bookingRepository,
-            BookingItemRepository bookingItemRepository,
-            BookingProductRepository bookingProductRepository,
-            PaymentRepository paymentRepository,
-            UserRepository userRepository,
-            BookingMapper bookingMapper) {
-        this.bookingRepository = bookingRepository;
-        this.bookingItemRepository = bookingItemRepository;
-        this.bookingProductRepository = bookingProductRepository;
-        this.paymentRepository = paymentRepository;
-        this.userRepository = userRepository;
-        this.bookingMapper = bookingMapper;
-    }
 
     @Override
     public StaffDashboardResponse getDashboard(UUID staffId) {

@@ -201,10 +201,10 @@ export default function ServiceDetailPage() {
   const totalReviewsCount = ratingSummary?.totalReviews ?? reviews.length;
 
   return (
-    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-clip">
       <Navbar />
 
-      <main className="flex-1 w-full max-w-full overflow-x-hidden">
+      <main className="flex-1 w-full max-w-full">
         {/* BREADCRUMBS */}
         <div className="bg-white border-b border-groomish-slate/10 py-2.5 sm:py-3 w-full overflow-hidden">
           <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center gap-1.5 sm:gap-2 text-xs text-groomish-slate/60 overflow-x-auto no-scrollbar whitespace-nowrap">
@@ -232,12 +232,12 @@ export default function ServiceDetailPage() {
         </div>
 
         {/* HERO / PRODUCT DETAILS SECTION */}
-        <section className="py-3.5 sm:py-7 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 w-full max-w-full overflow-x-hidden min-w-0">
-          <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full max-w-full min-w-0">
+        <section className="py-3.5 sm:py-7 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 w-full max-w-full min-w-0">
+          <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full max-w-full min-w-0 items-start">
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-5 w-full max-w-full min-w-0">
-              {/* Image Preview */}
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft h-[260px] sm:h-[360px] lg:h-[440px] w-full">
+              {/* Image Preview - Compact */}
+              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft h-[240px] sm:h-[300px] lg:h-[340px] w-full">
                 <img
                   src={imgSrc}
                   alt={service.name}
@@ -494,10 +494,9 @@ export default function ServiceDetailPage() {
               </div>
             </div>
 
-            {/* RIGHT SIDEBAR: STICKY BOOKING CARD (STICKY UNTIL REVIEWS END) */}
-            <div className="lg:col-span-5 relative w-full max-w-full min-w-0">
-              <div className="lg:sticky lg:top-24 space-y-4 w-full min-w-0">
-                <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-card space-y-4">
+            {/* RIGHT SIDEBAR: STICKY BOOKING CARD (FIXED ON TOP AS PAGE SCROLLS) */}
+            <div className="lg:col-span-5 lg:sticky lg:top-20 lg:self-start space-y-4 w-full min-w-0 z-20">
+              <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-card space-y-4">
                   <div>
                     <span className="text-[10px] uppercase font-bold tracking-wider text-groomish-slate/50 block mb-1">
                       Salon Tariff & Booking
@@ -537,7 +536,7 @@ export default function ServiceDetailPage() {
                     </div>
                     <div>
                       <span className="text-xs font-extrabold text-groomish-slate block flex items-center gap-1.5 flex-wrap">
-                        <span>Earn +{coinsEarned} Groom Coins</span>
+                        <span>Earn {coinsEarned} Groom Coins</span>
                         {service.rewards > 0 && (
                           <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 font-black">
                             Includes +{service.rewards} Bonus
@@ -631,12 +630,12 @@ export default function ServiceDetailPage() {
                             {service.rewards > 0 ? (
                               <>
                                 <span className="text-amber-800 uppercase font-black tracking-wider text-[10px] mr-1">Coin Offer:</span>
-                                <span>Earn +{coinsEarned} Groom Coins (+{service.rewards} Extra Bonus)</span>
+                                <span>Earn {coinsEarned} Groom Coins (+{service.rewards} Extra Bonus)</span>
                               </>
                             ) : (
                               <>
                                 <span className="text-amber-800 uppercase font-black tracking-wider text-[10px] mr-1">Coin Offer:</span>
-                                <span>Earn +{coinsEarned} Groom Coins on this treatment</span>
+                                <span>Earn {coinsEarned} Groom Coins on this treatment</span>
                               </>
                             )}
                           </span>
@@ -700,8 +699,7 @@ export default function ServiceDetailPage() {
                 )}
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
         {/* RELATED SERVICES IN THIS CATEGORY */}
         {relatedServices.length > 0 && (

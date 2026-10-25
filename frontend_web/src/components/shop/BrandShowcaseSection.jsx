@@ -36,28 +36,26 @@ export default function BrandShowcaseSection({
   }
 
   return (
-    <section className="bg-white rounded-3xl p-5 sm:p-6 border border-groomish-slate/10 shadow-soft space-y-4">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-groomish-slate/10 pb-3">
-        <div>
-          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-groomish-orange mb-0.5">
+    <section className="bg-white rounded-2xl p-3 sm:p-4 border border-groomish-slate/10 shadow-soft space-y-3">
+      {/* Header Bar - Compact */}
+      <div className="flex items-center justify-between gap-3 border-b border-groomish-slate/10 pb-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 rounded-lg bg-groomish-orangeLight text-groomish-orange flex items-center justify-center shrink-0">
             <Award className="w-3.5 h-3.5 text-groomish-orange" />
-            <span>Brand Hierarchy & Authenticity Guarantee</span>
           </div>
-          <h2 className="text-lg sm:text-xl font-heading font-extrabold text-groomish-slate">
-            Shop by Certified Salon Brands
-          </h2>
-          <p className="text-[11px] text-groomish-slate/60">
-            Every product is sourced directly from authorized salon distributors with batch authentication.
-          </p>
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-base font-heading font-extrabold text-groomish-slate truncate">
+              Shop by Certified Salon Brands
+            </h2>
+          </div>
         </div>
 
         {/* Brands Carousel Pagination Controls */}
-        <div className="flex items-center gap-2 self-start sm:self-center">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => onSelectBrand("ALL")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition ${
               selectedBrand === "ALL"
                 ? "bg-groomish-slate text-white shadow-xs"
                 : "bg-groomish-cream text-groomish-slate hover:bg-groomish-slate/10"
@@ -67,35 +65,35 @@ export default function BrandShowcaseSection({
           </button>
 
           {totalPages > 1 && (
-            <div className="flex items-center gap-1.5 pl-2 border-l border-groomish-slate/15">
+            <div className="flex items-center gap-1 pl-2 border-l border-groomish-slate/15">
               <button
                 type="button"
                 onClick={handlePrev}
                 disabled={page === 1}
-                className="w-8 h-8 rounded-xl border border-groomish-slate/15 bg-white text-groomish-slate flex items-center justify-center hover:bg-groomish-cream transition disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="w-7 h-7 rounded-lg border border-groomish-slate/15 bg-white text-groomish-slate flex items-center justify-center hover:bg-groomish-cream transition disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
                 title="Previous brands"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <span className="text-[11px] font-bold text-groomish-slate/70 px-1 font-mono">
+              <span className="text-[10px] font-bold text-groomish-slate/70 px-1 font-mono">
                 {page}/{totalPages}
               </span>
               <button
                 type="button"
                 onClick={handleNext}
                 disabled={page === totalPages}
-                className="w-8 h-8 rounded-xl border border-groomish-slate/15 bg-white text-groomish-slate flex items-center justify-center hover:bg-groomish-cream transition disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="w-7 h-7 rounded-lg border border-groomish-slate/15 bg-white text-groomish-slate flex items-center justify-center hover:bg-groomish-cream transition disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
                 title="Next brands"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Brand Cards Grid - 8 brands in one row on desktop */}
-      <div className="grid grid-cols-2 xs:grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3">
+      {/* Brand Cards Grid - Compact logo frames */}
+      <div className="grid grid-cols-2 xs:grid-cols-4 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
         {currentBrands.map((b) => {
           const isSelected =
             selectedBrand !== "ALL" &&
@@ -106,7 +104,7 @@ export default function BrandShowcaseSection({
               key={b.name}
               onClick={() => onSelectBrand(isSelected ? "ALL" : b.name)}
               title={b.name}
-              className={`group cursor-pointer rounded-2xl p-2.5 sm:p-3 border transition-all duration-200 relative flex flex-col items-center text-center justify-center ${
+              className={`group cursor-pointer rounded-xl p-2 border transition-all duration-200 relative flex flex-col items-center text-center justify-center ${
                 isSelected
                   ? "bg-groomish-orangeLight/40 border-groomish-orange ring-2 ring-groomish-orange/30 shadow-card -translate-y-0.5"
                   : "bg-white border-groomish-slate/10 hover:border-groomish-orange/50 hover:shadow-soft hover:-translate-y-0.5"
@@ -114,16 +112,16 @@ export default function BrandShowcaseSection({
             >
               {/* Selected Tick Indicator */}
               {isSelected && (
-                <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-groomish-orange text-white flex items-center justify-center shadow-xs">
-                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-groomish-orange text-white flex items-center justify-center shadow-xs">
+                  <Check className="w-2 h-2 stroke-[3]" />
                 </div>
               )}
 
               {/* Brand Logo / Monogram Frame */}
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white border border-groomish-slate/15 p-2 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white border border-groomish-slate/15 p-1.5 flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                 {b.logo ? (
                   <img
-                    src={getOptimizedImageUrl(b.logo, { width: 140 })}
+                    src={getOptimizedImageUrl(b.logo, { width: 100 })}
                     alt={`${b.name} Logo`}
                     loading="lazy"
                     decoding="async"
@@ -135,7 +133,7 @@ export default function BrandShowcaseSection({
                   />
                 ) : null}
                 <div
-                  className={`w-full h-full rounded-full flex items-center justify-center font-heading font-extrabold text-sm sm:text-base text-white ${
+                  className={`w-full h-full rounded-full flex items-center justify-center font-heading font-extrabold text-xs text-white ${
                     b.logo ? "hidden" : ""
                   }`}
                   style={{
@@ -147,7 +145,7 @@ export default function BrandShowcaseSection({
               </div>
 
               {/* Brand Name */}
-              <span className="font-heading font-extrabold text-[11px] sm:text-xs text-groomish-slate truncate w-full mt-2 group-hover:text-groomish-orange transition-colors">
+              <span className="font-heading font-bold text-[10px] sm:text-[11px] text-groomish-slate truncate w-full mt-1.5 group-hover:text-groomish-orange transition-colors">
                 {b.name}
               </span>
             </div>

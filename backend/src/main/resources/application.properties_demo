@@ -1,0 +1,72 @@
+# SERVER CONFIG
+server.port=8008
+spring.application.name=groomish-now
+
+# BRANDING & LOGO ASSETS
+app.branding.logo-url=https://res.cloudinary.com/dfdnljcyt/image/upload/groomish-logo-black-bg_et3gzt.png
+
+
+# DATABASE - POSTGRESQL
+spring.datasource.url=
+spring.datasource.username=
+spring.datasource.password=
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+# CLOUD IMAGE STORAGE - Cloudinary
+cloudinary.cloud-name=
+cloudinary.api-key=
+cloudinary.api-secret=
+
+# MULTIPART FILE UPLOAD CONFIG (Up to 50MB)
+spring.servlet.multipart.enabled=true
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=100MB
+server.tomcat.max-swallow-size=-1
+server.tomcat.max-http-form-post-size=100MB
+
+
+# JWT CONFIG
+app.jwt.secret=
+app.jwt.expiration-ms=3153600000000
+
+# MAIL CONFIGURATION - Gmail(SMTP)
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=
+spring.mail.password=
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+# Optional: Set the sender email for SimpleMailMessage, though spring.mail.username is often used as default
+spring.mail.properties.mail.smtp.from=
+
+
+# SPRING SECURITY
+spring.security.filter.dispatcher-types=REQUEST,ASYNC,ERROR
+
+
+# CORS CONFIG
+app.cors.allowed-origins=http://localhost:5173
+app.cors.allowed-methods=GET,POST,PUT,DELETE,OPTIONS
+app.cors.allowed-headers=Authorization,Content-Type
+app.cors.allow-credentials=true
+app.frontend.url=http://localhost:5173
+
+
+# LOGGING
+logging.level.org.springframework=INFO
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql=TRACE
+
+
+# WEBSOCKET (For Future Real-Time Chat)
+spring.websocket.path=/ws
+
+# RAZORPAY PAYMENT GATEWAY
+razorpay.key-id=
+razorpay.key-secret=
+
+
+

@@ -154,9 +154,9 @@ export default function ProductDetailPage() {
     product.images && product.images.length > 0
       ? product.images
       : [
-          product.image ||
-            "https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=800&q=80",
-        ];
+        product.image ||
+        "https://images.unsplash.com/photo-1608248597359-586616035ec8?auto=format&fit=crop&w=800&q=80",
+      ];
 
   const mainImageUrl = galleryImages[selectedImageIdx] || galleryImages[0];
   const discountPercent =
@@ -212,13 +212,13 @@ export default function ProductDetailPage() {
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-5 w-full max-w-full min-w-0">
               {/* Image Preview Card */}
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft p-4 sm:p-8 flex flex-col items-center justify-center min-h-[300px] sm:min-h-[460px] w-full">
+              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft p-4 sm:p-6 flex flex-col items-center justify-center min-h-[260px] sm:min-h-[360px] w-full">
                 <img
                   src={getOptimizedImageUrl(mainImageUrl, { width: 900 })}
                   alt={product.name}
                   loading="eager"
                   decoding="async"
-                  className="max-h-[320px] sm:max-h-[360px] max-w-full object-contain transition-transform duration-500 hover:scale-105"
+                  className="max-h-[260px] sm:max-h-[300px] max-w-full object-contain transition-transform duration-500 hover:scale-105"
                 />
 
                 {/* Floating Chips */}
@@ -264,11 +264,10 @@ export default function ProductDetailPage() {
                       key={idx}
                       type="button"
                       onClick={() => setSelectedImageIdx(idx)}
-                      className={`w-20 h-20 rounded-2xl overflow-hidden border p-1 bg-white transition shrink-0 ${
-                        selectedImageIdx === idx
+                      className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden border p-1 bg-white transition shrink-0 ${selectedImageIdx === idx
                           ? "border-groomish-orange ring-2 ring-groomish-orange/30 shadow-sm"
                           : "border-groomish-slate/20 hover:border-groomish-slate/40 opacity-70 hover:opacity-100"
-                      }`}
+                        }`}
                     >
                       <img
                         src={getOptimizedImageUrl(img, { width: 160 })}
@@ -400,11 +399,8 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* RIGHT SIDEBAR: STICKY PRICING & PURCHASE CARD + AVAILABLE OFFERS & PROMOTIONAL COUPONS */}
-            <div
-              className="lg:col-span-5 lg:sticky lg:self-start space-y-3.5 w-full min-w-0"
-              style={{ top: "min(5rem, calc(100vh - 100% - 1.5rem))" }}
-            >
+            {/* RIGHT SIDEBAR: STICKY PRICING & PURCHASE CARD (FIXED ON TOP AS PAGE SCROLLS) */}
+            <div className="lg:col-span-5 lg:sticky lg:top-20 lg:self-start space-y-3.5 w-full min-w-0 z-20">
               <div className="bg-white rounded-2xl p-4 sm:p-5 border border-groomish-slate/10 shadow-card space-y-3.5 w-full min-w-0">
                 <div>
                   <span className="text-[10px] uppercase font-bold tracking-wider text-groomish-slate/50 block mb-1">
@@ -438,7 +434,7 @@ export default function ProductDetailPage() {
                   </div>
                   <div>
                     <span className="text-xs font-bold text-groomish-slate block flex items-center gap-1.5">
-                      Earn +{coinsEarned * quantity} Groom Coins
+                      Earn {coinsEarned * quantity} Groom Coins
                     </span>
                     <span className="text-[10.5px] text-groomish-slate/70">
                       Redeem Groom Coins for discounts & complimentary salon treatments.
@@ -585,7 +581,7 @@ export default function ProductDetailPage() {
                         </div>
                         <span className="font-extrabold text-groomish-slate truncate text-xs">
                           <span className="text-amber-800 uppercase font-black tracking-wider text-[10px] mr-1">Coin Offer:</span>
-                          <span>Earn +{coinsEarned} Groom Coins on this product purchase!</span>
+                          <span>Earn {coinsEarned} Groom Coins on this product purchase!</span>
                         </span>
                       </div>
                       <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full shrink-0">
@@ -716,7 +712,7 @@ export default function ProductDetailPage() {
                           </p>
                           <div className="pt-1 flex items-center gap-1.5 text-[10px] font-bold text-groomish-orange">
                             <GroomCoinIcon className="w-3 h-3 shrink-0" />
-                            <span>Earn +{relCoins} Groom Coin{relCoins !== 1 ? "s" : ""}</span>
+                            <span>Earn {relCoins} Groom Coin{relCoins !== 1 ? "s" : ""}</span>
                           </div>
                         </div>
                       </div>
