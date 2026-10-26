@@ -23,7 +23,7 @@ public class EmailServiceImpl implements EmailService {
     private final GmailSenderService gmailSenderService;
     private final EmailTemplateService templateService;
 
-    @Value("${gmail.api.sender-email:testmailemployee@gmail.com}")
+    @Value("${GMAIL_SENDER_EMAIL:${gmail.api.sender-email:${gmail.sender-email:testmailemployee@gmail.com}}}")
     private String fromEmail;
 
     @Value("${app.frontend.url:http://localhost:5173}")
