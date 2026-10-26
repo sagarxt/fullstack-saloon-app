@@ -25,6 +25,7 @@ import RazorpayCheckoutModal, {
   RazorpayOrderData,
   RazorpaySuccessResult,
 } from '../../components/RazorpayCheckoutModal';
+import { format12HourDateTime } from '../../utils/dateHelper';
 
 type CheckoutStep = 'CART' | 'SLOT' | 'PAYMENT';
 
@@ -277,7 +278,7 @@ export default function CartScreen() {
     if (isStaffOrAdmin && hasServices) {
       Alert.alert(
         'Service Booking Restricted',
-        'Staff and Admin accounts cannot book salon services on the mobile app. Please remove services from your bag. Appointments and salon schedules are managed via the Web Portal.',
+        'Staff and Admin accounts cannot book salon services on the mobile app. Please remove services from your bag. Bookings and salon schedules are managed via the Web Portal.',
         [{ text: 'OK' }]
       );
       return;
@@ -308,7 +309,7 @@ export default function CartScreen() {
       return;
     }
     if (hasServices && !selectedTime) {
-      Alert.alert('Select Slot', 'Please pick a preferred appointment time slot to proceed.');
+      Alert.alert('Select Slot', 'Please pick a preferred booking time slot to proceed.');
       return;
     }
     setCurrentStep('PAYMENT');
@@ -324,7 +325,7 @@ export default function CartScreen() {
     if (isStaffOrAdmin && hasServices) {
       Alert.alert(
         'Service Booking Restricted',
-        'Staff and Admin accounts cannot book salon services on the mobile app. Appointments and salon schedules are managed via the Web Portal.',
+        'Staff and Admin accounts cannot book salon services on the mobile app. Bookings and salon schedules are managed via the Web Portal.',
         [{ text: 'OK' }]
       );
       return;
@@ -845,7 +846,7 @@ export default function CartScreen() {
                 <View style={styles.sectionTitleRow}>
                   <Ionicons name="time" size={18} color={Colors.orange} />
                   <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>
-                    Select Appointment Time
+                    Select Booking Time
                   </Text>
                 </View>
                 {loadingSlots && <ActivityIndicator size="small" color={Colors.orange} />}
@@ -1126,7 +1127,7 @@ export default function CartScreen() {
               <View style={styles.groomCoinsBanner}>
                 <Ionicons name="sparkles" size={14} color="#eab308" />
                 <Text style={styles.groomCoinsText}>
-                  Earn ~{Math.round(finalPayable * 0.05)} Groom Loyalty Coins on this appointment!
+                  Earn ~{Math.round(finalPayable * 0.05)} Groom Loyalty Coins on this booking!
                 </Text>
               </View>
             </View>
@@ -1196,7 +1197,7 @@ export default function CartScreen() {
             <Text style={[styles.modalSub, { color: colors.textMuted }]}>
               {successModalData?.paymentMethod === 'ONLINE'
                 ? 'Your payment was successfully verified via Razorpay.'
-                : 'Your appointment is booked. Settle bill upon arrival at salon desk.'}
+                : 'Your booking is confirmed. Settle bill upon arrival at salon desk.'}
             </Text>
 
             <View style={[styles.modalInfoBox, { backgroundColor: colors.bg, borderColor: colors.cardBorder }]}>
@@ -1211,7 +1212,7 @@ export default function CartScreen() {
               <View style={styles.modalInfoRow}>
                 <Text style={[styles.modalInfoLabel, { color: colors.textMuted }]}>Scheduled Time</Text>
                 <Text style={[styles.modalInfoVal, { color: colors.text }]}>
-                  {successModalData?.scheduledAt ? successModalData.scheduledAt.replace('T', ' at ') : ''}
+                  {successModalData?.scheduledAt ? format12HourDateTime(successModalData.scheduledAt) : ''}
                 </Text>
               </View>
               <View style={styles.modalInfoRow}>
@@ -1267,7 +1268,7 @@ export default function CartScreen() {
             </Text>
 
             <Text style={[styles.failureHint, { color: colors.textMuted }]}>
-              Your appointment reservation #{failureModalData?.bookingCode} is saved. You can retry Razorpay or switch to Pay at Salon.
+              Your booking reservation #{failureModalData?.bookingCode} is saved. You can retry Razorpay or switch to Pay at Salon.
             </Text>
 
             <TouchableOpacity

@@ -17,7 +17,7 @@ import {
 } from "../../api/customer";
 import { getPublicServicesApi } from "../../api/service";
 import { storeApi } from "../../api/store";
-import { extractList } from "../../utils/dataHelper";
+import { extractList, formatLocalDateTime } from "../../utils/dataHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import { showConfirm, showAlert } from "../../context/ConfirmContext";
 import { useGroomCoin } from "../../context/GroomCoinContext";
@@ -323,8 +323,10 @@ export default function BookingDetailPage() {
     loadAvailableServices();
   };
 
+  const [selectedSubServiceByServiceId, setSelectedSubServiceByServiceId] = useState({});
+
   /* Add Service to Booking */
-  const handleAddService = async (serviceId) => {
+  const handleAddService = async (serviceId, subServiceName) => {
     if (!serviceId) {
       console.error("Missing serviceId when attempting to add service to booking");
       await showAlert({
@@ -336,7 +338,7 @@ export default function BookingDetailPage() {
     }
     setAddingServiceId(serviceId);
     try {
-      const res = await addServiceToBooking(id, serviceId);
+      const res = await addServiceToBooking(id, serviceId, subServiceName);
       setBooking(res.data);
       setAddServiceModalOpen(false);
     } catch (err) {
@@ -767,7 +769,9 @@ export default function BookingDetailPage() {
                     Salon Appointment
                   </h1>
                   <p className="text-xs text-groomish-slate/60 mt-1 flex items-center gap-2 flex-wrap">
-                    <span>Booked: {booking.bookedAt ? new Date(booking.bookedAt).toLocaleDateString() : "Recently"}</span>
+                    <span>
+                      Booked: {booking.bookedAt || booking.createdAt ? formatLocalDateTime(booking.bookedAt || booking.createdAt) : "Recently"}
+                    </span>
                     {booking.bookedBy && (
                       <>
                         <span>•</span>
@@ -1034,12 +1038,7 @@ export default function BookingDetailPage() {
                           </h4>
                           <p className="text-[11px] text-groomish-slate/50">
                             {prod.brand && <span>{prod.brand} • </span>}
-                            <span>Qty: {prod.quantity} × ₹{prod.unitPrice}</span>
-                            {prod.mrp && prod.mrp > prod.unitPrice && (
-                              <span className="text-groomish-slate/40 line-through ml-1.5">
-                                (MRP ₹{prod.mrp})
-                              </span>
-                            )}
+                            <span>Qty: {prod.quantity}</span>
                           </p>
                         </div>
                       </div>
@@ -1636,64 +1635,124 @@ export default function BookingDetailPage() {
               filteredServices.map((srv) => {
                 const srvId = srv.serviceId || srv.id;
                 const bookedCount = getBookedCount(srvId);
+                const hasSubServices = Array.isArray(srv.subServices) && srv.subServices.length > 0;
+                const activeSub = selectedSubServiceByServiceId[srvId] || (hasSubServices ? srv.subServices[0] : null);
+                const displayPrice = activeSub ? activeSub.price : srv.price;
+                const displayDuration = activeSub ? activeSub.durationMinutes : (srv.durationMinutes || 30);
+
                 return (
                   <div
                     key={srvId}
-                    className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
+                    className="p-3.5 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex flex-col gap-2.5 transition hover:bg-groomish-cream/30 bg-white"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
-                        <img
-                          src={
-                            srv.image ||
-                            "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=200&q=80"
-                          }
-                          alt={srv.name}
-                          className="w-full h-full object-cover"
-                        />
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                          <img
+                            src={
+                              srv.image ||
+                              "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=200&q=80"
+                            }
+                            alt={srv.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs font-bold text-groomish-slate truncate">
+                              {srv.name}
+                            </h4>
+                            {bookedCount > 0 && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-groomish-greenLight text-groomish-green">
+                                In Visit ({bookedCount})
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-groomish-slate/50 mt-0.5">
+                            {displayDuration} mins • {srv.categoryName || "Salon Care"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h4 className="text-xs font-bold text-groomish-slate truncate">
-                            {srv.name}
-                          </h4>
-                          {bookedCount > 0 && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-groomish-greenLight text-groomish-green">
-                              In Visit ({bookedCount})
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <span className="text-xs font-extrabold text-groomish-slate block">
+                            ₹{displayPrice}
+                          </span>
+                          {activeSub?.mrp && activeSub.mrp > displayPrice ? (
+                            <span className="text-[10px] text-groomish-slate/40 line-through">
+                              ₹{activeSub.mrp}
+                            </span>
+                          ) : srv.mrp && srv.mrp > displayPrice ? (
+                            <span className="text-[10px] text-groomish-slate/40 line-through">
+                              ₹{srv.mrp}
+                            </span>
+                          ) : null}
+                        </div>
+                        <button
+                          onClick={() => handleAddService(srvId, activeSub?.name)}
+                          disabled={addingServiceId === srvId}
+                          className="btn-primary text-xs px-3.5 py-1.5 font-bold shadow-soft flex items-center gap-1"
+                        >
+                          {addingServiceId === srvId ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{bookedCount > 0 ? "Add Again" : "Add"}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Sub-services Options Selector */}
+                    {hasSubServices && (
+                      <div className="pt-2 border-t border-groomish-slate/10 bg-groomish-cream/20 p-2 rounded-xl">
+                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-groomish-slate/60">
+                            Options ({srv.subServices.length}):
+                          </span>
+                          {activeSub && (
+                            <span className="text-[10px] font-extrabold text-groomish-orange bg-groomish-orange/10 px-2 py-0.5 rounded-full">
+                              Selected: {activeSub.name}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                          {srv.durationMinutes || 30} mins • {srv.categoryName || "Salon Care"}
-                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {srv.subServices.map((sub, sIdx) => {
+                            const isSelected = activeSub?.name === sub.name;
+                            return (
+                              <button
+                                key={sub.id || sub.name || sIdx}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSubServiceByServiceId((prev) => ({
+                                    ...prev,
+                                    [srvId]: sub,
+                                  }));
+                                }}
+                                className={`text-[11px] px-2.5 py-1 rounded-xl font-bold transition flex items-center gap-1.5 border cursor-pointer ${
+                                  isSelected
+                                    ? "bg-groomish-slate text-white border-groomish-slate shadow-sm"
+                                    : "bg-white hover:bg-groomish-cream text-groomish-slate/80 border-groomish-slate/15"
+                                }`}
+                              >
+                                <span>{sub.name}</span>
+                                <span className={isSelected ? "text-groomish-gold font-extrabold" : "text-groomish-orange font-bold"}>
+                                  ₹{sub.price}
+                                </span>
+                                {sub.durationMinutes && (
+                                  <span className={`text-[10px] ${isSelected ? "text-white/60" : "text-groomish-slate/40"}`}>
+                                    • {sub.durationMinutes}m
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
-                        <span className="text-xs font-extrabold text-groomish-slate block">
-                          ₹{srv.price}
-                        </span>
-                        {srv.mrp && srv.mrp > srv.price && (
-                          <span className="text-[10px] text-groomish-slate/40 line-through">
-                            ₹{srv.mrp}
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleAddService(srvId)}
-                        disabled={addingServiceId === srvId}
-                        className="btn-primary text-xs px-3.5 py-1.5 font-bold shadow-soft flex items-center gap-1"
-                      >
-                        {addingServiceId === srvId ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <>
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{bookedCount > 0 ? "Add Again" : "Add"}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    )}
                   </div>
                 );
               })

@@ -212,7 +212,7 @@ export default function ProfileScreen() {
             </View>
             <Text style={[styles.guestTitle, { color: colors.text }]}>Welcome to Groomish Luxury</Text>
             <Text style={[styles.guestSubtitle, { color: colors.textMuted }]}>
-              Sign in to manage your appointments, track points & vouchers, and enjoy bespoke salon styling.
+              Sign in to manage your bookings, track points & vouchers, and enjoy bespoke salon styling.
             </Text>
             <TouchableOpacity
               style={styles.signInButton}
@@ -260,6 +260,23 @@ export default function ProfileScreen() {
               <View style={styles.menuTextWrap}>
                 <Text style={[styles.menuRowTitle, { color: colors.text }]}>Explore Salon Services</Text>
                 <Text style={[styles.menuRowSubtitle, { color: colors.textMuted }]}>Hair, beard, facials, and grooming packages</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            <View style={[styles.menuDivider, { backgroundColor: colors.divider }]} />
+
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() => router.push('/(tabs)/policy')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuIconBox, { backgroundColor: '#f0fdf4' }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={Colors.green} />
+              </View>
+              <View style={styles.menuTextWrap}>
+                <Text style={[styles.menuRowTitle, { color: colors.text }]}>Salon Policies & FAQs</Text>
+                <Text style={[styles.menuRowSubtitle, { color: colors.textMuted }]}>Terms, cancellation policy & answers</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </TouchableOpacity>
@@ -357,7 +374,7 @@ export default function ProfileScreen() {
               onPress={() => router.push('/(tabs)/bookings')}
               activeOpacity={0.8}
             >
-              <Text style={styles.statValue}>Appointments</Text>
+              <Text style={styles.statValue}>Bookings</Text>
               <Text style={styles.statLabel}>View History →</Text>
             </TouchableOpacity>
           </View>
@@ -368,7 +385,7 @@ export default function ProfileScreen() {
           <View style={[styles.staffNoticeBox, { backgroundColor: isDark ? '#1e293b' : '#fff7ed', borderColor: Colors.orange }]}>
             <Ionicons name="information-circle" size={18} color={Colors.orange} />
             <Text style={[styles.staffNoticeBoxText, { color: isDark ? '#f8fafc' : '#9a3412' }]}>
-              You are signed in as Staff/Admin. The mobile app is in product browsing mode. Salon appointments and stylist schedules are managed via the Web Portal.
+              You are signed in as Staff/Admin. The mobile app is in product browsing mode. Salon bookings and stylist schedules are managed via the Web Portal.
             </Text>
           </View>
         )}
@@ -647,7 +664,7 @@ export default function ProfileScreen() {
                 <Ionicons name="calendar-outline" size={20} color={Colors.gold} />
               </View>
               <View style={styles.menuTextWrap}>
-                <Text style={[styles.menuRowTitle, { color: colors.text }]}>My Appointments</Text>
+                <Text style={[styles.menuRowTitle, { color: colors.text }]}>My Bookings</Text>
                 <Text style={[styles.menuRowSubtitle, { color: colors.textMuted }]}>Upcoming, completed & reschedule</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -683,6 +700,23 @@ export default function ProfileScreen() {
               <View style={styles.menuTextWrap}>
                 <Text style={[styles.menuRowTitle, { color: colors.text }]}>My Booking Bag</Text>
                 <Text style={[styles.menuRowSubtitle, { color: colors.textMuted }]}>Review selected treatments and products</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            <View style={[styles.menuDivider, { backgroundColor: colors.divider }]} />
+
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() => router.push('/(tabs)/policy')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuIconBox, { backgroundColor: '#f0fdf4' }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={Colors.green} />
+              </View>
+              <View style={styles.menuTextWrap}>
+                <Text style={[styles.menuRowTitle, { color: colors.text }]}>Salon Policies & FAQs</Text>
+                <Text style={[styles.menuRowSubtitle, { color: colors.textMuted }]}>Terms, cancellation policy & answers</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </TouchableOpacity>

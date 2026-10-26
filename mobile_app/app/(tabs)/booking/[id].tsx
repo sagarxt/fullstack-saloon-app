@@ -17,32 +17,10 @@ import { customerApi, publicApi } from '../../../api/client';
 import { Colors } from '../../../theme/colors';
 import { useTheme } from '../../../context/ThemeContext';
 import TopHeader from '../../../components/TopHeader';
+import { format12HourDateTime, formatSlot12Hour, getLocalDateStr } from '../../../utils/dateHelper';
 
-const format24HourDateTime = (isoString?: string) => {
-  if (!isoString) return 'Date & Time Pending';
-  try {
-    const d = new Date(isoString);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const day = d.getDate();
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-    const hh = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${day} ${month} ${year}, ${hh}:${min}`;
-  } catch (_) {
-    return isoString;
-  }
-};
-
-const getLocalDateStr = (d = new Date()) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-// 24-hour slots without AM-PM
-const SALON_24H_SLOTS = [
+// Salon slots in 30-min intervals
+const SALON_SLOTS = [
   '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
   '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
   '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
@@ -147,7 +125,7 @@ export default function BookingDetailsScreen() {
       const iso = `${rescheduleDate}T${rescheduleTime}:00`;
       await customerApi.rescheduleBooking(id, iso);
       setRescheduleModalOpen(false);
-      Alert.alert('Rescheduled', 'Your appointment schedule has been successfully updated.');
+      Alert.alert('Rescheduled', 'Your booking schedule has been successfully updated.');
       loadBooking();
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to reschedule.');
@@ -156,11 +134,26 @@ export default function BookingDetailsScreen() {
     }
   };
 
+  const [switchingToSalon, setSwitchingToSalon] = useState(false);
+
+  const handleSwitchToSalon = async () => {
+    setSwitchingToSalon(true);
+    try {
+      await customerApi.switchToPayAtSalon(id);
+      Alert.alert('Payment Mode Updated', 'You can now settle the remaining balance at the salon reception desk upon arrival.');
+      loadBooking();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.message || 'Could not update payment mode.');
+    } finally {
+      setSwitchingToSalon(false);
+    }
+  };
+
   /* ─── CANCEL LOGIC ─── */
   const handleCancelBooking = () => {
     Alert.alert(
-      'Cancel Appointment',
-      'Are you sure you want to cancel this salon visit? Any Groom Coins spent will be refunded to your ledger.',
+      'Cancel Booking',
+      'Are you sure you want to cancel this booking? Any Groom Coins spent will be refunded to your ledger.',
       [
         { text: 'Keep Booking', style: 'cancel' },
         {
@@ -169,10 +162,10 @@ export default function BookingDetailsScreen() {
           onPress: async () => {
             try {
               await customerApi.cancelBooking(id);
-              Alert.alert('Cancelled', 'Your appointment has been cancelled.');
+              Alert.alert('Cancelled', 'Your booking has been cancelled.');
               loadBooking();
             } catch (err: any) {
-              Alert.alert('Error', err.response?.data?.message || 'Failed to cancel appointment.');
+              Alert.alert('Error', err.response?.data?.message || 'Failed to cancel booking.');
             }
           },
         },
@@ -238,7 +231,7 @@ export default function BookingDetailsScreen() {
         <View style={styles.centerLoading}>
           <ActivityIndicator size="large" color={Colors.orange} />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-            Loading appointment details...
+            Loading booking details...
           </Text>
         </View>
       </SafeAreaView>
@@ -251,7 +244,7 @@ export default function BookingDetailsScreen() {
         <TopHeader showBranchSelector={true} showBack={true} />
         <View style={styles.errorWrap}>
           <Ionicons name="alert-circle-outline" size={48} color={Colors.red} />
-          <Text style={[styles.errorTitle, { color: colors.text }]}>Appointment Not Found</Text>
+          <Text style={[styles.errorTitle, { color: colors.text }]}>Booking Not Found</Text>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backBtnText}>Return to Bookings</Text>
           </TouchableOpacity>
@@ -327,12 +320,12 @@ export default function BookingDetailsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: 95 }]}>
-        {/* ─── APPOINTMENT SCHEDULE CARD (24-HOUR FORMAT) ─── */}
+        {/* ─── BOOKING SCHEDULE CARD (12-HOUR FORMAT) ─── */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeaderRow}>
             <View style={styles.cardHeaderLeft}>
               <Ionicons name="calendar" size={16} color={Colors.orange} />
-              <Text style={[styles.cardHeaderTitle, { color: colors.text }]}>Appointment Schedule</Text>
+              <Text style={[styles.cardHeaderTitle, { color: colors.text }]}>Booking Schedule</Text>
             </View>
             {isModifiable && (
               <TouchableOpacity
@@ -346,10 +339,7 @@ export default function BookingDetailsScreen() {
           </View>
 
           <Text style={[styles.scheduleBigText, { color: colors.text }]}>
-            {format24HourDateTime(booking.scheduledAt)}
-          </Text>
-          <Text style={[styles.schedule24hNote, { color: colors.textMuted }]}>
-            * Scheduled in 24-hour branch format without AM/PM.
+            {format12HourDateTime(booking.scheduledAt)}
           </Text>
 
           {/* Branch info */}
@@ -424,90 +414,186 @@ export default function BookingDetailsScreen() {
           </View>
         </View>
 
-        {/* ─── BILL BREAKDOWN ─── */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={[styles.cardHeaderTitle, { color: colors.text }]}>Payment Summary</Text>
+        {/* ─── BILL BREAKDOWN & REMAINING PAYABLE AMOUNT ─── */}
+        {(() => {
+          const totalAmount = Number(booking.totalAmount ?? booking.pricePaid ?? 0);
+          const pricePaid = Number(booking.pricePaid ?? 0);
+          const remainingAmount = Number(
+            booking.remainingAmount !== undefined && booking.remainingAmount !== null
+              ? booking.remainingAmount
+              : Math.max(0, totalAmount - pricePaid)
+          );
+          const isPartiallyPaid = pricePaid > 0.01 && remainingAmount > 0.01;
+          const isFullyPaid = remainingAmount <= 0.01 && (pricePaid > 0 || booking.status === 'COMPLETED' || booking.paymentStatus === 'COMPLETED');
+          const hasRemainingBalance = remainingAmount > 0.01 && booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED';
 
-          <View style={styles.billRowsWrap}>
-            <View style={styles.billRow}>
-              <Text style={[styles.billLabel, { color: colors.textMuted }]}>Subtotal</Text>
-              <Text style={[styles.billValue, { color: colors.text }]}>
-                ₹{subtotal}
-              </Text>
-            </View>
+          return (
+            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+              <Text style={[styles.cardHeaderTitle, { color: colors.text }]}>Invoice & Payment Summary</Text>
 
-            {mrpDiscount > 0 && (
-              <View style={styles.billRow}>
-                <Text style={[styles.billLabel, { color: Colors.greenDark }]}>
-                  Discount on MRP
-                </Text>
-                <Text style={[styles.billValue, { color: Colors.greenDark }]}>
-                  - ₹{mrpDiscount}
-                </Text>
+              <View style={styles.billRowsWrap}>
+                <View style={styles.billRow}>
+                  <Text style={[styles.billLabel, { color: colors.textMuted }]}>Subtotal</Text>
+                  <Text style={[styles.billValue, { color: colors.text }]}>
+                    ₹{subtotal}
+                  </Text>
+                </View>
+
+                {mrpDiscount > 0 && (
+                  <View style={styles.billRow}>
+                    <Text style={[styles.billLabel, { color: Colors.greenDark }]}>
+                      Discount on MRP
+                    </Text>
+                    <Text style={[styles.billValue, { color: Colors.greenDark }]}>
+                      - ₹{mrpDiscount}
+                    </Text>
+                  </View>
+                )}
+
+                {couponOrVoucherCode && !isVoucher && codeDiscount > 0 && (
+                  <View style={styles.billRow}>
+                    <Text style={[styles.billLabel, { color: Colors.greenDark }]}>
+                      Coupon ({couponOrVoucherCode})
+                    </Text>
+                    <Text style={[styles.billValue, { color: Colors.greenDark }]}>
+                      - ₹{codeDiscount}
+                    </Text>
+                  </View>
+                )}
+
+                {couponOrVoucherCode && isVoucher && codeDiscount > 0 && (
+                  <View style={styles.billRow}>
+                    <Text style={[styles.billLabel, { color: Colors.greenDark }]}>
+                      Voucher ({couponOrVoucherCode})
+                    </Text>
+                    <Text style={[styles.billValue, { color: Colors.greenDark }]}>
+                      - ₹{codeDiscount}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.billRow}>
+                  <Text style={[styles.billLabel, { color: colors.textMuted }]}>Salon Hygiene & Disposable Kit</Text>
+                  <Text style={[styles.billValue, { color: Colors.greenDark }]}>FREE</Text>
+                </View>
+
+                {/* Total Bill */}
+                <View style={[styles.billRow, styles.billRowTotal, { borderTopColor: colors.cardBorder }]}>
+                  <Text style={[styles.totalLabel, { color: colors.text }]}>Total Bill</Text>
+                  <Text style={styles.totalValue}>
+                    ₹{totalAmount}
+                  </Text>
+                </View>
+
+                {/* Already Paid Online (Partial) */}
+                {isPartiallyPaid && (
+                  <View style={styles.partialPaidBanner}>
+                    <View style={styles.partialPaidLeft}>
+                      <Ionicons name="checkmark-circle" size={14} color={Colors.green} />
+                      <Text style={styles.partialPaidText}>Already Paid Online</Text>
+                    </View>
+                    <Text style={styles.partialPaidAmount}>- ₹{pricePaid}</Text>
+                  </View>
+                )}
+
+                {/* Remaining Balance to Pay */}
+                {isPartiallyPaid && (
+                  <View style={styles.remainingBalanceCard}>
+                    <View style={styles.remainingBalanceLeft}>
+                      <Ionicons name="alert-circle" size={16} color="#B45309" />
+                      <Text style={styles.remainingBalanceTitle}>Remaining Balance to Pay:</Text>
+                    </View>
+                    <Text style={styles.remainingBalanceAmount}>₹{remainingAmount}</Text>
+                  </View>
+                )}
+
+                {/* Payment Status Info Box */}
+                <View style={[styles.paymentMethodBadge, { backgroundColor: colors.bg }]}>
+                  <Ionicons
+                    name={
+                      booking.status === 'CANCELLED'
+                        ? 'close-circle-outline'
+                        : isFullyPaid
+                        ? 'checkmark-circle-outline'
+                        : 'time-outline'
+                    }
+                    size={16}
+                    color={
+                      booking.status === 'CANCELLED'
+                        ? Colors.red
+                        : isFullyPaid
+                        ? Colors.green
+                        : '#B45309'
+                    }
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.paymentMethodStatusTitle, { color: colors.text }]}>
+                      {booking.status === 'CANCELLED'
+                        ? 'Cancelled • No Payment Received'
+                        : isFullyPaid
+                        ? booking.paymentMethod === 'CASH'
+                          ? 'Paid at Salon Reception'
+                          : 'Paid Online via Razorpay'
+                        : isPartiallyPaid
+                        ? `Partially Paid (₹${pricePaid} Paid • ₹${remainingAmount} Due)`
+                        : booking.paymentMethod === 'ONLINE'
+                        ? 'Payment Pending (Online)'
+                        : 'Payment Pending (Pay at Salon)'}
+                    </Text>
+                    <Text style={[styles.paymentMethodText, { color: colors.textMuted }]}>
+                      {booking.invoiceNumber
+                        ? `Invoice Ref: ${booking.invoiceNumber}`
+                        : `Payment Mode: ${booking.paymentMethod === 'ONLINE' ? 'Razorpay' : 'Pay at Salon Counter'}`}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Outstanding Balance Callout (if remaining balance active) */}
+                {hasRemainingBalance && (
+                  <View style={styles.balanceCallout}>
+                    <View style={styles.balanceCalloutHeader}>
+                      <Ionicons name="flash" size={15} color={Colors.orange} />
+                      <Text style={styles.balanceCalloutTitle}>
+                        {isPartiallyPaid ? 'Outstanding Balance Notice' : 'Pay at Salon Option Active'}
+                      </Text>
+                    </View>
+                    <Text style={[styles.balanceCalloutDesc, { color: colors.textSecondary }]}>
+                      {isPartiallyPaid
+                        ? `Additional services or products were added. You have paid ₹${pricePaid}. Settle remaining ₹${remainingAmount} at the salon counter.`
+                        : `Chose Pay at Salon? Settle your bill upon arrival at salon desk via Cash, UPI, or Card.`}
+                    </Text>
+                    {booking.paymentMethod === 'ONLINE' && !isFullyPaid && (
+                      <TouchableOpacity
+                        style={[styles.switchSalonBtn, switchingToSalon && { opacity: 0.6 }]}
+                        onPress={handleSwitchToSalon}
+                        disabled={switchingToSalon}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="storefront-outline" size={14} color={Colors.orange} />
+                        <Text style={styles.switchSalonBtnText}>Switch to Pay at Salon Counter</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </View>
-            )}
-
-            {couponOrVoucherCode && !isVoucher && codeDiscount > 0 && (
-              <View style={styles.billRow}>
-                <Text style={[styles.billLabel, { color: Colors.greenDark }]}>
-                  Coupon ({couponOrVoucherCode})
-                </Text>
-                <Text style={[styles.billValue, { color: Colors.greenDark }]}>
-                  - ₹{codeDiscount}
-                </Text>
-              </View>
-            )}
-
-            {couponOrVoucherCode && isVoucher && codeDiscount > 0 && (
-              <View style={styles.billRow}>
-                <Text style={[styles.billLabel, { color: Colors.greenDark }]}>
-                  Voucher ({couponOrVoucherCode})
-                </Text>
-                <Text style={[styles.billValue, { color: Colors.greenDark }]}>
-                  - ₹{codeDiscount}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.billRow}>
-              <Text style={[styles.billLabel, { color: colors.textMuted }]}>Salon Hygiene & Disposable Kit</Text>
-              <Text style={[styles.billValue, { color: Colors.greenDark }]}>FREE</Text>
             </View>
+          );
+        })()}
 
-            <View style={[styles.billRow, styles.billRowTotal, { borderTopColor: colors.cardBorder }]}>
-              <Text style={[styles.totalLabel, { color: colors.text }]}>Final Payable</Text>
-              <Text style={styles.totalValue}>
-                ₹{finalPayable}
-              </Text>
-            </View>
-
-            <View style={[styles.paymentMethodBadge, { backgroundColor: colors.bg }]}>
-              <Ionicons
-                name={booking.paymentMethod === 'ONLINE' ? 'card-outline' : 'cash-outline'}
-                size={14}
-                color={Colors.slate}
-              />
-              <Text style={[styles.paymentMethodText, { color: colors.textSecondary }]}>
-                Mode: {booking.paymentMethod === 'ONLINE' ? 'Paid via Razorpay' : 'Pay at Salon Counter'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ─── CANCEL APPOINTMENT ─── */}
+        {/* ─── CANCEL BOOKING ─── */}
         {isModifiable && (
           <TouchableOpacity
-            style={styles.cancelAppointmentBtn}
+            style={styles.cancelBookingBtn}
             onPress={handleCancelBooking}
             activeOpacity={0.8}
           >
             <Ionicons name="trash-outline" size={16} color={Colors.red} />
-            <Text style={styles.cancelAppointmentText}>Cancel Appointment</Text>
+            <Text style={styles.cancelBookingText}>Cancel Booking</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
 
-      {/* ─── RESCHEDULE MODAL (STRICT 24-HOUR FORMAT) ─── */}
+      {/* ─── RESCHEDULE MODAL (12-HOUR FORMAT) ─── */}
       <Modal
         visible={rescheduleModalOpen}
         animationType="slide"
@@ -518,9 +604,9 @@ export default function BookingDetailsScreen() {
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Reschedule Appointment</Text>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Reschedule Booking</Text>
                 <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
-                  Choose from live 24-hour branch time slots (no AM/PM).
+                  Choose from live available branch time slots (12-hour AM/PM).
                 </Text>
               </View>
               <TouchableOpacity
@@ -589,7 +675,7 @@ export default function BookingDetailsScreen() {
             ) : (
               <ScrollView style={{ maxHeight: 250 }} showsVerticalScrollIndicator={false}>
                 <View style={styles.slotsGrid}>
-                  {SALON_24H_SLOTS.map((slot) => {
+                  {SALON_SLOTS.map((slot) => {
                     const isSelected = rescheduleTime === slot;
                     const isUnavailable =
                       rescheduleUnavailableSlots.includes(slot) || isSlotPast(slot);
@@ -614,7 +700,7 @@ export default function BookingDetailsScreen() {
                             isUnavailable && styles.slotBtnTextDisabled,
                           ]}
                         >
-                          {slot}
+                          {formatSlot12Hour(slot)}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -856,16 +942,117 @@ const styles = StyleSheet.create({
   paymentMethodBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    padding: 10,
-    borderRadius: 10,
-    marginTop: 4,
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 6,
+  },
+  paymentMethodStatusTitle: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   paymentMethodText: {
     fontSize: 11,
     fontWeight: '600',
+    marginTop: 2,
   },
-  cancelAppointmentBtn: {
+  partialPaidBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  partialPaidLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  partialPaidText: {
+    color: '#047857',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  partialPaidAmount: {
+    color: '#047857',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  remainingBalanceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 6,
+  },
+  remainingBalanceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  remainingBalanceTitle: {
+    color: '#92400E',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  remainingBalanceAmount: {
+    color: '#B45309',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  balanceCallout: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1.5,
+    borderColor: '#FCD34D',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 10,
+    gap: 6,
+  },
+  balanceCalloutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  balanceCalloutTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#92400E',
+    textTransform: 'uppercase',
+  },
+  balanceCalloutDesc: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  switchSalonBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: Colors.orange,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  switchSalonBtnText: {
+    color: Colors.orange,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  cancelBookingBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -877,7 +1064,7 @@ const styles = StyleSheet.create({
     borderColor: '#FEE2E2',
     marginTop: 4,
   },
-  cancelAppointmentText: {
+  cancelBookingText: {
     color: Colors.red,
     fontSize: 13,
     fontWeight: '700',

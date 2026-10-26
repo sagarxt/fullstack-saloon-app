@@ -78,9 +78,10 @@ public class CustomerBookingController {
     public BookingDetailsResponse addServiceToBooking(
             @AuthenticationPrincipal CustomUserDetails user,
             @PathVariable UUID id,
-            @PathVariable UUID serviceId
+            @PathVariable UUID serviceId,
+            @RequestParam(required = false) String subServiceName
     ) {
-        return bookingService.addServiceToBooking(user.getId(), id, serviceId);
+        return bookingService.addServiceToBooking(user.getId(), id, serviceId, subServiceName);
     }
 
     @DeleteMapping("/{id}/items/{itemId}")

@@ -450,8 +450,8 @@ const styles = StyleSheet.create({
   },
   heroWrap: {
     position: 'relative',
-    height: 220,
     width: '100%',
+    aspectRatio: 4 / 3,
   },
   heroImg: {
     width: '100%',

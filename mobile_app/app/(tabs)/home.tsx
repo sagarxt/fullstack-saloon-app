@@ -22,6 +22,7 @@ import { publicApi, customerApi } from '../../api/client';
 import { Colors, Shadows } from '../../theme/colors';
 import TopHeader from '../../components/TopHeader';
 import { getServicePriceRange, getServiceDurationRange } from '../../utils/serviceHelper';
+import { getBrandInfo } from '../../utils/brandHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -109,6 +110,7 @@ export default function HomeScreen() {
   const [categories, setCategories] = useState<any[]>([]);
   const [topServices, setTopServices] = useState<any[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [brands, setBrands] = useState<any[]>(BRAND_PARTNERS);
   const [balance, setBalance] = useState<any>(null);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -155,7 +157,7 @@ export default function HomeScreen() {
 
   const loadHomeData = useCallback(async () => {
     try {
-      const [catRes, srvRes, prodRes, notifRes, balRes] = await Promise.allSettled([
+      const [catRes, srvRes, prodRes, notifRes, balRes, brandRes] = await Promise.allSettled([
         publicApi.getCategories(),
         selectedBranch
           ? publicApi.getStoreServices(selectedBranch.id)
@@ -165,7 +167,29 @@ export default function HomeScreen() {
           : publicApi.getProducts(),
         isAuthenticated ? customerApi.getUnreadCount() : Promise.reject(),
         isAuthenticated ? customerApi.getRewardBalance() : Promise.reject(),
+        publicApi.getBrands ? publicApi.getBrands() : publicApi.getProductBrands(),
       ]);
+
+      if (brandRes.status === 'fulfilled' && brandRes.value?.data) {
+        const rawBrands = brandRes.value.data;
+        const list = Array.isArray(rawBrands) ? rawBrands : rawBrands?.content || [];
+        if (list.length > 0) {
+          const mapped = list.map((b: any, idx: number) => {
+            const rawName = typeof b === 'string' ? b : b.name || `Brand ${idx + 1}`;
+            const info = getBrandInfo(rawName, list);
+            return {
+              id: b.id ? String(b.id) : String(idx + 1),
+              name: rawName,
+              image:
+                (typeof b === 'object' && b.logo) ||
+                info.logo ||
+                'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=200&q=80',
+              shortDescription: (typeof b === 'object' && b.shortDescription) || info.tagline,
+            };
+          });
+          setBrands(mapped);
+        }
+      }
 
       if (catRes.status === 'fulfilled') {
         const d = catRes.value.data;
@@ -450,7 +474,7 @@ export default function HomeScreen() {
                     } as any)
                   }
                 >
-                  <View style={[styles.gridImageWrap, { backgroundColor: colors.bg }]}>
+                  <View style={[styles.serviceGridImageWrap, { backgroundColor: colors.bg }]}>
                     <Image
                       source={{
                         uri:
@@ -458,6 +482,7 @@ export default function HomeScreen() {
                           'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=400&q=80',
                       }}
                       style={styles.gridImage}
+                      resizeMode="cover"
                     />
                     <View style={styles.durationBadge}>
                       <Ionicons name="time" size={10} color={Colors.white} />
@@ -530,7 +555,7 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoryScroll}
           >
-            {BRAND_PARTNERS.map((brand) => (
+            {brands.map((brand) => (
               <TouchableOpacity
                 key={brand.id}
                 style={styles.circularCategoryItem}
@@ -546,6 +571,7 @@ export default function HomeScreen() {
                   <Image
                     source={{ uri: brand.image }}
                     style={styles.circularCategoryImg}
+                    resizeMode="cover"
                   />
                 </View>
                 {/* Brand icon below name */}
@@ -583,7 +609,7 @@ export default function HomeScreen() {
               {featuredProducts.slice(0, 6).map((prod) => (
                 <View key={String(prod.id)} style={[styles.gridCardItem, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                   <TouchableOpacity
-                    style={[styles.gridImageWrap, { backgroundColor: colors.bg }]}
+                    style={[styles.productGridImageWrap, { backgroundColor: colors.bg }]}
                     onPress={() =>
                       router.push({
                         pathname: '/(tabs)/product/[id]',
@@ -599,6 +625,7 @@ export default function HomeScreen() {
                           'https://images.unsplash.com/photo-1608248597359-52e805562d7c?auto=format&fit=crop&w=400&q=80',
                       }}
                       style={styles.gridImage}
+                      resizeMode="cover"
                     />
                     <View style={[styles.durationBadge, { backgroundColor: Colors.blue }]}>
                       <Text style={styles.durationText}>Retail</Text>
@@ -780,6 +807,26 @@ export default function HomeScreen() {
               <Ionicons name="ribbon" size={16} color={Colors.orange} />
               <Text style={[styles.footerBadgeText, { color: colors.text }]}>Master Stylists</Text>
             </View>
+          </View>
+
+          <View style={styles.footerPolicyRow}>
+            <TouchableOpacity
+              style={[styles.footerPolicyBtn, { backgroundColor: colors.bg, borderColor: colors.cardBorder }]}
+              onPress={() => router.push('/(tabs)/policy')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="shield-checkmark-outline" size={13} color={Colors.orange} />
+              <Text style={[styles.footerPolicyText, { color: colors.text }]}>Salon Policies</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.footerPolicyBtn, { backgroundColor: colors.bg, borderColor: colors.cardBorder }]}
+              onPress={() => router.push('/(tabs)/policy')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="help-circle-outline" size={13} color={Colors.orange} />
+              <Text style={[styles.footerPolicyText, { color: colors.text }]}>Policy & FAQs</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.footerContactRow}>
@@ -1129,6 +1176,18 @@ const styles = StyleSheet.create({
     position: 'relative',
     backgroundColor: '#0f172a',
   },
+  serviceGridImageWrap: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    position: 'relative',
+    backgroundColor: '#0f172a',
+  },
+  productGridImageWrap: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    position: 'relative',
+    backgroundColor: '#0f172a',
+  },
   gridImage: {
     width: '100%',
     height: '100%',
@@ -1406,6 +1465,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: Colors.slate,
+  },
+  footerPolicyRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  footerPolicyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 5,
+  },
+  footerPolicyText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   footerCopyright: {
     fontSize: 10,

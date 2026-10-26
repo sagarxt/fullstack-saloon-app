@@ -25,6 +25,7 @@ import {
   Scissors,
   Percent,
   Save,
+  Crown,
 } from "lucide-react";
 import { showConfirm } from "../../context/ConfirmContext";
 import { forceDeleteRewardApi } from "../../api/maintenance";
@@ -56,6 +57,10 @@ export default function AdminRewardsPage() {
     coinValueInInr: 1.0,
     coinIconUrl: "",
     coinName: "Groom Coin",
+    silverMinPoints: 0,
+    goldMinPoints: 50,
+    platinumMinPoints: 150,
+    diamondMinPoints: 300,
   });
   const [savingEconomy, setSavingEconomy] = useState(false);
 
@@ -66,6 +71,10 @@ export default function AdminRewardsPage() {
         spendAmountPerCoin: groomCoinConfig.spendAmountPerCoin || 100,
         coinValueInInr: groomCoinConfig.coinValueInInr || 1.0,
         coinIconUrl: groomCoinConfig.coinIconUrl || "",
+        silverMinPoints: groomCoinConfig.silverMinPoints ?? 0,
+        goldMinPoints: groomCoinConfig.goldMinPoints ?? 50,
+        platinumMinPoints: groomCoinConfig.platinumMinPoints ?? 150,
+        diamondMinPoints: groomCoinConfig.diamondMinPoints ?? 300,
       });
     }
   }, [groomCoinConfig]);
@@ -79,8 +88,12 @@ export default function AdminRewardsPage() {
         spendAmountPerCoin: parseFloat(economyForm.spendAmountPerCoin) || 100,
         coinValueInInr: parseFloat(economyForm.coinValueInInr) || 1.0,
         coinIconUrl: economyForm.coinIconUrl ? economyForm.coinIconUrl.trim() : null,
+        silverMinPoints: parseInt(economyForm.silverMinPoints, 10) || 0,
+        goldMinPoints: parseInt(economyForm.goldMinPoints, 10) || 50,
+        platinumMinPoints: parseInt(economyForm.platinumMinPoints, 10) || 150,
+        diamondMinPoints: parseInt(economyForm.diamondMinPoints, 10) || 300,
       });
-      showToast("Groom Coin economy & icon settings saved successfully!");
+      showToast("Groom Coin economy & VIP tier point ranges saved successfully!");
       setEconomyModalOpen(false);
     } catch (err) {
       console.error("Failed to update Groom Coin config:", err);
@@ -338,10 +351,10 @@ export default function AdminRewardsPage() {
             type="button"
             onClick={() => setEconomyModalOpen(true)}
             className="px-3.5 py-2.5 rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-50 to-amber-100/70 hover:from-amber-100 hover:to-amber-200/80 text-amber-950 font-bold transition text-xs flex items-center gap-2 shadow-xs cursor-pointer active:scale-95"
-            title="Configure Groom Coin Economy & Custom Coin Icon"
+            title="Configure Groom Coin Economy, Custom Coin Icon & VIP Tier Ranges"
           >
-            <GroomCoinIcon className="w-4 h-4" />
-            <span>Configure Groom Coin</span>
+            <Crown className="w-4 h-4 text-amber-600" />
+            <span>Economy & VIP Tiers</span>
           </button>
 
           <button
@@ -1027,13 +1040,13 @@ export default function AdminRewardsPage() {
             </div>
             <div>
               <h2 className="text-xl font-heading font-extrabold text-groomish-slate flex items-center gap-2">
-                <span>Configure Groom Coin</span>
+                <span>Economy & VIP Tiers</span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                  Global Economy
+                  Managed by Admin
                 </span>
               </h2>
               <p className="text-xs text-groomish-slateLight mt-0.5">
-                Set conversion spend rates, coin INR value, and customize the coin emblem.
+                Set conversion spend rates, coin value, and VIP tier point ranges.
               </p>
             </div>
           </div>
@@ -1084,6 +1097,96 @@ export default function AdminRewardsPage() {
                 <p className="text-[10px] text-groomish-slate/60">
                   1 Groom Coin is worth ₹{economyForm.coinValueInInr || 1} at redemption.
                 </p>
+              </div>
+            </div>
+
+            {/* VIP TIER POINT RANGE CONFIGURATION */}
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/70 to-groomish-cream/50 border border-amber-200/80 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-groomish-goldDark" />
+                  <span className="font-bold text-xs text-groomish-slate">
+                    VIP Tier Point Range Requirements
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                  Lifetime Points Thresholds
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-white/80 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                <strong>Grandfathering Guarantee:</strong> If a customer has already reached a tier label, changes will not affect their existing tier. They will simply need the required points configured below to reach the next tier.
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                {/* Silver Tier */}
+                <div className="p-3 rounded-xl bg-white border border-groomish-slate/15 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-groomish-slate">Silver</span>
+                    <span className="text-[10px] font-bold text-groomish-slate/40">1.0x</span>
+                  </div>
+                  <input
+                    type="number"
+                    value={economyForm.silverMinPoints}
+                    disabled
+                    className="w-full text-xs font-bold px-2 py-1.5 rounded-lg bg-groomish-cream/40 border border-groomish-slate/10 text-groomish-slate/60 cursor-not-allowed"
+                  />
+                  <span className="text-[10px] text-groomish-slate/50 block">0 points (Starting)</span>
+                </div>
+
+                {/* Gold Tier */}
+                <div className="p-3 rounded-xl bg-white border border-amber-300 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-groomish-goldDark">Gold</span>
+                    <span className="text-[10px] font-bold text-amber-600">1.25x</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    value={economyForm.goldMinPoints}
+                    onChange={(e) => setEconomyForm({ ...economyForm, goldMinPoints: e.target.value })}
+                    className="input-groomish w-full text-xs font-bold px-2 py-1.5"
+                    placeholder="50"
+                    required
+                  />
+                  <span className="text-[10px] text-groomish-slate/50 block">Points to unlock</span>
+                </div>
+
+                {/* Platinum Tier */}
+                <div className="p-3 rounded-xl bg-white border border-sky-300 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-sky-700">Platinum</span>
+                    <span className="text-[10px] font-bold text-sky-600">1.5x</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    value={economyForm.platinumMinPoints}
+                    onChange={(e) => setEconomyForm({ ...economyForm, platinumMinPoints: e.target.value })}
+                    className="input-groomish w-full text-xs font-bold px-2 py-1.5"
+                    placeholder="150"
+                    required
+                  />
+                  <span className="text-[10px] text-groomish-slate/50 block">Points to unlock</span>
+                </div>
+
+                {/* Diamond Tier */}
+                <div className="p-3 rounded-xl bg-white border border-purple-300 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-purple-700">Diamond</span>
+                    <span className="text-[10px] font-bold text-purple-600">2.0x</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    value={economyForm.diamondMinPoints}
+                    onChange={(e) => setEconomyForm({ ...economyForm, diamondMinPoints: e.target.value })}
+                    className="input-groomish w-full text-xs font-bold px-2 py-1.5"
+                    placeholder="300"
+                    required
+                  />
+                  <span className="text-[10px] text-groomish-slate/50 block">Points to unlock</span>
+                </div>
               </div>
             </div>
 
@@ -1145,12 +1248,12 @@ export default function AdminRewardsPage() {
                 {savingEconomy ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Saving Economy...</span>
+                    <span>Saving Settings...</span>
                   </>
                 ) : (
                   <>
                     <Save className="w-3.5 h-3.5" />
-                    <span>Save Economy Settings</span>
+                    <span>Save Economy & VIP Tier Settings</span>
                   </>
                 )}
               </button>

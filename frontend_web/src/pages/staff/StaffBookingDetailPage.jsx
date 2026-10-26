@@ -21,7 +21,7 @@ import InvoiceBreakdownCard from "../../components/booking/InvoiceBreakdownCard"
 import CustomSelect from "../../components/common/CustomSelect";
 import { showConfirm } from "../../context/ConfirmContext";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
-import { extractList } from "../../utils/dataHelper";
+import { extractList, formatLocalDateTime } from "../../utils/dataHelper";
 import {
   Calendar,
   Clock,
@@ -170,13 +170,15 @@ export default function StaffBookingDetailPage() {
     loadCatalog();
   };
 
-  const handleAddServiceDirect = async (serviceId) => {
+  const [selectedSubServiceByServiceId, setSelectedSubServiceByServiceId] = useState({});
+
+  const handleAddServiceDirect = async (serviceId, subServiceName) => {
     setActionLoading(true);
     setAddingItemId(serviceId);
     setError("");
     setSuccessMsg("");
     try {
-      await addServiceToBookingByStaff(id, serviceId);
+      await addServiceToBookingByStaff(id, serviceId, subServiceName);
       setSuccessMsg("Salon service added to appointment!");
       await loadBooking();
     } catch (err) {
@@ -586,26 +588,13 @@ export default function StaffBookingDetailPage() {
                 </button>
               )}
 
-              {/* COMPLETE & BILL - When client is checked in & services are done */}
+              {/* COMPLETE & BILL - Only available once client is checked in & services are underway */}
               {isOwnBranch && (booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS") && (
                 <button
                   disabled={actionLoading}
                   onClick={handleCompleteAndBill}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 active:scale-95 transition shadow-soft cursor-pointer"
                   title="Finalize appointment & generate bill invoice"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Complete & Bill</span>
-                </button>
-              )}
-
-              {/* Secondary Complete & Bill option if already confirmed */}
-              {isOwnBranch && (booking.status === "CONFIRMED" || booking.status === "MODIFIED") && (
-                <button
-                  disabled={actionLoading}
-                  onClick={handleCompleteAndBill}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-groomish-blue/30 text-groomish-blue bg-white hover:bg-sky-50 active:scale-95 transition text-xs font-bold cursor-pointer"
-                  title="Directly complete and bill without check-in"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Complete & Bill</span>
@@ -760,7 +749,7 @@ export default function StaffBookingDetailPage() {
                     </p>
                     {booking.createdAt && (
                       <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                        {new Date(booking.createdAt).toLocaleString()}
+                        {formatLocalDateTime(booking.createdAt)}
                       </p>
                     )}
                   </div>
@@ -873,10 +862,6 @@ export default function StaffBookingDetailPage() {
                         className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange font-bold text-xs flex items-center justify-center shrink-0">
-                            #{idx + 1}
-                          </div>
-
                           {/* Service Image */}
                           {grp.image ? (
                             <img
@@ -1038,12 +1023,7 @@ export default function StaffBookingDetailPage() {
                                 )}
                               </div>
                               <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                                Qty: {qty} × ₹{prod.unitPriceSnapshot || prod.unitPrice || 0}
-                                {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
-                                  <span className="text-groomish-slate/40 line-through ml-1.5">
-                                    (MRP ₹{prod.mrp})
-                                  </span>
-                                )}
+                                Qty: {qty}
                               </p>
                             </div>
                           </div>
@@ -1090,6 +1070,7 @@ export default function StaffBookingDetailPage() {
                 className="rounded-3xl border border-groomish-slate/10 p-6 shadow-soft"
               >
                 {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (() => {
+                  const isCheckedIn = booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS";
                   const total = Number(booking.totalAmount ?? booking.pricePaid ?? 0);
                   const paid = Number(booking.pricePaid ?? 0);
                   const remaining = Number(
@@ -1097,6 +1078,27 @@ export default function StaffBookingDetailPage() {
                       ? booking.remainingAmount
                       : Math.max(0, total - paid)
                   );
+
+                  if (!isCheckedIn) {
+                    return (
+                      <div className="space-y-2 mt-2">
+                        <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900 leading-tight">
+                          <strong>Next Step:</strong> Check in customer upon arrival to start salon treatments before final billing.
+                        </div>
+                        {isOwnBranch && (
+                          <button
+                            disabled={actionLoading}
+                            onClick={handleCheckInBooking}
+                            className="w-full bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs py-3 rounded-2xl inline-flex items-center justify-center gap-2 font-bold shadow-soft cursor-pointer transition"
+                          >
+                            <UserCheck className="w-4 h-4" />
+                            <span>Check In Client</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+
                   return (
                     <div className="space-y-2 mt-2">
                       {remaining > 0.01 && (
@@ -1198,58 +1200,121 @@ export default function StaffBookingDetailPage() {
                     (bi) => bi.serviceId === srv.id
                   ).length;
                   const isAdding = addingItemId === srv.id;
+                  const hasSubServices = Array.isArray(srv.subServices) && srv.subServices.length > 0;
+                  const activeSub = selectedSubServiceByServiceId[srv.id] || (hasSubServices ? srv.subServices[0] : null);
+                  const displayPrice = activeSub ? activeSub.price : srv.price;
+                  const displayDuration = activeSub ? activeSub.durationMinutes : (srv.durationMinutes || 30);
+
                   return (
                     <div
                       key={srv.id}
-                      className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
+                      className="p-3.5 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex flex-col gap-2.5 transition hover:bg-groomish-cream/30 bg-white"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
-                          <img
-                            src={
-                              srv.image ||
-                              "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=200&q=80"
-                            }
-                            alt={srv.name}
-                            className="w-full h-full object-cover"
-                          />
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                            <img
+                              src={
+                                srv.image ||
+                                "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=200&q=80"
+                              }
+                              alt={srv.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-xs font-bold text-groomish-slate truncate">
+                                {srv.name}
+                              </h4>
+                              {inBookingCount > 0 && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-groomish-greenLight text-groomish-green">
+                                  In Booking ({inBookingCount})
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-groomish-slate/50 mt-0.5">
+                              {displayDuration} mins • {srv.categoryName || "Salon Care"}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className="text-xs font-bold text-groomish-slate truncate">
-                              {srv.name}
-                            </h4>
-                            {inBookingCount > 0 && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-groomish-greenLight text-groomish-green">
-                                In Booking ({inBookingCount})
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <span className="text-xs font-extrabold text-groomish-slate block">
+                              ₹{displayPrice}
+                            </span>
+                            {activeSub?.mrp && activeSub.mrp > displayPrice && (
+                              <span className="text-[10px] text-groomish-slate/40 line-through">
+                                ₹{activeSub.mrp}
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                            {srv.durationMinutes || 30} mins • {srv.categoryName || "Salon Care"}
-                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleAddServiceDirect(srv.id, activeSub?.name)}
+                            disabled={actionLoading}
+                            className="btn-primary text-xs px-3.5 py-1.5 font-bold shadow-soft flex items-center gap-1"
+                          >
+                            {isAdding ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <>
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>{inBookingCount > 0 ? "Add Again" : "Add Service"}</span>
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs font-extrabold text-groomish-slate">
-                          ₹{srv.price}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleAddServiceDirect(srv.id)}
-                          disabled={actionLoading}
-                          className="btn-primary text-xs px-3.5 py-1.5 font-bold shadow-soft flex items-center gap-1"
-                        >
-                          {isAdding ? (
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <>
-                              <Plus className="w-3.5 h-3.5" />
-                              <span>{inBookingCount > 0 ? "Add Again" : "Add Service"}</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
+
+                      {/* Sub-services Options Selector */}
+                      {hasSubServices && (
+                        <div className="pt-2 border-t border-groomish-slate/10 bg-groomish-cream/20 p-2 rounded-xl">
+                          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-groomish-slate/60">
+                              Options ({srv.subServices.length}):
+                            </span>
+                            {activeSub && (
+                              <span className="text-[10px] font-extrabold text-groomish-orange bg-groomish-orange/10 px-2 py-0.5 rounded-full">
+                                Selected: {activeSub.name}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {srv.subServices.map((sub, sIdx) => {
+                              const isSelected = activeSub?.name === sub.name;
+                              return (
+                                <button
+                                  key={sub.id || sub.name || sIdx}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSubServiceByServiceId((prev) => ({
+                                      ...prev,
+                                      [srv.id]: sub,
+                                    }));
+                                  }}
+                                  className={`text-[11px] px-2.5 py-1 rounded-xl font-bold transition flex items-center gap-1.5 border cursor-pointer ${
+                                    isSelected
+                                      ? "bg-groomish-slate text-white border-groomish-slate shadow-sm"
+                                      : "bg-white hover:bg-groomish-cream text-groomish-slate/80 border-groomish-slate/15"
+                                  }`}
+                                >
+                                  <span>{sub.name}</span>
+                                  <span className={isSelected ? "text-groomish-gold font-extrabold" : "text-groomish-orange font-bold"}>
+                                    ₹{sub.price}
+                                  </span>
+                                  {sub.durationMinutes && (
+                                    <span className={`text-[10px] ${isSelected ? "text-white/60" : "text-groomish-slate/40"}`}>
+                                      • {sub.durationMinutes}m
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })

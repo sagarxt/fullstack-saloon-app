@@ -11,6 +11,7 @@ import {
   removeProductFromBookingByStaff,
   completeBookingAndSendBillByStaff,
   confirmBookingByStaff,
+  checkInBookingByStaff,
   getStaffBooking,
   updateStaffBooking,
   getCustomerBookingsByStaff,
@@ -24,7 +25,7 @@ import { generateSlots } from "../../utils/slots";
 import Pagination from "../../components/common/Pagination";
 import { useAuth } from "../../context/useAuth";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { extractList } from "../../utils/dataHelper";
+import { extractList, sortBookingsWithTodayOnTop } from "../../utils/dataHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
 import StaffBranchServicesTab from "../../components/staff/StaffBranchServicesTab";
 import StaffBranchInventoryTab from "../../components/staff/StaffBranchInventoryTab";
@@ -239,6 +240,24 @@ export default function StaffDashboard() {
     }
   };
 
+  /* Check In Client upon arrival at salon */
+  const handleCheckIn = async (bookingId) => {
+    setActionLoading(true);
+    try {
+      await checkInBookingByStaff(bookingId);
+      loadDashboard();
+    } catch (err) {
+      console.error(err);
+      await showAlert({
+        title: "Check-in Failed",
+        message: err.response?.data?.message || "Failed to check in client",
+        variant: "danger",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   /* Open Billing & Store Products Modal */
   const handleOpenBilling = async (booking) => {
     setBillError("");
@@ -273,7 +292,14 @@ export default function StaffDashboard() {
     setBillError("");
     setBillSuccess("");
     try {
-      const res = await addServiceToBookingByStaff(billingBooking.id, selectedStaffServiceId);
+      let srvId = selectedStaffServiceId;
+      let subName = undefined;
+      if (selectedStaffServiceId.includes(":::")) {
+        const parts = selectedStaffServiceId.split(":::");
+        srvId = parts[0];
+        subName = parts[1];
+      }
+      const res = await addServiceToBookingByStaff(billingBooking.id, srvId, subName);
       setBillingBooking(res.data);
       setBillSuccess("Service added to appointment!");
       setSelectedStaffServiceId("");
@@ -570,6 +596,10 @@ export default function StaffDashboard() {
 
     return matchCode || matchUser || matchService;
   });
+
+  const sortedBookingList = useMemo(() => {
+    return sortBookingsWithTodayOnTop(bookingList);
+  }, [bookingList]);
 
   return (
     <div className="min-h-screen bg-groomish-cream font-sans w-full max-w-full overflow-x-hidden">
@@ -1027,7 +1057,7 @@ export default function StaffDashboard() {
                       )}
                     </div>
                     <span className="text-xs text-groomish-slate/50 font-medium whitespace-nowrap">
-                      {bookingList.length} listed
+                      {sortedBookingList.length} listed
                     </span>
                   </div>
                 </div>
@@ -1038,7 +1068,7 @@ export default function StaffDashboard() {
                     <div className="w-8 h-8 border-4 border-groomish-orange border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                     <p className="text-xs text-groomish-slate/60">Loading stylist schedule...</p>
                   </div>
-                ) : bookingList.length === 0 ? (
+                ) : sortedBookingList.length === 0 ? (
                   <div className="py-12 text-center text-xs text-groomish-slate/50 space-y-2">
                     {search ? (
                       <>
@@ -1061,7 +1091,7 @@ export default function StaffDashboard() {
                   </div>
                 ) : (
                   <div className="p-4 sm:p-5 space-y-3">
-                    {bookingList
+                    {sortedBookingList
                       .slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                       .map((b) => (
                         <StaffBookingCard
@@ -1070,6 +1100,7 @@ export default function StaffDashboard() {
                           onOpenReschedule={handleOpenReschedule}
                           onOpenBilling={handleOpenBilling}
                           onConfirm={handleConfirm}
+                          onCheckIn={handleCheckIn}
                           onComplete={handleMarkComplete}
                           onCancel={handleCancel}
                           actionLoading={actionLoading}
@@ -1079,11 +1110,11 @@ export default function StaffDashboard() {
                   </div>
                 )}
 
-                {bookingList.length > 0 && (
+                {sortedBookingList.length > 0 && (
                   <div className="p-4 border-t border-groomish-slate/10 bg-white">
                     <Pagination
                       currentPage={page}
-                      totalItems={bookingList.length}
+                      totalItems={sortedBookingList.length}
                       pageSize={PAGE_SIZE}
                       onPageChange={setPage}
                       itemName="appointments"
@@ -1318,10 +1349,18 @@ export default function StaffDashboard() {
                       placeholder="-- Add Service to Appointment --"
                       searchPlaceholder="Search services..."
                       searchable={true}
-                      options={staffServices.map((s) => ({
-                        value: s.id,
-                        label: `${s.name} (₹${s.price} • ${s.durationMinutes}m)`,
-                      }))}
+                      options={staffServices.flatMap((s) => {
+                        if (Array.isArray(s.subServices) && s.subServices.length > 0) {
+                          return s.subServices.map((sub) => ({
+                            value: `${s.id}:::${sub.name}`,
+                            label: `${s.name} - ${sub.name} (₹${sub.price} • ${sub.durationMinutes || s.durationMinutes}m)`,
+                          }));
+                        }
+                        return [{
+                          value: s.id,
+                          label: `${s.name} (₹${s.price} • ${s.durationMinutes}m)`,
+                        }];
+                      })}
                     />
                   </div>
                   <button
@@ -1363,12 +1402,7 @@ export default function StaffDashboard() {
                             {bp.productName}{bp.quantity > 1 ? ` X ${bp.quantity}` : ""}
                           </p>
                           <p className="text-[10px] text-groomish-slate/50">
-                            Qty: {bp.quantity} × ₹{bp.unitPrice}
-                            {bp.mrp && bp.mrp > bp.unitPrice && (
-                              <span className="text-groomish-slate/40 line-through ml-1">
-                                (MRP ₹{bp.mrp})
-                              </span>
-                            )}
+                            Qty: {bp.quantity}
                           </p>
                         </div>
                       </div>

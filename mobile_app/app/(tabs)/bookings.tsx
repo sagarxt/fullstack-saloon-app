@@ -17,22 +17,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { customerApi } from '../../api/client';
 import { Colors, Shadows } from '../../theme/colors';
 import TopHeader from '../../components/TopHeader';
-
-const format24HourDateTime = (isoString?: string) => {
-  if (!isoString) return 'Date & Time Pending';
-  try {
-    const d = new Date(isoString);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const day = d.getDate();
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-    const hh = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
-    return `${day} ${month} ${year}, ${hh}:${min}`;
-  } catch (_) {
-    return isoString;
-  }
-};
+import { format12HourDateTime } from '../../utils/dateHelper';
 
 export default function BookingsScreen() {
   const router = useRouter();
@@ -126,9 +111,9 @@ export default function BookingsScreen() {
           <View style={styles.guestIconWrap}>
             <Ionicons name="calendar-outline" size={44} color={Colors.orange} />
           </View>
-          <Text style={[styles.guestTitle, { color: colors.text }]}>Sign in to View Appointments</Text>
+          <Text style={[styles.guestTitle, { color: colors.text }]}>Sign in to View Bookings</Text>
           <Text style={[styles.guestSubtitle, { color: colors.textMuted }]}>
-            Track upcoming visits, reschedule appointment times, and view salon care history.
+            Track upcoming visits, reschedule booking times, and view salon care history.
           </Text>
           <TouchableOpacity
             style={styles.guestLoginBtn}
@@ -156,7 +141,7 @@ export default function BookingsScreen() {
           </View>
           <Text style={[styles.guestTitle, { color: colors.text }]}>Staff & Admin Portal Notice</Text>
           <Text style={[styles.guestSubtitle, { color: colors.textMuted }]}>
-            The Groomish Now mobile app is designed for customer appointments and retail browsing. Service bookings cannot be made through staff or admin accounts here. To manage bookings, client check-ins, and salon operations, please use the Groomish Now Web Portal.
+            The Groomish Now mobile app is designed for customer bookings and retail browsing. Salon bookings and stylist schedules are managed via the Groomish Now Web Portal.
           </Text>
           <TouchableOpacity
             style={styles.guestLoginBtn}
@@ -179,7 +164,7 @@ export default function BookingsScreen() {
       {/* ─── HEADER ─── */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
         <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>My Appointments</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>My Bookings</Text>
           <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
             Manage and view your scheduled salon treatments
           </Text>
@@ -244,7 +229,7 @@ export default function BookingsScreen() {
       {loading && !refreshing ? (
         <View style={styles.centerLoading}>
           <ActivityIndicator size="large" color={Colors.orange} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading your appointments...</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading your bookings...</Text>
         </View>
       ) : (
         <FlatList
@@ -264,10 +249,10 @@ export default function BookingsScreen() {
               <Ionicons name="calendar-outline" size={48} color={colors.textMuted} />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
                 {activeTab === 'UPCOMING'
-                  ? 'No upcoming salon appointments'
+                  ? 'No upcoming salon bookings'
                   : activeTab === 'COMPLETED'
-                  ? 'No completed appointments yet'
-                  : 'No cancelled appointments'}
+                  ? 'No completed bookings yet'
+                  : 'No cancelled bookings'}
               </Text>
               <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                 {activeTab === 'UPCOMING'
@@ -281,7 +266,7 @@ export default function BookingsScreen() {
                   onPress={() => router.push('/(tabs)/services' as any)}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.bookNowCtaText}>Book New Appointment</Text>
+                  <Text style={styles.bookNowCtaText}>Book New Visit</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -314,15 +299,7 @@ export default function BookingsScreen() {
 
             return (
               <TouchableOpacity
-                style={[styles.bookingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                activeOpacity={0.9}
-                onPress={() =>
-                  router.push({
-                    pathname: '/booking/[id]',
-                    params: { id: String(item.id || item.bookingCode) },
-                  } as any)
-                }
-              >
+                style={[styles.bookingCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <View style={styles.cardTopRow}>
                   <View style={styles.codeWrap}>
                     <Ionicons name="receipt-outline" size={14} color={Colors.orange} />
@@ -338,11 +315,11 @@ export default function BookingsScreen() {
                   </View>
                 </View>
 
-                {/* Date & Time (24h format, strictly no AM/PM) */}
+                {/* Date & Time (12-hour AM/PM format) */}
                 <View style={styles.scheduleRow}>
                   <Ionicons name="time" size={15} color={Colors.orange} />
                   <Text style={[styles.scheduleText, { color: colors.text }]}>
-                    {format24HourDateTime(item.scheduledAt)}
+                    {format12HourDateTime(item.scheduledAt)}
                   </Text>
                 </View>
 

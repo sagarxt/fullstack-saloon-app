@@ -14,4 +14,9 @@ public class LoyaltyConfigDto {
     private String coinIconUrl;
     private Double spendAmountPerCoin;
     private Double coinValueInInr;
+    private Integer silverMinPoints;
+    private Integer goldMinPoints;
+    private Integer platinumMinPoints;
+    private Integer diamondMinPoints;
 }
+

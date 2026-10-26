@@ -115,6 +115,12 @@ export default function TabsLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="policy"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

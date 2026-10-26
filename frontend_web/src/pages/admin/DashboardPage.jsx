@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getDashboardMetrics } from "../../api/admin";
 import { useNavigate, Link } from "react-router-dom";
+import { sortBookingsWithTodayOnTop } from "../../utils/dataHelper";
 import {
   DollarSign,
   Calendar,
@@ -203,7 +204,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-groomish-slate/10">
-                {metrics.recentBookings.map((b) => (
+                {sortBookingsWithTodayOnTop(metrics.recentBookings).map((b) => (
                   <tr key={b.id} className="hover:bg-groomish-cream/30 transition">
                     <td className="py-4 px-6 font-mono font-bold text-groomish-slate">
                       <Link

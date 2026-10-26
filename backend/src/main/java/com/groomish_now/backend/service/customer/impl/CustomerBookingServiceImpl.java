@@ -770,7 +770,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
     public BookingDetailsResponse addServiceToBooking(
             UUID userId,
             UUID bookingId,
-            UUID serviceId
+            UUID serviceId,
+            String subServiceName
     ) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
@@ -790,12 +791,27 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             throw new RuntimeException("Service '" + service.getName() + "' is currently disabled or unavailable at " + booking.getStore().getName() + ".");
         }
 
+        String snapshotName = service.getName();
+        Double snapshotPrice = service.getPrice();
+        Integer snapshotDuration = service.getDurationMinutes();
+
+        if (subServiceName != null && !subServiceName.isBlank() && service.getSubServices() != null) {
+            for (com.groomish_now.backend.model.SubService sub : service.getSubServices()) {
+                if (subServiceName.trim().equalsIgnoreCase(sub.getName().trim())) {
+                    snapshotName = service.getName() + " (" + sub.getName().trim() + ")";
+                    if (sub.getPrice() != null) snapshotPrice = sub.getPrice();
+                    if (sub.getDurationMinutes() != null) snapshotDuration = sub.getDurationMinutes();
+                    break;
+                }
+            }
+        }
+
         BookingItem item = new BookingItem();
         item.setBooking(booking);
         item.setService(service);
-        item.setServiceNameSnapshot(service.getName());
-        item.setServicePriceSnapshot(service.getPrice());
-        item.setServiceDurationSnapshot(service.getDurationMinutes());
+        item.setServiceNameSnapshot(snapshotName);
+        item.setServicePriceSnapshot(snapshotPrice);
+        item.setServiceDurationSnapshot(snapshotDuration);
         item.setServiceRewardCoinsSnapshot(service.getRewards() != null ? service.getRewards() : 0);
         item.setStatus(booking.getStatus());
         bookingItemRepository.save(item);
@@ -814,7 +830,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 saved,
                 "SERVICE_ADDED",
                 "Service Added by Client",
-                "Client added " + service.getName() + " (₹" + service.getPrice() + ") to appointment.",
+                "Client added " + snapshotName + " (₹" + snapshotPrice + ") to appointment.",
                 booking.getUser() != null ? booking.getUser().getName() : "Customer",
                 "CUSTOMER",
                 booking.getUser() != null ? booking.getUser().getEmail() : null
