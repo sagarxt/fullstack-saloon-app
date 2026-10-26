@@ -25,16 +25,16 @@ public class GmailSenderServiceImpl implements GmailSenderService {
 
     private final ObjectMapper objectMapper;
 
-    @Value("${gmail.api.client-id:}")
+    @Value("${GMAIL_CLIENT_ID:${gmail.api.client-id:${gmail.client-id:}}}")
     private String clientId;
 
-    @Value("${gmail.api.client-secret:}")
+    @Value("${GMAIL_CLIENT_SECRET:${gmail.api.client-secret:${gmail.client-secret:}}}")
     private String clientSecret;
 
-    @Value("${gmail.api.refresh-token:}")
+    @Value("${GMAIL_REFRESH_TOKEN:${gmail.api.refresh-token:${gmail.refresh-token:}}}")
     private String refreshToken;
 
-    @Value("${gmail.api.sender-email:testmailemployee@gmail.com}")
+    @Value("${GMAIL_SENDER_EMAIL:${gmail.api.sender-email:${gmail.sender-email:testmailemployee@gmail.com}}}")
     private String senderEmail;
 
     private static final String GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -150,8 +150,15 @@ public class GmailSenderServiceImpl implements GmailSenderService {
     }
 
     private boolean isConfigured() {
-        return clientId != null && !clientId.isBlank()
-                && clientSecret != null && !clientSecret.isBlank()
-                && refreshToken != null && !refreshToken.isBlank();
+        boolean hasClientId = clientId != null && !clientId.trim().isBlank();
+        boolean hasClientSecret = clientSecret != null && !clientSecret.trim().isBlank();
+        boolean hasRefreshToken = refreshToken != null && !refreshToken.trim().isBlank();
+
+        if (!hasClientId || !hasClientSecret || !hasRefreshToken) {
+            log.warn("Gmail API configuration check failed: GMAIL_CLIENT_ID present={}, GMAIL_CLIENT_SECRET present={}, GMAIL_REFRESH_TOKEN present={}",
+                    hasClientId, hasClientSecret, hasRefreshToken);
+            return false;
+        }
+        return true;
     }
 }
