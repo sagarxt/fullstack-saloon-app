@@ -28,6 +28,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.groomish_now.backend.security.CustomUserDetails;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -221,21 +224,21 @@ public class ProductServiceImpl implements ProductService {
 
         bookingProductRepository.save(bp);
 
-        // Update booking totals
+        // Update booking totals: increase totalAmount, but preserve existing pricePaid
+        // (customer must pay the remaining balance online or at salon)
         double currentTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
-        double currentPaid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
         booking.setTotalAmount(currentTotal + itemTotal);
-        booking.setPricePaid(currentPaid + itemTotal);
 
         Booking savedBooking = bookingRepository.save(booking);
+        String[] actor = resolveCurrentStaffActor(savedBooking);
         bookingTimelineService.recordTimeline(
                 savedBooking,
                 "PRODUCT_ADDED",
                 "Retail Product Added",
                 "Added " + product.getName() + " (Qty: " + qty + ", ₹" + itemTotal + ") to appointment bill.",
-                savedBooking.getBookedBy() != null ? savedBooking.getBookedBy() : "Salon Staff",
+                actor[0],
                 "STAFF",
-                null
+                actor[1]
         );
         return toBookingResponse(savedBooking);
     }
@@ -265,19 +268,21 @@ public class ProductServiceImpl implements ProductService {
         double currentTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
         double currentPaid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
 
-        booking.setTotalAmount(Math.max(0, currentTotal - diff));
-        booking.setPricePaid(Math.max(0, currentPaid - diff));
+        double newTotal = Math.max(0, currentTotal - diff);
+        booking.setTotalAmount(newTotal);
+        booking.setPricePaid(Math.min(currentPaid, newTotal));
 
         bookingProductRepository.delete(bp);
         Booking saved = bookingRepository.save(booking);
+        String[] actor = resolveCurrentStaffActor(saved);
         bookingTimelineService.recordTimeline(
                 saved,
                 "PRODUCT_REMOVED",
                 "Retail Product Removed",
                 "Removed product: " + bp.getProductNameSnapshot() + " from appointment bill.",
-                saved.getBookedBy() != null ? saved.getBookedBy() : "Salon Staff",
+                actor[0],
                 "STAFF",
-                null
+                actor[1]
         );
         return toBookingResponse(saved);
     }
@@ -301,7 +306,9 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        double finalAmount = booking.getPricePaid() != null ? booking.getPricePaid() : (booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0);
+        double totalAmount = booking.getTotalAmount() != null ? booking.getTotalAmount() : (booking.getPricePaid() != null ? booking.getPricePaid() : 0.0);
+        booking.setPricePaid(totalAmount);
+        double finalAmount = totalAmount;
         double originalTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : finalAmount;
         double discount = Math.max(0, originalTotal - finalAmount);
 
@@ -320,11 +327,9 @@ public class ProductServiceImpl implements ProductService {
             booking.setPayment(payment);
         } else {
             payment.setStatus(PaymentStatus.COMPLETED);
+            payment.setAmount(finalAmount);
             if (payment.getPaymentMethod() == null) {
                 payment.setPaymentMethod(PaymentMethod.CASH);
-            }
-            if (payment.getAmount() == null || payment.getAmount() == 0.0) {
-                payment.setAmount(finalAmount);
             }
             paymentRepository.save(payment);
         }
@@ -461,14 +466,15 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Booking saved = bookingRepository.save(booking);
+        String[] actor = resolveCurrentStaffActor(saved);
         bookingTimelineService.recordTimeline(
                 saved,
                 "COMPLETED",
                 "Treatment Completed & Invoiced",
                 "Treatment completed. Final tax invoice and itemized receipt dispatched to client.",
-                saved.getBookedBy() != null ? saved.getBookedBy() : "Salon Staff",
+                actor[0],
                 "STAFF",
-                null
+                actor[1]
         );
         return toBookingResponse(saved);
     }
@@ -494,5 +500,25 @@ public class ProductServiceImpl implements ProductService {
 
     private BookingResponse toBookingResponse(Booking b) {
         return bookingMapper.toBookingResponse(b);
+    }
+
+    private String[] resolveCurrentStaffActor(Booking booking) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof CustomUserDetails cud) {
+                User u = userRepository.findById(cud.getId()).orElse(null);
+                if (u != null) {
+                    return new String[]{ u.getName(), u.getEmail() };
+                }
+                return new String[]{ cud.getUsername(), cud.getEmail() };
+            }
+        } catch (Exception ex) {
+            log.warn("Could not resolve current staff user from context: {}", ex.getMessage());
+        }
+
+        if (booking != null && booking.getStore() != null) {
+            return new String[]{ "Hi-Tech Owner", "hitech@groomish.now" };
+        }
+        return new String[]{ "Hi-Tech Owner", "hitech@groomish.now" };
     }
 }

@@ -6,7 +6,10 @@ import CategoriesSection from "../../components/landing/CategoriesSection";
 import ServicesSection from "../../components/landing/ServicesSection";
 import BookingFlowModal from "../../components/modals/BookingFlowModal";
 import AuthModal from "../../components/modals/AuthModal";
+import BranchWakeUpShowcase from "../../components/landing/BranchWakeUpShowcase";
+import ProductsSection from "../../components/landing/ProductsSection";
 import { getServices, getCategories, getPublicHome } from "../../api/public";
+import { getPublicProducts } from "../../api/products";
 import { useAuth } from "../../context/useAuth";
 import { useCart } from "../../context/CartContext";
 import { useStore } from "../../context/StoreContext";
@@ -37,10 +40,14 @@ import {
 export default function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { stores, selectedStore, selectStore } = useStore();
+  const { stores, selectedStore, selectStore, loading: storesLoading, refreshStores } = useStore();
+  const { addItem, items } = useCart();
 
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [addingToCartId, setAddingToCartId] = useState(null);
+  const [pendingProduct, setPendingProduct] = useState(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
@@ -97,23 +104,43 @@ export default function LandingPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [catRes, srvRes] = await Promise.all([
-        getCategories(),
-        getServices(),
+      const [catRes, srvRes, prodRes] = await Promise.all([
+        getCategories().catch(() => ({ data: [] })),
+        getServices().catch(() => ({ data: [] })),
+        getPublicProducts().catch(() => ({ data: [] })),
       ]);
 
       setCategories(extractList(catRes.data));
       setServices(extractList(srvRes.data));
+      const rawProducts = extractList(prodRes.data);
+      setProducts(rawProducts.filter((p) => p && p.active !== false));
     } catch (err) {
       console.error("Failed to load landing data", err);
       setCategories([]);
       setServices([]);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const { addItem } = useCart();
+  const isInCart = (productId) => items?.some((it) => it.productId === productId);
+
+  const handleAddToCart = async (product) => {
+    if (!user) {
+      setPendingProduct(product);
+      setAuthOpen(true);
+      return;
+    }
+    setAddingToCartId(product.id);
+    await addItem({
+      itemType: "PRODUCT",
+      productId: product.id,
+      name: product.name,
+      quantity: 1,
+    });
+    setAddingToCartId(null);
+  };
 
   const handleBook = async (service) => {
     if (!user) {
@@ -144,7 +171,18 @@ export default function LandingPage() {
       setPendingService(null);
       if (added) {
         navigate("/cart");
+        return;
       }
+    }
+    if (pendingProduct) {
+      await addItem({
+        itemType: "PRODUCT",
+        productId: pendingProduct.id,
+        name: pendingProduct.name,
+        quantity: 1,
+      });
+      setPendingProduct(null);
+      navigate("/cart");
     }
   };
 
@@ -163,7 +201,9 @@ export default function LandingPage() {
                   {/* Decorative Ambient Glow (hidden on mobile to prevent horizontal viewport bleed) */}
                   <div className="hidden sm:block absolute -inset-4 bg-gradient-to-tr from-groomish-orange/20 via-groomish-gold/20 to-groomish-coral/20 rounded-3xl blur-2xl -z-10 pointer-events-none" />
 
-                  {!selectedStore || branchImages.length === 0 ? (
+                  {storesLoading || (loading && !selectedStore) ? (
+                    <BranchWakeUpShowcase onRetry={refreshStores} />
+                  ) : !selectedStore || branchImages.length === 0 ? (
                     <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-card border border-groomish-slate/10 text-center space-y-4 w-full min-w-0">
                       <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-groomish-cream text-groomish-orange flex items-center justify-center mx-auto border border-groomish-slate/10">
                         <MapPin className="w-6 h-6 sm:w-8 sm:h-8" />
@@ -445,8 +485,16 @@ export default function LandingPage() {
           onBook={handleBook}
         />
 
+        {/* PRODUCTS SECTION */}
+        <ProductsSection
+          products={products}
+          onAddToCart={handleAddToCart}
+          addingToCartId={addingToCartId}
+          isInCart={isInCart}
+        />
+
         {/* VIP LOYALTY PERKS SECTION */}
-        <section id="rewards" className="py-8 sm:py-14 bg-white border-t border-groomish-slate/10">
+        <section id="rewards" className="py-8 sm:py-14 bg-groomish-cream border-t border-groomish-slate/10">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Header */}
             <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">

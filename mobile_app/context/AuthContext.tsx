@@ -17,6 +17,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isStaffOrAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { name: string; email: string; password: string; referralCode?: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -110,6 +111,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (_) {}
   };
 
+  const isStaffOrAdmin = !!user && (
+    user.role === 'ROLE_STAFF' ||
+    user.role === 'STAFF' ||
+    user.role === 'ROLE_ADMIN' ||
+    user.role === 'ADMIN'
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -117,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         isLoading,
         isAuthenticated: !!token && !!user,
+        isStaffOrAdmin,
         login,
         register,
         logout,

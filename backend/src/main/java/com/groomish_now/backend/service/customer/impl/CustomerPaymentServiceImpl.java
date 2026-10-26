@@ -83,8 +83,16 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
             throw new RuntimeException("Access denied to this booking");
         }
 
+        double total = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
+        double paid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
         if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.COMPLETED) {
-            throw new RuntimeException("Payment has already been completed for this booking");
+            double confirmed = booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : paid;
+            paid = Math.max(paid, confirmed);
+        }
+        double payableRemaining = Math.max(0.0, total - paid);
+
+        if (payableRemaining <= 0.01 && (paid > 0 || booking.getStatus() == BookingStatus.COMPLETED)) {
+            throw new RuntimeException("Payment has already been completed in full for this booking");
         }
 
         PaymentMethod method;
@@ -99,13 +107,18 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
                 ? request.getPaymentGatewayId()
                 : "PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
+        double newPaidTotal = total > 0 ? total : payableRemaining;
+        booking.setPricePaid(newPaidTotal);
+
         Payment payment = booking.getPayment();
         if (payment == null) {
             payment = Payment.builder()
                     .invoiceNumber(invoiceNumber)
                     .user(user)
-                    .amount(booking.getPricePaid())
+                    .amount(newPaidTotal)
                     .build();
+        } else {
+            payment.setAmount(newPaidTotal);
         }
         payment.setPaymentMethod(method);
         payment.setPaymentModeDetails(request.getPaymentModeDetails() != null ? request.getPaymentModeDetails() : method.name());
@@ -129,11 +142,15 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
         }
         Booking savedBooking = bookingRepository.save(booking);
 
+        String desc = paid > 0
+                ? "Online payment of remaining balance ₹" + payableRemaining + " confirmed via " + savedPayment.getPaymentMethod() + ". Total ₹" + newPaidTotal + " paid in full. Invoice: " + savedPayment.getInvoiceNumber()
+                : "Online payment of ₹" + savedPayment.getAmount() + " confirmed via " + savedPayment.getPaymentMethod() + ". Invoice: " + savedPayment.getInvoiceNumber();
+
         bookingTimelineService.recordTimeline(
                 savedBooking,
                 "PAYMENT_RECORDED",
-                "Online Payment Verified",
-                "Online payment of ₹" + savedPayment.getAmount() + " confirmed via " + savedPayment.getPaymentMethod() + ". Invoice: " + savedPayment.getInvoiceNumber(),
+                paid > 0 ? "Online Balance Payment Verified" : "Online Payment Verified",
+                desc,
                 user.getName(),
                 "CUSTOMER",
                 user.getEmail()
@@ -209,11 +226,18 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
             throw new RuntimeException("Access denied to this booking");
         }
 
+        double total = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
+        double paid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
         if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.COMPLETED) {
-            throw new RuntimeException("Payment has already been completed for this booking");
+            double confirmed = booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : paid;
+            paid = Math.max(paid, confirmed);
+        }
+        double payableAmount = Math.max(0.0, total - paid);
+
+        if (payableAmount <= 0.01 && (paid > 0 || booking.getStatus() == BookingStatus.COMPLETED)) {
+            throw new RuntimeException("Payment has already been completed in full for this booking (no outstanding balance).");
         }
 
-        double payableAmount = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
         long amountInPaise = Math.round(payableAmount * 100);
         if (amountInPaise <= 0) {
             // Free booking or 100% discount: automatically complete payment

@@ -51,6 +51,9 @@ export const getCustomerPointsHistoryByStaff = (id, page = 0, size = 20) =>
 export const startBookingByStaff = (bookingId) =>
   axiosClient.post(`/staff/bookings/${bookingId}/start`);
 
+export const checkInBookingByStaff = (bookingId) =>
+  axiosClient.post(`/staff/bookings/${bookingId}/check-in`);
+
 /* STAFF SERVICES */
 export const getStaffServices = () =>
   axiosClient.get("/staff/services");

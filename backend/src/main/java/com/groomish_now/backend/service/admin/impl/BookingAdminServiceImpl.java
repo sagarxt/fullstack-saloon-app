@@ -147,7 +147,11 @@ public class BookingAdminServiceImpl implements BookingAdminService {
                 }
             }
 
-            if (newStatus == BookingStatus.CANCELLED) {
+            if (newStatus == BookingStatus.CHECKED_IN || newStatus == BookingStatus.IN_PROGRESS) {
+                if (booking.getCheckedInAt() == null) {
+                    booking.setCheckedInAt(LocalDateTime.now());
+                }
+            } else if (newStatus == BookingStatus.CANCELLED) {
                 booking.setCancelledAt(LocalDateTime.now());
                 if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.PENDING) {
                     booking.getPayment().setStatus(PaymentStatus.CANCELLED);
@@ -389,6 +393,63 @@ public class BookingAdminServiceImpl implements BookingAdminService {
                 "ADMIN",
                 null
         );
+
+        return toBookingResponse(saved);
+    }
+
+    @Override
+    public BookingResponse checkInBooking(UUID id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new RuntimeException("Cannot check in a " + booking.getStatus() + " booking");
+        }
+
+        booking.setStatus(BookingStatus.CHECKED_IN);
+        LocalDateTime now = LocalDateTime.now();
+        booking.setCheckedInAt(now);
+        if (booking.getBookingItems() != null) {
+            for (BookingItem bi : booking.getBookingItems()) {
+                bi.setStatus(BookingStatus.CHECKED_IN);
+                bookingItemRepository.save(bi);
+            }
+        }
+        Booking saved = bookingRepository.save(booking);
+
+        bookingTimelineService.recordTimeline(
+                saved,
+                "CHECKED_IN",
+                "Client Checked In",
+                "Client arrived at salon and was checked in by Administrator. Services are in progress.",
+                "Salon Administrator",
+                "ADMIN",
+                "admin@groomish.now"
+        );
+
+        if (saved.getUser() != null) {
+            String displayCode = saved.getBookingCode() != null ? saved.getBookingCode() : "GN-" + saved.getId().toString().substring(0, 8).toUpperCase();
+            Notification notif = Notification.builder()
+                    .user(saved.getUser())
+                    .title("Checked In at Salon ✂️")
+                    .message("Welcome to Groomish Now! You are checked in (" + displayCode + "). Services are currently underway.")
+                    .type(NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
+                    .build();
+            notificationRepository.save(notif);
+
+            String serviceName = (saved.getBookingItems() != null && !saved.getBookingItems().isEmpty())
+                    ? saved.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Service";
+            emailService.sendBookingStatusEmail(
+                    saved.getUser().getEmail(),
+                    saved.getUser().getName(),
+                    displayCode,
+                    serviceName,
+                    "CHECKED_IN",
+                    "Welcome to Groomish Now! You have been checked in for your appointment. Relax and enjoy your bespoke grooming treatments."
+            );
+        }
 
         return toBookingResponse(saved);
     }

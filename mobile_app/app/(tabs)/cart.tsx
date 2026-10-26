@@ -40,7 +40,7 @@ export default function CartScreen() {
   const { colors } = useTheme();
   const { items, totalAmount, updateQuantity, removeItem, clearCart } = useCart();
   const { selectedBranch, openBranchModal } = useBranch();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isStaffOrAdmin } = useAuth();
 
   // Navigation step: CART -> SLOT -> PAYMENT
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('CART');
@@ -274,6 +274,15 @@ export default function CartScreen() {
       return;
     }
 
+    if (isStaffOrAdmin && hasServices) {
+      Alert.alert(
+        'Service Booking Restricted',
+        'Staff and Admin accounts cannot book salon services on the mobile app. Please remove services from your bag. Appointments and salon schedules are managed via the Web Portal.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     if (items.length === 0) {
       Alert.alert('Bag is Empty', 'Please add services or products to proceed.');
       return;
@@ -290,6 +299,14 @@ export default function CartScreen() {
 
   // Step 2 -> Step 3 validation
   const handleProceedToPayment = () => {
+    if (isStaffOrAdmin && hasServices) {
+      Alert.alert(
+        'Service Booking Restricted',
+        'Staff and Admin accounts cannot book salon services on the mobile app.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     if (hasServices && !selectedTime) {
       Alert.alert('Select Slot', 'Please pick a preferred appointment time slot to proceed.');
       return;
@@ -301,6 +318,15 @@ export default function CartScreen() {
   const handleInitiatePayment = async () => {
     if (!isAuthenticated) {
       router.push('/(auth)/login' as any);
+      return;
+    }
+
+    if (isStaffOrAdmin && hasServices) {
+      Alert.alert(
+        'Service Booking Restricted',
+        'Staff and Admin accounts cannot book salon services on the mobile app. Appointments and salon schedules are managed via the Web Portal.',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
@@ -610,6 +636,16 @@ export default function CartScreen() {
           </View>
           <Text style={styles.branchChangeLink}>Change</Text>
         </TouchableOpacity>
+
+        {/* Staff / Admin Notice */}
+        {isStaffOrAdmin && (
+          <View style={[styles.staffAlertCard, { backgroundColor: '#fff7ed', borderColor: Colors.orange }]}>
+            <Ionicons name="information-circle" size={18} color={Colors.orange} />
+            <Text style={styles.staffAlertText}>
+              Staff / Admin Account: Service booking is disabled on the mobile app. You can browse retail products.
+            </Text>
+          </View>
+        )}
 
         {/* ----------------- STEP 1: CART BAG ----------------- */}
         {currentStep === 'CART' && (
@@ -1961,5 +1997,21 @@ const styles = StyleSheet.create({
   modalSecondaryBtnText: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  staffAlertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  staffAlertText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9a3412',
+    flex: 1,
   },
 });

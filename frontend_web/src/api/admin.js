@@ -78,6 +78,9 @@ export const getBookingDetails = (id) =>
 export const cancelBookingByAdmin = (id, note) =>
   axiosClient.post(`/admin/bookings/${id}/cancel?note=${encodeURIComponent(note || "")}`);
 
+export const checkInBookingByAdmin = (id) =>
+  axiosClient.post(`/admin/bookings/${id}/check-in`);
+
 /* DASHBOARD */
 export const getDashboardMetrics = () =>
   axiosClient.get("/admin/dashboard");

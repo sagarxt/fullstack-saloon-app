@@ -2,21 +2,14 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-const ACTIVE_TUNNEL_URL = 'https://eighty-cars-shop.loca.lt/api/v1';
+const RENDER_BACKEND_URL = 'https://groomish-now-backend.onrender.com/api/v1';
 
 function getBaseUrl(): string {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl && !envUrl.includes('moody-states-jam') && !envUrl.includes('pink-seahorse') && !envUrl.includes('tame-carrots-watch') && !envUrl.includes('fine-ads-shop')) {
+  if (envUrl && !envUrl.includes('loca.lt') && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
     return envUrl;
   }
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
-  if (hostUri) {
-    const host = hostUri.split(':')[0];
-    if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.includes('exp.direct') && !host.includes('ngrok')) {
-      return `http://${host}:8008/api/v1`;
-    }
-  }
-  return ACTIVE_TUNNEL_URL;
+  return RENDER_BACKEND_URL;
 }
 
 const BASE_URL = getBaseUrl();
@@ -25,9 +18,8 @@ const apiClient = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Bypass-Tunnel-Reminder': 'true',
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
 // Attach JWT token & bypass headers to every request
@@ -41,14 +33,6 @@ apiClient.interceptors.request.use(
         config.headers['Authorization'] = `Bearer ${token}`;
       }
     } catch (_) {}
-
-    // Rewrite stale/dead tunnels if cached in client bundle
-    if (config.baseURL && (config.baseURL.includes('moody-states-jam') || config.baseURL.includes('pink-seahorse') || config.baseURL.includes('tame-carrots-watch') || config.baseURL.includes('fine-ads-shop'))) {
-      config.baseURL = ACTIVE_TUNNEL_URL;
-    }
-    if (config.url && (config.url.includes('moody-states-jam') || config.url.includes('pink-seahorse') || config.url.includes('tame-carrots-watch') || config.url.includes('fine-ads-shop'))) {
-      config.url = config.url.replace(/https:\/\/(moody-states-jam|pink-seahorse|tame-carrots-watch|fine-ads-shop[^\/]*)\.loca\.lt\/api\/v1/, ACTIVE_TUNNEL_URL);
-    }
 
     console.log(`[API REQUEST] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url || ''}`);
     return config;

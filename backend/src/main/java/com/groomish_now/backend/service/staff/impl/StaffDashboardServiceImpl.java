@@ -87,7 +87,7 @@ public class StaffDashboardServiceImpl implements StaffDashboardService {
                 .count();
 
         long pending = todayBookings.stream()
-                .filter(b -> b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.MODIFIED)
+                .filter(b -> b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.MODIFIED || b.getStatus() == BookingStatus.CHECKED_IN || b.getStatus() == BookingStatus.IN_PROGRESS)
                 .count();
 
         // Revenue for staff’s completed bookings for today
@@ -220,7 +220,7 @@ public class StaffDashboardServiceImpl implements StaffDashboardService {
         long completedBookings = periodBookings.stream().filter(b -> b.getStatus() == BookingStatus.COMPLETED).count();
         long cancelledBookings = periodBookings.stream().filter(b -> b.getStatus() == BookingStatus.CANCELLED).count();
         long pendingBookings = periodBookings.stream()
-                .filter(b -> b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.MODIFIED)
+                .filter(b -> b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.MODIFIED || b.getStatus() == BookingStatus.CHECKED_IN || b.getStatus() == BookingStatus.IN_PROGRESS)
                 .count();
 
         double totalRevenue = periodBookings.stream()

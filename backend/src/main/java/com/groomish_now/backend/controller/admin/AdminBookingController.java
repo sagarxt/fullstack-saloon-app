@@ -77,4 +77,19 @@ public class AdminBookingController {
     ) {
         return bookingAdminService.cancelBooking(id, note);
     }
+
+    // ========== CHECK-IN BOOKING ==========
+    @PostMapping("/{id}/check-in")
+    public BookingResponse checkInBooking(
+            @PathVariable UUID id
+    ) {
+        return bookingAdminService.checkInBooking(id);
+    }
+
+    @PutMapping("/{id}/check-in")
+    public BookingResponse checkInBookingPut(
+            @PathVariable UUID id
+    ) {
+        return bookingAdminService.checkInBooking(id);
+    }
 }

@@ -72,6 +72,22 @@ public class StaffBookingController {
         return staffBookingService.startBookingForCustomer(getCurrentStaffId(request), id);
     }
 
+    @PostMapping("/{id}/check-in")
+    public BookingResponse checkInBookingForCustomer(
+            HttpServletRequest request,
+            @PathVariable UUID id
+    ) {
+        return staffBookingService.checkInBookingForCustomer(getCurrentStaffId(request), id);
+    }
+
+    @PutMapping("/{id}/check-in")
+    public BookingResponse checkInBookingForCustomerPut(
+            HttpServletRequest request,
+            @PathVariable UUID id
+    ) {
+        return staffBookingService.checkInBookingForCustomer(getCurrentStaffId(request), id);
+    }
+
     @GetMapping("/customer/{customerId}")
     public Page<BookingResponse> getCustomerBookings(
             @PathVariable UUID customerId,

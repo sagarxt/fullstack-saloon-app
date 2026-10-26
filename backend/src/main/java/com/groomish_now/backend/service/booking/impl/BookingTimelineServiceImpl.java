@@ -139,9 +139,9 @@ public class BookingTimelineServiceImpl implements BookingTimelineService {
                     .action("PRODUCT_ADDED")
                     .title("Retail Store Products Added")
                     .description(booking.getBookingProducts().size() + " retail store products attached to appointment invoice.")
-                    .performedBy(booking.getBookedBy() != null ? booking.getBookedBy() : "Staff Desk")
+                    .performedBy("Hi-Tech Owner")
                     .performedByRole("STAFF")
-                    .performedByEmail(null)
+                    .performedByEmail("hitech@groomish.now")
                     .createdAt(createdDate.plusMinutes(25))
                     .build());
         }
@@ -184,14 +184,27 @@ public class BookingTimelineServiceImpl implements BookingTimelineService {
     }
 
     private BookingTimelineResponse toResponse(BookingTimeline bt) {
+        String actor = bt.getPerformedBy();
+        String role = bt.getPerformedByRole();
+        String email = bt.getPerformedByEmail();
+
+        if (actor == null || "MODIFIED_BY_SELF".equalsIgnoreCase(actor) || "MODIFIED_BY".equalsIgnoreCase(actor) || actor.contains("MODIFIED_BY_SELF")) {
+            if ("STAFF".equalsIgnoreCase(role)) {
+                actor = "Hi-Tech Owner";
+                if (email == null || email.isBlank()) {
+                    email = "hitech@groomish.now";
+                }
+            }
+        }
+
         return BookingTimelineResponse.builder()
                 .id(bt.getId())
                 .action(bt.getAction())
                 .title(bt.getTitle())
                 .description(bt.getDescription())
-                .performedBy(bt.getPerformedBy())
-                .performedByRole(bt.getPerformedByRole())
-                .performedByEmail(bt.getPerformedByEmail())
+                .performedBy(actor)
+                .performedByRole(role)
+                .performedByEmail(email)
                 .createdAt(bt.getCreatedAt())
                 .build();
     }

@@ -10,12 +10,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useBranch } from '../../context/BranchContext';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { publicApi } from '../../api/client';
 import { Colors, Shadows } from '../../theme/colors';
@@ -30,6 +32,7 @@ export default function ServicesScreen() {
   const params = useLocalSearchParams<{ categoryId?: string; categoryName?: string; tab?: string; brand?: string }>();
   const { selectedBranch, openBranchModal } = useBranch();
   const { itemCount, addItem, getItemCountForId } = useCart();
+  const { isStaffOrAdmin } = useAuth();
   const { isDark, colors } = useTheme();
 
   const [activeTab, setActiveTab] = useState<'SERVICES' | 'PRODUCTS'>(
@@ -180,6 +183,14 @@ export default function ServicesScreen() {
 
   const handleAddToCart = (item: any) => {
     if (activeTab === 'SERVICES') {
+      if (isStaffOrAdmin) {
+        Alert.alert(
+          'Staff / Admin Account',
+          'Staff and Admin accounts can only browse products on the mobile app. You cannot book salon services here. Please use the Web Portal to manage services.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
       if (item.subServices && item.subServices.length > 0) {
         router.push({
           pathname: '/(tabs)/service/[id]',
@@ -276,6 +287,21 @@ export default function ServicesScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ─── STAFF / ADMIN NOTICE BANNER ─── */}
+      {isStaffOrAdmin && (
+        <View
+          style={[
+            styles.staffNoticeBanner,
+            { backgroundColor: isDark ? '#1e293b' : '#fff7ed', borderColor: Colors.orange },
+          ]}
+        >
+          <Ionicons name="information-circle" size={18} color={Colors.orange} />
+          <Text style={[styles.staffNoticeText, { color: isDark ? '#f8fafc' : '#9a3412' }]}>
+            Staff/Admin Mode: Service booking is disabled on mobile app. You can browse retail products.
+          </Text>
+        </View>
+      )}
 
       {/* ─── SEARCH INPUT ─── */}
       <View style={[styles.searchWrap, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -510,6 +536,22 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#0f172a',
+  },
+  staffNoticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+  },
+  staffNoticeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
   },
   tabToggleRow: {
     flexDirection: 'row',

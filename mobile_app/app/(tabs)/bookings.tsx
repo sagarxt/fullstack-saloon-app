@@ -36,7 +36,7 @@ const format24HourDateTime = (isoString?: string) => {
 
 export default function BookingsScreen() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isStaffOrAdmin } = useAuth();
   const { isDark, colors } = useTheme();
 
   const [activeTab, setActiveTab] = useState<'UPCOMING' | 'COMPLETED' | 'CANCELLED'>('UPCOMING');
@@ -45,7 +45,7 @@ export default function BookingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadBookings = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || isStaffOrAdmin) {
       setLoading(false);
       setRefreshing(false);
       return;
@@ -61,7 +61,7 @@ export default function BookingsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isStaffOrAdmin]);
 
   useEffect(() => {
     loadBookings();
@@ -77,7 +77,13 @@ export default function BookingsScreen() {
     return bookings.filter((b) => {
       const status = (b.status || '').toUpperCase();
       if (activeTab === 'UPCOMING') {
-        return status === 'CONFIRMED' || status === 'PENDING' || status === 'MODIFIED';
+        return (
+          status === 'CONFIRMED' ||
+          status === 'PENDING' ||
+          status === 'MODIFIED' ||
+          status === 'CHECKED_IN' ||
+          status === 'IN_PROGRESS'
+        );
       }
       if (activeTab === 'COMPLETED') {
         return status === 'COMPLETED';
@@ -93,6 +99,10 @@ export default function BookingsScreen() {
     switch (status) {
       case 'CONFIRMED':
         return { label: 'Confirmed', bg: Colors.greenLight, text: Colors.greenDark };
+      case 'CHECKED_IN':
+        return { label: 'Checked In', bg: '#EDE9FE', text: '#6D28D9' };
+      case 'IN_PROGRESS':
+        return { label: 'In Progress', bg: '#E0F2FE', text: '#0369A1' };
       case 'COMPLETED':
         return { label: 'Completed', bg: Colors.blueLight, text: Colors.blue };
       case 'CANCELLED':
@@ -126,6 +136,35 @@ export default function BookingsScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.guestLoginText}>Login / Register</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isStaffOrAdmin) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]} edges={['top']}>
+        <TopHeader showBranchSelector={true} />
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Staff / Admin Notice</Text>
+        </View>
+
+        <View style={styles.guestContainer}>
+          <View style={[styles.guestIconWrap, { backgroundColor: '#fff7ed' }]}>
+            <Ionicons name="shield-checkmark" size={44} color={Colors.orange} />
+          </View>
+          <Text style={[styles.guestTitle, { color: colors.text }]}>Staff & Admin Portal Notice</Text>
+          <Text style={[styles.guestSubtitle, { color: colors.textMuted }]}>
+            The Groomish Now mobile app is designed for customer appointments and retail browsing. Service bookings cannot be made through staff or admin accounts here. To manage bookings, client check-ins, and salon operations, please use the Groomish Now Web Portal.
+          </Text>
+          <TouchableOpacity
+            style={styles.guestLoginBtn}
+            onPress={() => router.push({ pathname: '/(tabs)/services', params: { tab: 'products' } } as any)}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="sparkles" size={16} color={Colors.white} />
+            <Text style={styles.guestLoginText}>Browse Retail Products</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

@@ -61,7 +61,15 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
                     continue;
                 }
 
-                // 3) Grace period: Don't trigger reminders for bookings created in the last 5 minutes.
+                // 3) CRITICAL: If customer has already checked in or services are in progress,
+                // do NOT send any reminders, warnings, or auto-cancellations as client is already at the salon!
+                if (b.getStatus() == BookingStatus.CHECKED_IN ||
+                        b.getStatus() == BookingStatus.IN_PROGRESS ||
+                        b.getCheckedInAt() != null) {
+                    continue;
+                }
+
+                // 4) Grace period: Don't trigger reminders for bookings created in the last 5 minutes.
                 if (b.getCreatedAt() != null && b.getCreatedAt().isAfter(now.minusMinutes(5))) {
                     continue;
                 }
@@ -134,6 +142,8 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
                 // As per business logic: Sent if booking is CONFIRMED or PENDING or MODIFIED, NOT if IN_PROGRESS.
                 if (!Boolean.TRUE.equals(b.getWarningPostOneHourSent()) &&
                         b.getStatus() != BookingStatus.IN_PROGRESS &&
+                        b.getStatus() != BookingStatus.CHECKED_IN &&
+                        b.getCheckedInAt() == null &&
                         (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.MODIFIED) &&
                         now.isAfter(scheduledAt.plusMinutes(60)) &&
                         now.isBefore(scheduledAt.plusMinutes(120))) {
@@ -161,8 +171,10 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
                 }
 
                 // 4. 2 HOURS POST-SLOT AUTO-CANCELLATION
-                // If 2 hours past scheduled time and customer NEVER checked in (NOT IN_PROGRESS), auto cancel
+                // If 2 hours past scheduled time and customer NEVER checked in (NOT IN_PROGRESS / NOT CHECKED_IN), auto cancel
                 if (b.getStatus() != BookingStatus.IN_PROGRESS &&
+                        b.getStatus() != BookingStatus.CHECKED_IN &&
+                        b.getCheckedInAt() == null &&
                         (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.MODIFIED) &&
                         now.isAfter(scheduledAt.plusMinutes(120))) {
 

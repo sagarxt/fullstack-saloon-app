@@ -21,7 +21,7 @@ import { Colors, Radius, Shadows, Spacing, Typography } from '../../theme/colors
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, isStaffOrAdmin } = useAuth();
   const { isDark, toggleTheme, colors } = useTheme();
 
   const [profile, setProfile] = useState<any>(null);
@@ -317,16 +317,16 @@ export default function ProfileScreen() {
               <View
                 style={[
                   styles.tierTag,
-                  { backgroundColor: `${TIER_COLORS[tier] || Colors.orange}25` },
+                  { backgroundColor: isStaffOrAdmin ? '#ffedd5' : `${TIER_COLORS[tier] || Colors.orange}25` },
                 ]}
               >
                 <Text
                   style={[
                     styles.tierTagText,
-                    { color: TIER_COLORS[tier] || Colors.orange },
+                    { color: isStaffOrAdmin ? Colors.orange : (TIER_COLORS[tier] || Colors.orange) },
                   ]}
                 >
-                  {TIER_EMOJIS[tier] || '⭐'} {tier} MEMBER
+                  {isStaffOrAdmin ? `🛡️ ${user?.role || 'STAFF'} (BROWSE ONLY)` : `${TIER_EMOJIS[tier] || '⭐'} ${tier} MEMBER`}
                 </Text>
               </View>
             </View>
@@ -362,6 +362,16 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* ── Staff / Admin Notice Box ── */}
+        {isStaffOrAdmin && (
+          <View style={[styles.staffNoticeBox, { backgroundColor: isDark ? '#1e293b' : '#fff7ed', borderColor: Colors.orange }]}>
+            <Ionicons name="information-circle" size={18} color={Colors.orange} />
+            <Text style={[styles.staffNoticeBoxText, { color: isDark ? '#f8fafc' : '#9a3412' }]}>
+              You are signed in as Staff/Admin. The mobile app is in product browsing mode. Salon appointments and stylist schedules are managed via the Web Portal.
+            </Text>
+          </View>
+        )}
 
         {/* ── Appearance & Dark Mode Setting ── */}
         <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -1128,5 +1138,21 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: Typography.base,
     fontWeight: '800',
+  },
+  staffNoticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: Spacing.sm,
+  },
+  staffNoticeBoxText: {
+    fontSize: Typography.xs,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 18,
   },
 });

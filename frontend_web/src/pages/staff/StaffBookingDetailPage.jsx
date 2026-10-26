@@ -11,6 +11,7 @@ import {
   removeProductFromBookingByStaff,
   completeBookingAndSendBillByStaff,
   confirmBookingByStaff,
+  checkInBookingByStaff,
 } from "../../api/staff";
 import { useAuth } from "../../context/useAuth";
 import StaffSidebar from "../../components/staff/StaffSidebar";
@@ -30,6 +31,7 @@ import {
   ChevronLeft,
   Sparkles,
   User,
+  UserCheck,
   ShoppingBag,
   Copy,
   Check,
@@ -359,8 +361,34 @@ export default function StaffBookingDetailPage() {
     }
   };
 
+  const handleCheckInBooking = async () => {
+    const ok = await showConfirm({
+      title: "Check In Client",
+      message: "Check in customer for this appointment and start services? Status will become CHECKED IN and services will be in progress.",
+      confirmText: "Check In Client",
+      variant: "primary",
+    });
+    if (!ok) return;
+
+    setActionLoading(true);
+    setError("");
+    setSuccessMsg("");
+    try {
+      await checkInBookingByStaff(id);
+      setSuccessMsg("Client checked in successfully! Services are now in progress.");
+      await loadBooking();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to check in client");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
+      case "CHECKED_IN":
+      case "IN_PROGRESS":
+        return "bg-sky-100 text-sky-800 border-sky-300";
       case "CONFIRMED":
         return "bg-groomish-greenLight text-groomish-green border-groomish-green/30";
       case "COMPLETED":
@@ -537,7 +565,7 @@ export default function StaffBookingDetailPage() {
                 <button
                   disabled={actionLoading}
                   onClick={handleConfirmBooking}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition shadow-soft"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition shadow-soft cursor-pointer"
                   title="Confirm booking (payment received at counter / verified)"
                 >
                   <CheckCircle2 className="w-4 h-4" />
@@ -545,11 +573,39 @@ export default function StaffBookingDetailPage() {
                 </button>
               )}
 
-              {isOwnBranch && booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
+              {/* CHECK IN CLIENT - When customer arrives at salon */}
+              {isOwnBranch && (booking.status === "CONFIRMED" || booking.status === "MODIFIED" || booking.status === "PENDING") && (
+                <button
+                  disabled={actionLoading}
+                  onClick={handleCheckInBooking}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 text-white font-bold text-xs hover:bg-sky-700 active:scale-95 transition shadow-soft cursor-pointer"
+                  title="Check in client upon arrival at salon"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  <span>Check In Client</span>
+                </button>
+              )}
+
+              {/* COMPLETE & BILL - When client is checked in & services are done */}
+              {isOwnBranch && (booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS") && (
                 <button
                   disabled={actionLoading}
                   onClick={handleCompleteAndBill}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 active:scale-95 transition shadow-soft"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 active:scale-95 transition shadow-soft cursor-pointer"
+                  title="Finalize appointment & generate bill invoice"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Complete & Bill</span>
+                </button>
+              )}
+
+              {/* Secondary Complete & Bill option if already confirmed */}
+              {isOwnBranch && (booking.status === "CONFIRMED" || booking.status === "MODIFIED") && (
+                <button
+                  disabled={actionLoading}
+                  onClick={handleCompleteAndBill}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-groomish-blue/30 text-groomish-blue bg-white hover:bg-sky-50 active:scale-95 transition text-xs font-bold cursor-pointer"
+                  title="Directly complete and bill without check-in"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Complete & Bill</span>
@@ -560,7 +616,7 @@ export default function StaffBookingDetailPage() {
                 <button
                   disabled={actionLoading}
                   onClick={() => setCancelModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-groomish-crimson/30 text-groomish-crimson bg-white hover:bg-groomish-crimsonLight active:scale-95 transition text-xs font-bold"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-groomish-crimson/30 text-groomish-crimson bg-white hover:bg-groomish-crimsonLight active:scale-95 transition text-xs font-bold cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                   <span>Cancel</span>
@@ -570,13 +626,45 @@ export default function StaffBookingDetailPage() {
               <button
                 onClick={loadBooking}
                 disabled={actionLoading}
-                className="p-2 rounded-xl border border-groomish-slate/20 text-groomish-slate/70 hover:text-groomish-orange bg-white active:scale-95 transition"
+                className="p-2 rounded-xl border border-groomish-slate/20 text-groomish-slate/70 hover:text-groomish-orange bg-white active:scale-95 transition cursor-pointer"
                 title="Refresh"
               >
                 <RefreshCw className={`w-4 h-4 ${actionLoading ? "animate-spin" : ""}`} />
               </button>
             </div>
           </div>
+
+          {/* CLIENT CHECKED IN BANNER */}
+          {(booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS") && (
+            <div className="p-4 rounded-2xl bg-sky-50 border-2 border-sky-300 text-sky-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-sm text-sky-950">Client Checked In — Service In Progress</span>
+                    <span className="px-2 py-0.5 rounded-full bg-sky-200/80 text-sky-900 font-extrabold text-[10px] uppercase tracking-wider">
+                      In Chair
+                    </span>
+                  </div>
+                  <p className="text-xs text-sky-800 mt-0.5">
+                    Customer is currently in the salon receiving treatments. Reminders and auto-cancellations are automatically disabled. When treatments are finished, click <strong>Complete & Bill</strong>.
+                  </p>
+                </div>
+              </div>
+              {isOwnBranch && (
+                <button
+                  disabled={actionLoading}
+                  onClick={handleCompleteAndBill}
+                  className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shrink-0 transition shadow-soft flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Complete & Bill</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* VIEW-ONLY OTHER BRANCH BANNER */}
           {!isOwnBranch && (
@@ -784,14 +872,28 @@ export default function StaffBookingDetailPage() {
                         key={grp.key || idx}
                         className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange font-bold text-xs flex items-center justify-center shrink-0">
                             #{idx + 1}
                           </div>
-                          <div>
+
+                          {/* Service Image */}
+                          {grp.image ? (
+                            <img
+                              src={grp.image}
+                              alt={grp.serviceName}
+                              className="w-11 h-11 rounded-xl object-cover border border-groomish-slate/10 shrink-0 shadow-2xs"
+                            />
+                          ) : (
+                            <div className="w-11 h-11 rounded-xl bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-orange shrink-0">
+                              <Scissors className="w-5 h-5 opacity-70" />
+                            </div>
+                          )}
+
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-bold text-xs text-groomish-slate">
-                                {grp.serviceName}{grp.quantity > 1 ? ` X ${grp.quantity}` : ""}
+                                {grp.serviceName}
                               </p>
                               {grp.quantity > 1 && (
                                 <span className="px-2 py-0.5 rounded-md font-extrabold text-[11px] bg-groomish-orangeLight text-groomish-orange border border-groomish-orange/20 shadow-xs">
@@ -900,24 +1002,51 @@ export default function StaffBookingDetailPage() {
 
                 {(booking.products || booking.bookingProducts) && (booking.products || booking.bookingProducts).length > 0 ? (
                   <div className="divide-y divide-groomish-slate/10 border border-groomish-slate/10 rounded-2xl overflow-hidden">
-                    {(booking.products || booking.bookingProducts).map((prod, idx) => (
-                      <div
-                        key={prod.id || idx}
-                        className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
-                      >
-                        <div>
-                          <p className="font-bold text-xs text-groomish-slate">
-                            {(prod.productName || "Salon Product") + (prod.quantity > 1 ? ` X ${prod.quantity}` : "")}
-                          </p>
-                          <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                            Qty: {prod.quantity} × ₹{prod.unitPriceSnapshot || prod.unitPrice || 0}
-                            {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
-                              <span className="text-groomish-slate/40 line-through ml-1.5">
-                                (MRP ₹{prod.mrp})
-                              </span>
+                    {(booking.products || booking.bookingProducts).map((prod, idx) => {
+                      const prodImg = prod.image || prod.productImage || prod.product?.image || (Array.isArray(prod.product?.images) && prod.product?.images[0]);
+                      const prodName = prod.productName || prod.productNameSnapshot || prod.product?.name || "Salon Product";
+                      const qty = prod.quantity || 1;
+
+                      return (
+                        <div
+                          key={prod.id || idx}
+                          className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {/* Product Image */}
+                            {prodImg ? (
+                              <img
+                                src={prodImg}
+                                alt={prodName}
+                                className="w-11 h-11 rounded-xl object-cover border border-groomish-slate/10 shrink-0 shadow-2xs"
+                              />
+                            ) : (
+                              <div className="w-11 h-11 rounded-xl bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-blue shrink-0">
+                                <ShoppingBag className="w-5 h-5 opacity-70" />
+                              </div>
                             )}
-                          </p>
-                        </div>
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-bold text-xs text-groomish-slate">
+                                  {prodName}
+                                </p>
+                                {qty > 1 && (
+                                  <span className="px-2 py-0.5 rounded-md font-extrabold text-[11px] bg-groomish-blueLight text-groomish-blue border border-groomish-blue/20 shadow-xs">
+                                    × {qty}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-groomish-slate/50 mt-0.5">
+                                Qty: {qty} × ₹{prod.unitPriceSnapshot || prod.unitPrice || 0}
+                                {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
+                                  <span className="text-groomish-slate/40 line-through ml-1.5">
+                                    (MRP ₹{prod.mrp})
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
                             <span className="font-black font-heading text-sm text-groomish-slate block">
@@ -940,7 +1069,8 @@ export default function StaffBookingDetailPage() {
                           )}
                         </div>
                       </div>
-                    ))}
+                    );
+                  })}
                   </div>
                 ) : (
                   <div className="p-6 text-center border border-dashed border-groomish-slate/20 rounded-2xl text-xs text-groomish-slate/50">
@@ -959,16 +1089,36 @@ export default function StaffBookingDetailPage() {
                 booking={booking}
                 className="rounded-3xl border border-groomish-slate/10 p-6 shadow-soft"
               >
-                {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
-                  <button
-                    disabled={actionLoading}
-                    onClick={handleCompleteAndBill}
-                    className="w-full btn-primary text-xs py-3 rounded-2xl inline-flex items-center justify-center gap-2 font-bold shadow-soft mt-1"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Finalize & Bill Client</span>
-                  </button>
-                )}
+                {booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (() => {
+                  const total = Number(booking.totalAmount ?? booking.pricePaid ?? 0);
+                  const paid = Number(booking.pricePaid ?? 0);
+                  const remaining = Number(
+                    booking.remainingAmount !== undefined && booking.remainingAmount !== null
+                      ? booking.remainingAmount
+                      : Math.max(0, total - paid)
+                  );
+                  return (
+                    <div className="space-y-2 mt-2">
+                      {remaining > 0.01 && (
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-[11px] text-amber-900 leading-tight">
+                          <strong>Outstanding Balance:</strong> Collect <strong>₹{remaining}</strong> from client at counter (Cash/UPI/Card) before finalizing.
+                        </div>
+                      )}
+                      <button
+                        disabled={actionLoading}
+                        onClick={handleCompleteAndBill}
+                        className="w-full btn-primary text-xs py-3 rounded-2xl inline-flex items-center justify-center gap-2 font-bold shadow-soft cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>
+                          {remaining > 0.01
+                            ? `Finalize & Collect Balance (₹${remaining})`
+                            : "Finalize & Bill Client"}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })()}
               </InvoiceBreakdownCard>
             </div>
           </div>

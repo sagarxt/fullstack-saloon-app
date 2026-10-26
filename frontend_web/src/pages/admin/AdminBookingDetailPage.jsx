@@ -4,6 +4,7 @@ import {
   getBookingDetails,
   updateBookingDetails,
   updateBookingStatus,
+  checkInBookingByAdmin,
 } from "../../api/admin";
 import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
 import BookingTimelineSection from "../../components/booking/BookingTimelineSection";
@@ -21,6 +22,7 @@ import {
   ChevronLeft,
   Sparkles,
   User,
+  UserCheck,
   ShoppingBag,
   ExternalLink,
   Copy,
@@ -41,7 +43,8 @@ import { forceDeleteBookingApi } from "../../api/maintenance";
 
 const APPOINTMENT_STATUS_OPTIONS = [
   { value: "CONFIRMED", label: "CONFIRMED (Active Confirmed)" },
-  { value: "COMPLETED", label: "COMPLETED (Finished)" },
+  { value: "CHECKED_IN", label: "CHECKED IN (Client Arrived / In Progress)" },
+  { value: "COMPLETED", label: "COMPLETED (Finished & Billed)" },
   { value: "MODIFIED", label: "MODIFIED (Rescheduled)" },
   { value: "CANCELLED", label: "CANCELLED" },
   { value: "PENDING", label: "PENDING (Online Payment Pending)" },
@@ -193,8 +196,34 @@ export default function AdminBookingDetailPage() {
     }
   };
 
+  const handleCheckInBooking = async () => {
+    const ok = await showConfirm({
+      title: "Check In Client",
+      message: "Check in customer for this appointment? Status will update to CHECKED IN and reminders will be suppressed.",
+      confirmText: "Check In Now",
+      variant: "primary",
+    });
+    if (!ok) return;
+
+    setActionLoading(true);
+    setError("");
+    setSuccessMsg("");
+    try {
+      await checkInBookingByAdmin(id);
+      setSuccessMsg("Client checked in successfully! Status is now CHECKED IN.");
+      await loadBooking();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to check in client");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
+      case "CHECKED_IN":
+      case "IN_PROGRESS":
+        return "bg-sky-100 text-sky-800 border-sky-300";
       case "CONFIRMED":
         return "bg-groomish-greenLight text-groomish-green border-groomish-green/30";
       case "COMPLETED":
@@ -272,61 +301,104 @@ export default function AdminBookingDetailPage() {
           </div>
         </div>
 
-        {/* Quick Status Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {booking.status === "PENDING" && (
+          {/* Quick Status Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {booking.status === "PENDING" && (
+              <button
+                disabled={actionLoading}
+                onClick={() => handleQuickStatus("CONFIRMED")}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition shadow-soft cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Confirm Appointment</span>
+              </button>
+            )}
+
+            {/* Check In Client Button */}
+            {(booking.status === "CONFIRMED" || booking.status === "MODIFIED" || booking.status === "PENDING") && (
+              <button
+                disabled={actionLoading}
+                onClick={handleCheckInBooking}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 text-white font-bold text-xs hover:bg-sky-700 active:scale-95 transition shadow-soft cursor-pointer"
+                title="Check in client upon arrival"
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Check In Client</span>
+              </button>
+            )}
+
+            {(booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS" || booking.status === "CONFIRMED" || booking.status === "MODIFIED") && (
+              <button
+                disabled={actionLoading}
+                onClick={() => handleQuickStatus("COMPLETED")}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 active:scale-95 transition shadow-soft cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS" ? "Complete & Bill" : "Mark Completed"}</span>
+              </button>
+            )}
+
+            {booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (
+              <button
+                disabled={actionLoading}
+                onClick={() => handleQuickStatus("CANCELLED")}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-groomish-crimson/30 text-groomish-crimson bg-white hover:bg-groomish-crimsonLight active:scale-95 transition text-xs font-bold cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+                <span>Cancel Appointment</span>
+              </button>
+            )}
+
             <button
               disabled={actionLoading}
-              onClick={() => handleQuickStatus("CONFIRMED")}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-green text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition shadow-soft"
+              onClick={handleForceDeleteBooking}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 active:scale-95 transition text-xs font-bold shadow-soft cursor-pointer"
+              title="Permanently remove this booking from database"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Confirm Appointment</span>
+              <Trash2 className="w-4 h-4" />
+              <span>Force Delete</span>
             </button>
-          )}
 
-          {(booking.status === "CONFIRMED" || booking.status === "MODIFIED") && (
+            <button
+              onClick={loadBooking}
+              disabled={actionLoading}
+              className="p-2 rounded-xl border border-groomish-slate/20 text-groomish-slate/70 hover:text-groomish-orange hover:bg-white active:scale-95 transition cursor-pointer"
+              title="Refresh details"
+            >
+              <RefreshCw className={`w-4 h-4 ${actionLoading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Checked In In-Progress Banner */}
+        {(booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS") && (
+          <div className="p-4 rounded-2xl bg-sky-50 border-2 border-sky-300 text-sky-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-sm text-sky-950">Client Checked In — Service In Progress</span>
+                  <span className="px-2 py-0.5 rounded-full bg-sky-200/80 text-sky-900 font-extrabold text-[10px] uppercase tracking-wider">
+                    Active in Salon
+                  </span>
+                </div>
+                <p className="text-xs text-sky-800 mt-0.5">
+                  Client has arrived at the salon and treatments are underway. Appointment reminders and auto-cancellations are suppressed.
+                </p>
+              </div>
+            </div>
             <button
               disabled={actionLoading}
               onClick={() => handleQuickStatus("COMPLETED")}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 active:scale-95 transition shadow-soft"
+              className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shrink-0 transition shadow-soft flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Mark Completed</span>
+              <span>Complete & Bill</span>
             </button>
-          )}
-
-          {booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (
-            <button
-              disabled={actionLoading}
-              onClick={() => handleQuickStatus("CANCELLED")}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-groomish-crimson/30 text-groomish-crimson bg-white hover:bg-groomish-crimsonLight active:scale-95 transition text-xs font-bold"
-            >
-              <X className="w-4 h-4" />
-              <span>Cancel Appointment</span>
-            </button>
-          )}
-
-          <button
-            disabled={actionLoading}
-            onClick={handleForceDeleteBooking}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 active:scale-95 transition text-xs font-bold shadow-soft"
-            title="Permanently remove this booking from database"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Force Delete</span>
-          </button>
-
-          <button
-            onClick={loadBooking}
-            disabled={actionLoading}
-            className="p-2 rounded-xl border border-groomish-slate/20 text-groomish-slate/70 hover:text-groomish-orange hover:bg-white active:scale-95 transition"
-            title="Refresh details"
-          >
-            <RefreshCw className={`w-4 h-4 ${actionLoading ? "animate-spin" : ""}`} />
-          </button>
-        </div>
-      </div>
+          </div>
+        )}
 
       {/* Success / Error Alerts */}
       {successMsg && (
@@ -518,14 +590,28 @@ export default function AdminBookingDetailPage() {
                       key={grp.key || idx}
                       className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange font-bold text-xs flex items-center justify-center shrink-0">
                           #{idx + 1}
                         </div>
-                        <div>
+
+                        {/* Service Image */}
+                        {grp.image ? (
+                          <img
+                            src={grp.image}
+                            alt={grp.serviceName}
+                            className="w-11 h-11 rounded-xl object-cover border border-groomish-slate/10 shrink-0 shadow-2xs"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-xl bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-orange shrink-0">
+                            <Scissors className="w-5 h-5 opacity-70" />
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-bold text-xs text-groomish-slate">
-                              {grp.serviceName}{grp.quantity > 1 ? ` X ${grp.quantity}` : ""}
+                              {grp.serviceName}
                             </p>
                             {grp.quantity > 1 && (
                               <span className="px-2 py-0.5 rounded-md font-extrabold text-[11px] bg-groomish-orangeLight text-groomish-orange border border-groomish-orange/20 shadow-xs">
@@ -613,24 +699,51 @@ export default function AdminBookingDetailPage() {
               </div>
 
               <div className="divide-y divide-groomish-slate/10 border border-groomish-slate/10 rounded-2xl overflow-hidden">
-                {booking.products.map((prod, idx) => (
-                  <div
-                    key={prod.id || idx}
-                    className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
-                  >
-                    <div>
-                      <p className="font-bold text-xs text-groomish-slate">
-                        {(prod.productName || "Salon Product") + (prod.quantity > 1 ? ` X ${prod.quantity}` : "")}
-                      </p>
-                      <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                        Qty: {prod.quantity} × ₹{prod.unitPriceSnapshot || prod.unitPrice || 0}
-                        {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
-                          <span className="text-groomish-slate/40 line-through ml-1.5">
-                            (MRP ₹{prod.mrp})
-                          </span>
+                {booking.products.map((prod, idx) => {
+                  const prodImg = prod.image || prod.productImage || prod.product?.image || (Array.isArray(prod.product?.images) && prod.product?.images[0]);
+                  const prodName = prod.productName || prod.productNameSnapshot || prod.product?.name || "Salon Product";
+                  const qty = prod.quantity || 1;
+
+                  return (
+                    <div
+                      key={prod.id || idx}
+                      className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Product Image */}
+                        {prodImg ? (
+                          <img
+                            src={prodImg}
+                            alt={prodName}
+                            className="w-11 h-11 rounded-xl object-cover border border-groomish-slate/10 shrink-0 shadow-2xs"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-xl bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-blue shrink-0">
+                            <ShoppingBag className="w-5 h-5 opacity-70" />
+                          </div>
                         )}
-                      </p>
-                    </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold text-xs text-groomish-slate">
+                              {prodName}
+                            </p>
+                            {qty > 1 && (
+                              <span className="px-2 py-0.5 rounded-md font-extrabold text-[11px] bg-groomish-blueLight text-groomish-blue border border-groomish-blue/20 shadow-xs">
+                                × {qty}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-groomish-slate/50 mt-0.5">
+                            Qty: {qty} × ₹{prod.unitPriceSnapshot || prod.unitPrice || 0}
+                            {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
+                              <span className="text-groomish-slate/40 line-through ml-1.5">
+                                (MRP ₹{prod.mrp})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
                     <div className="text-right">
                       <span className="font-black font-heading text-sm text-groomish-slate block">
                         ₹{prod.totalPrice || prod.subtotal || (prod.quantity * (prod.unitPriceSnapshot || prod.unitPrice || 0))}
@@ -642,7 +755,8 @@ export default function AdminBookingDetailPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
             </div>
           )}

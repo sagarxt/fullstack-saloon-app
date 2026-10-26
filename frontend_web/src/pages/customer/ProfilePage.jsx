@@ -152,7 +152,7 @@ export default function ProfilePage() {
   );
 
   return (
-    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
+    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-clip">
       <Navbar />
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -187,7 +187,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             <div className="bg-groomish-cream px-4 py-2 rounded-2xl border border-groomish-slate/10 text-center">
               <span className="text-[10px] font-bold uppercase tracking-wider text-groomish-slate/50 block">
                 VIP Tier
@@ -295,13 +295,15 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary text-xs px-6 py-2.5 mt-2"
-                >
-                  {loading ? "Saving Changes..." : "Save Profile Details"}
-                </button>
+                <div className="flex justify-center pt-2">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary text-xs px-8 py-2.5"
+                  >
+                    {loading ? "Saving Changes..." : "Save Profile Details"}
+                  </button>
+                </div>
               </form>
             </div>
 
