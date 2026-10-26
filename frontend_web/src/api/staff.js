@@ -14,8 +14,10 @@ export const cancelStaffBooking = (id, note = "") =>
 export const updateStaffBooking = (id, data) =>
   axiosClient.put(`/staff/bookings/${id}`, data);
 
-export const addServiceToBookingByStaff = (bookingId, serviceId) =>
-  axiosClient.post(`/staff/bookings/${bookingId}/services/${serviceId}`);
+export const addServiceToBookingByStaff = (bookingId, serviceId, subServiceName) =>
+  axiosClient.post(`/staff/bookings/${bookingId}/services/${serviceId}`, null, {
+    params: subServiceName ? { subServiceName } : {},
+  });
 
 export const removeServiceFromBookingByStaff = (bookingId, itemId) =>
   axiosClient.delete(`/staff/bookings/${bookingId}/items/${itemId}`);

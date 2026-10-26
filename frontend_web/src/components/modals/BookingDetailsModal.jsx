@@ -426,7 +426,7 @@ export default function BookingDetailsModal({
                     <div>
                       <div className="font-bold text-groomish-slate">{bp.productName}</div>
                       <div className="text-[11px] text-groomish-slate/50">
-                        Qty: {bp.quantity} × ₹{bp.unitPrice}
+                        Qty: {bp.quantity}
                       </div>
                     </div>
                     <div className="text-right">

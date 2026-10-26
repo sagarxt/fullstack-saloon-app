@@ -20,6 +20,9 @@ export const StoreProvider = ({ children }) => {
       setStores(storeList);
 
       if (storeList.length > 0) {
+        try {
+          sessionStorage.removeItem("groomish_wakeup_start_time");
+        } catch (_) {}
         const savedStoreId = localStorage.getItem("groomish_selected_store_id");
         if (savedStoreId) {
           const matched = storeList.find((s) => s.id === savedStoreId);

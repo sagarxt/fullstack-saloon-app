@@ -380,7 +380,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
     }
 
     @Override
-    public BookingResponse addServiceToBooking(UUID staffId, UUID bookingId, UUID serviceId) {
+    public BookingResponse addServiceToBooking(UUID staffId, UUID bookingId, UUID serviceId, String subServiceName) {
         User staff = userRepository.findById(staffId)
                 .orElseThrow(() -> new RuntimeException("Staff not found"));
 
@@ -400,12 +400,27 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             throw new RuntimeException("Service '" + service.getName() + "' is currently disabled or unavailable at " + booking.getStore().getName() + ".");
         }
 
+        String snapshotName = service.getName();
+        Double snapshotPrice = service.getPrice();
+        Integer snapshotDuration = service.getDurationMinutes();
+
+        if (subServiceName != null && !subServiceName.isBlank() && service.getSubServices() != null) {
+            for (com.groomish_now.backend.model.SubService sub : service.getSubServices()) {
+                if (subServiceName.trim().equalsIgnoreCase(sub.getName().trim())) {
+                    snapshotName = service.getName() + " (" + sub.getName().trim() + ")";
+                    if (sub.getPrice() != null) snapshotPrice = sub.getPrice();
+                    if (sub.getDurationMinutes() != null) snapshotDuration = sub.getDurationMinutes();
+                    break;
+                }
+            }
+        }
+
         BookingItem item = new BookingItem();
         item.setBooking(booking);
         item.setService(service);
-        item.setServiceNameSnapshot(service.getName());
-        item.setServicePriceSnapshot(service.getPrice());
-        item.setServiceDurationSnapshot(service.getDurationMinutes());
+        item.setServiceNameSnapshot(snapshotName);
+        item.setServicePriceSnapshot(snapshotPrice);
+        item.setServiceDurationSnapshot(snapshotDuration);
         item.setServiceRewardCoinsSnapshot(service.getRewards() != null ? service.getRewards() : 0);
         item.setStatus(booking.getStatus());
         bookingItemRepository.save(item);
@@ -425,7 +440,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             Notification notif = Notification.builder()
                     .user(saved.getUser())
                     .title("Service Added by Stylist")
-                    .message("Stylist " + staff.getName() + " added " + service.getName() + " to your appointment (" + displayCode + ").")
+                    .message("Stylist " + staff.getName() + " added " + snapshotName + " to your appointment (" + displayCode + ").")
                     .type(NotificationType.BOOKING)
                     .referenceId(saved.getId())
                     .link("/customer/bookings/" + saved.getId())
@@ -437,7 +452,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                 saved,
                 "SERVICE_ADDED",
                 "Service Added by Stylist",
-                "Stylist " + staff.getName() + " added " + service.getName() + " (₹" + service.getPrice() + ", " + service.getDurationMinutes() + " mins) to appointment.",
+                "Stylist " + staff.getName() + " added " + snapshotName + " (₹" + snapshotPrice + ", " + snapshotDuration + " mins) to appointment.",
                 staff.getName(),
                 "STAFF",
                 staff.getEmail()

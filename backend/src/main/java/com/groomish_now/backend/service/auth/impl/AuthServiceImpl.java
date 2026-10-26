@@ -40,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final PointsLedgerRepository pointsLedgerRepository;
     private final NotificationRepository notificationRepository;
     private final UserMapper userMapper;
+    private final com.groomish_now.backend.service.loyalty.LoyaltyConfigService loyaltyConfigService;
 
     // ----------------------------------------------------------
     // VERIFY REFERRAL CODE
@@ -116,15 +117,11 @@ public class AuthServiceImpl implements AuthService {
             referrer.setPoints(newPoints);
             referrer.setLifetimePoints(newLifetime);
 
-            // Tier evaluation
-            if (newLifetime >= 300) {
-                referrer.setTier(Tier.DIAMOND);
-            } else if (newLifetime >= 150) {
-                referrer.setTier(Tier.PLATINUM);
-            } else if (newLifetime >= 50) {
-                referrer.setTier(Tier.GOLD);
-            }
+            // Tier evaluation via configured ranges
+            Tier newTier = loyaltyConfigService.calculateTier(newLifetime, referrer.getTier());
+            referrer.setTier(newTier);
             userRepository.save(referrer);
+
 
             // Record in PointsLedger
             PointsLedger ledger = new PointsLedger();

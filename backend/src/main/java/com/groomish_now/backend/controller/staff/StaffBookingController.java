@@ -107,9 +107,10 @@ public class StaffBookingController {
     public BookingResponse addServiceToBooking(
             HttpServletRequest request,
             @PathVariable UUID id,
-            @PathVariable UUID serviceId
+            @PathVariable UUID serviceId,
+            @RequestParam(required = false) String subServiceName
     ) {
-        return staffBookingService.addServiceToBooking(getCurrentStaffId(request), id, serviceId);
+        return staffBookingService.addServiceToBooking(getCurrentStaffId(request), id, serviceId, subServiceName);
     }
 
     @DeleteMapping("/{id}/items/{itemId}")

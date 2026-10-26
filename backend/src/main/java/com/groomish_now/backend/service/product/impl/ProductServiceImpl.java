@@ -396,18 +396,12 @@ public class ProductServiceImpl implements ProductService {
                     : ((customer.getPoints() != null ? customer.getPoints() : 0) - pointsEarned);
             customer.setLifetimePoints(currentLifetime + pointsEarned);
 
-            Tier previousTier = customer.getTier();
+            Tier previousTier = customer.getTier() != null ? customer.getTier() : Tier.SILVER;
             int evalPoints = customer.getLifetimePoints();
-            if (evalPoints >= 300) {
-                customer.setTier(Tier.DIAMOND);
-            } else if (evalPoints >= 150) {
-                customer.setTier(Tier.PLATINUM);
-            } else if (evalPoints >= 50) {
-                customer.setTier(Tier.GOLD);
-            } else {
-                customer.setTier(Tier.SILVER);
-            }
-            if (previousTier != customer.getTier()) {
+            Tier newTier = loyaltyConfigService.calculateTier(evalPoints, previousTier);
+
+            if (newTier.ordinal() > previousTier.ordinal()) {
+                customer.setTier(newTier);
                 Notification tierNotif = Notification.builder()
                         .user(customer)
                         .title("VIP Tier Upgrade! 👑")
@@ -417,6 +411,7 @@ public class ProductServiceImpl implements ProductService {
                 notificationRepository.save(tierNotif);
             }
             userRepository.save(customer);
+
 
             // Record points in ledger
             PointsLedger ledger = new PointsLedger();

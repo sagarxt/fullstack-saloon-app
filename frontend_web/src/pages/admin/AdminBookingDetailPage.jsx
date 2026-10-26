@@ -13,6 +13,7 @@ import CustomDatePicker from "../../components/common/CustomDatePicker";
 import CustomTimePicker from "../../components/common/CustomTimePicker";
 import InvoiceBreakdownCard from "../../components/booking/InvoiceBreakdownCard";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
+import { formatLocalDateTime } from "../../utils/dataHelper";
 import {
   Calendar,
   Clock,
@@ -327,14 +328,15 @@ export default function AdminBookingDetailPage() {
               </button>
             )}
 
-            {(booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS" || booking.status === "CONFIRMED" || booking.status === "MODIFIED") && (
+            {/* Complete & Bill - Only available after client check-in */}
+            {(booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS") && (
               <button
                 disabled={actionLoading}
                 onClick={() => handleQuickStatus("COMPLETED")}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 active:scale-95 transition shadow-soft cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS" ? "Complete & Bill" : "Mark Completed"}</span>
+                <span>Complete & Bill</span>
               </button>
             )}
 
@@ -478,7 +480,7 @@ export default function AdminBookingDetailPage() {
                 </p>
                 {booking.createdAt && (
                   <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                    {new Date(booking.createdAt).toLocaleString()}
+                    {formatLocalDateTime(booking.createdAt)}
                   </p>
                 )}
               </div>
@@ -591,10 +593,6 @@ export default function AdminBookingDetailPage() {
                       className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange font-bold text-xs flex items-center justify-center shrink-0">
-                          #{idx + 1}
-                        </div>
-
                         {/* Service Image */}
                         {grp.image ? (
                           <img
@@ -735,12 +733,7 @@ export default function AdminBookingDetailPage() {
                             )}
                           </div>
                           <p className="text-[11px] text-groomish-slate/50 mt-0.5">
-                            Qty: {qty} × ₹{prod.unitPriceSnapshot || prod.unitPrice || 0}
-                            {prod.mrp && prod.mrp > (prod.unitPriceSnapshot || prod.unitPrice) && (
-                              <span className="text-groomish-slate/40 line-through ml-1.5">
-                                (MRP ₹{prod.mrp})
-                              </span>
-                            )}
+                            Qty: {qty}
                           </p>
                         </div>
                       </div>

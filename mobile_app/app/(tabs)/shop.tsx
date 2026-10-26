@@ -903,12 +903,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.gray100,
   },
   productImageWrap: {
-    height: 140,
+    width: '100%',
+    aspectRatio: 3 / 4,
     backgroundColor: Colors.bg,
     justifyContent: 'center', alignItems: 'center',
     position: 'relative',
   },
-  productImage: { width: '100%', height: '100%' },
+  productImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   productImagePlaceholder: {
     width: '100%', height: '100%',
     backgroundColor: Colors.orangeLight,

@@ -201,20 +201,18 @@ export default function LandingPage() {
                   {/* Decorative Ambient Glow (hidden on mobile to prevent horizontal viewport bleed) */}
                   <div className="hidden sm:block absolute -inset-4 bg-gradient-to-tr from-groomish-orange/20 via-groomish-gold/20 to-groomish-coral/20 rounded-3xl blur-2xl -z-10 pointer-events-none" />
 
-                  {storesLoading || (loading && !selectedStore) ? (
+                  {storesLoading || !selectedStore || stores.length === 0 ? (
                     <BranchWakeUpShowcase onRetry={refreshStores} />
-                  ) : !selectedStore || branchImages.length === 0 ? (
+                  ) : branchImages.length === 0 ? (
                     <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-card border border-groomish-slate/10 text-center space-y-4 w-full min-w-0">
                       <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-groomish-cream text-groomish-orange flex items-center justify-center mx-auto border border-groomish-slate/10">
                         <MapPin className="w-6 h-6 sm:w-8 sm:h-8" />
                       </div>
                       <h3 className="font-heading font-extrabold text-base sm:text-xl text-groomish-slate">
-                        {selectedStore ? selectedStore.name : "Welcome to Groomish Now"}
+                        {selectedStore.name}
                       </h3>
                       <p className="text-xs sm:text-sm text-groomish-slateLight max-w-md mx-auto leading-relaxed">
-                        {selectedStore
-                          ? `${selectedStore.address || ""}, ${selectedStore.city || ""}`
-                          : "No salon branches are currently available. Salon branch locations and photos will appear here once configured in the system."}
+                        {`${selectedStore.address || ""}, ${selectedStore.city || ""}`}
                       </p>
                       <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold text-groomish-slate/70">
                         <span className="px-3 py-1 rounded-full bg-groomish-cream border border-groomish-slate/10">VIP Loyalty Program</span>

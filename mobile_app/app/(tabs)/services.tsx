@@ -425,7 +425,11 @@ export default function ServicesScreen() {
             return (
               <View style={[styles.gridCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <TouchableOpacity
-                  style={[styles.cardImageContainer, { backgroundColor: colors.bg }]}
+                  style={[
+                    styles.cardImageContainer,
+                    isService ? styles.serviceImageAspectRatio : styles.productImageAspectRatio,
+                    { backgroundColor: colors.bg },
+                  ]}
                   onPress={() => {
                     if (isService) {
                       router.push({
@@ -649,15 +653,21 @@ const styles = StyleSheet.create({
   },
   cardImageContainer: {
     width: '100%',
-    height: 110,
     borderRadius: 0,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: '#0f172a',
   },
+  serviceImageAspectRatio: {
+    aspectRatio: 4 / 3,
+  },
+  productImageAspectRatio: {
+    aspectRatio: 3 / 4,
+  },
   cardImg: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   durationPill: {
     position: 'absolute',

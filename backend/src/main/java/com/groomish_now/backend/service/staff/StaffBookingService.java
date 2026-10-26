@@ -20,7 +20,7 @@ public interface StaffBookingService {
 
     BookingResponse getBooking(UUID bookingId);
 
-    BookingResponse addServiceToBooking(UUID staffId, UUID bookingId, UUID serviceId);
+    BookingResponse addServiceToBooking(UUID staffId, UUID bookingId, UUID serviceId, String subServiceName);
 
     BookingResponse removeServiceFromBooking(UUID staffId, UUID bookingId, UUID itemId);
 

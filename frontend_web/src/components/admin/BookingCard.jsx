@@ -5,7 +5,7 @@ import CustomerProfileModal from "../modals/CustomerProfileModal";
 import GroomCoinIcon from "../common/GroomCoinIcon";
 import { getBranchNavigationUrl } from "../../utils/mapHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
-import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, MapPin, User, Trash2, Scissors, Navigation, Sparkles } from "lucide-react";
+import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, UserCheck, MapPin, User, Trash2, Scissors, Navigation, Sparkles } from "lucide-react";
 import { forceDeleteBookingApi } from "../../api/maintenance";
 import { showConfirm, showAlert } from "../../context/ConfirmContext";
 
@@ -227,14 +227,29 @@ export default function BookingCard({ booking, refresh }) {
             </>
           )}
 
-          {booking.status === "CONFIRMED" && (
+          {/* CHECK IN: Confirmed -> Client Checkin */}
+          {(booking.status === "CONFIRMED" || booking.status === "MODIFIED") && (
+            <button
+              disabled={loading}
+              onClick={() => updateStatus("CHECKED_IN")}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-sky-600 text-white font-bold text-xs hover:bg-sky-700 transition shadow-soft cursor-pointer active:scale-95"
+              title="Check in client upon arrival at salon"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Check In</span>
+            </button>
+          )}
+
+          {/* COMPLETE & BILL: Checked In -> Complete */}
+          {(booking.status === "CHECKED_IN" || booking.status === "IN_PROGRESS") && (
             <button
               disabled={loading}
               onClick={() => updateStatus("COMPLETED")}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 transition shadow-soft"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-groomish-blue text-white font-bold text-xs hover:bg-sky-600 transition shadow-soft cursor-pointer active:scale-95"
+              title="Complete appointment and finalize"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Mark Completed</span>
+              <span>Complete & Bill</span>
             </button>
           )}
 

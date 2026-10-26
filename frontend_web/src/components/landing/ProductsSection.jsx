@@ -169,7 +169,8 @@ export default function ProductsSection({
                     {/* Image & Badges */}
                     <div
                       onClick={() => navigate(`/products/${product.id}`)}
-                      className="relative h-44 overflow-hidden bg-groomish-slate/10 cursor-pointer shrink-0"
+                      style={{ aspectRatio: "3 / 4" }}
+                      className="relative w-full aspect-[3/4] overflow-hidden bg-groomish-slate/10 cursor-pointer shrink-0"
                     >
                       <img
                         src={getOptimizedImageUrl(imgSrc, { width: 600 })}

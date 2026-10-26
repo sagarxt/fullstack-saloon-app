@@ -50,8 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const t = storedToken[1];
       const u = storedUser[1];
       if (t && u) {
-        setToken(t);
-        setUser(JSON.parse(u));
+        const parsed = JSON.parse(u);
+        const role = (parsed.role || '').toUpperCase();
+        if (role.includes('STAFF') || role.includes('ADMIN')) {
+          await AsyncStorage.multiRemove(['token', 'user']);
+          setToken(null);
+          setUser(null);
+        } else {
+          setToken(t);
+          setUser(parsed);
+        }
       }
     } catch (_) {}
     finally { setIsLoading(false); }
@@ -60,8 +68,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await authApi.login({ email, password });
     const data = res.data;
-    const t = data.token || data.accessToken || data.jwt || data.user?.token;
     const userData = data.user || data;
+    const role = (userData.role || '').toUpperCase();
+    const isStaffOrAdminUser = role.includes('STAFF') || role.includes('ADMIN');
+
+    if (isStaffOrAdminUser) {
+      await AsyncStorage.multiRemove(['token', 'user']);
+      setToken(null);
+      setUser(null);
+      const err: any = new Error('STAFF_ADMIN_RESTRICTED');
+      err.code = 'STAFF_ADMIN_RESTRICTED';
+      err.role = role;
+      throw err;
+    }
+
+    const t = data.token || data.accessToken || data.jwt || data.user?.token;
     const u: User = {
       id: userData.id || userData.userId,
       name: userData.name || userData.fullName,

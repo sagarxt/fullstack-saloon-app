@@ -746,7 +746,7 @@ export default function ServiceDetailPage() {
                     className="card-groomish overflow-hidden cursor-pointer group hover:-translate-y-1 transition duration-300 flex flex-col justify-between"
                   >
                     <div>
-                      <div className="h-36 overflow-hidden bg-groomish-slate/10 relative">
+                      <div className="aspect-[4/3] w-full overflow-hidden bg-groomish-slate/10 relative">
                         <img
                           src={rel.image || defaultServiceImages[rel.gender] || defaultServiceImages.UNISEX}
                           alt={rel.name}

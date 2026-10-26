@@ -113,12 +113,16 @@ export default function RewardsPage() {
     }
   };
 
-  // Next tier calculation
+  const goldMin = groomCoinConfig?.goldMinPoints ?? 50;
+  const platinumMin = groomCoinConfig?.platinumMinPoints ?? 150;
+  const diamondMin = groomCoinConfig?.diamondMinPoints ?? 300;
+
+  // Next tier calculation based on Admin-configured ranges
   const getNextTierInfo = () => {
-    if (tier === "SILVER") return { next: "GOLD", target: 50, color: "text-groomish-gold" };
-    if (tier === "GOLD") return { next: "PLATINUM", target: 150, color: "text-groomish-blue" };
-    if (tier === "PLATINUM") return { next: "DIAMOND", target: 300, color: "text-groomish-coral" };
-    return { next: "MAX", target: 500, color: "text-groomish-orange" };
+    if (tier === "SILVER") return { next: "GOLD", target: goldMin, color: "text-groomish-gold" };
+    if (tier === "GOLD") return { next: "PLATINUM", target: platinumMin, color: "text-groomish-blue" };
+    if (tier === "PLATINUM") return { next: "DIAMOND", target: diamondMin, color: "text-groomish-coral" };
+    return { next: "MAX", target: diamondMin, color: "text-groomish-orange" };
   };
 
   const nextTier = getNextTierInfo();
@@ -254,7 +258,7 @@ export default function RewardsPage() {
 
           <div className="bg-white p-4 rounded-2xl border border-groomish-gold/30 shadow-soft bg-gradient-to-b from-groomish-goldLight/50 to-white">
             <span className="text-[10px] font-bold text-groomish-goldDark uppercase block mb-1">
-              Gold (50 Coins)
+              Gold ({goldMin} Coins)
             </span>
             <p className="text-xs font-bold text-groomish-slate">1.25x Groom Coins</p>
             <p className="text-[11px] text-groomish-slate/50 mt-1">Complimentary scalp analysis & priority slots.</p>
@@ -262,7 +266,7 @@ export default function RewardsPage() {
 
           <div className="bg-white p-4 rounded-2xl border border-groomish-blue/30 shadow-soft bg-gradient-to-b from-groomish-blueLight/50 to-white">
             <span className="text-[10px] font-bold text-groomish-blue uppercase block mb-1">
-              Platinum (150 Coins)
+              Platinum ({platinumMin} Coins)
             </span>
             <p className="text-xs font-bold text-groomish-slate">1.5x Groom Coins</p>
             <p className="text-[11px] text-groomish-slate/50 mt-1">Senior stylist preference & birthday gift.</p>
@@ -270,7 +274,7 @@ export default function RewardsPage() {
 
           <div className="bg-white p-4 rounded-2xl border border-groomish-coral/30 shadow-soft bg-gradient-to-b from-groomish-coralLight/50 to-white">
             <span className="text-[10px] font-bold text-groomish-coral uppercase block mb-1">
-              Diamond (300 Coins)
+              Diamond ({diamondMin} Coins)
             </span>
             <p className="text-xs font-bold text-groomish-slate">2.0x Groom Coins</p>
             <p className="text-[11px] text-groomish-slate/50 mt-1">Complimentary head massage & concierge.</p>

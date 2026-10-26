@@ -51,7 +51,8 @@ public interface CustomerBookingService {
     BookingDetailsResponse addServiceToBooking(
             UUID userId,
             UUID bookingId,
-            UUID serviceId
+            UUID serviceId,
+            String subServiceName
     );
 
     BookingDetailsResponse removeServiceFromBooking(

@@ -27,6 +27,7 @@ public class CustomerPointsServiceImpl implements CustomerPointsService {
     private final PointsLedgerRepository pointsLedgerRepository;
     private final BookingRepository bookingRepository;
     private final RedeemedVoucherRepository redeemedVoucherRepository;
+    private final com.groomish_now.backend.service.loyalty.LoyaltyConfigService loyaltyConfigService;
 
     @Override
     public PointsBalanceResponse getBalance(UUID userId) {
@@ -59,23 +60,15 @@ public class CustomerPointsServiceImpl implements CustomerPointsService {
                 ? user.getLifetimePoints()
                 : (user.getPoints() != null ? user.getPoints() : 0);
 
-        // Keep tier updated with lifetime points (tiers NEVER downgrade on redemption)
-        Tier calculatedTier;
-        if (lifetime >= 300) {
-            calculatedTier = Tier.DIAMOND;
-        } else if (lifetime >= 150) {
-            calculatedTier = Tier.PLATINUM;
-        } else if (lifetime >= 50) {
-            calculatedTier = Tier.GOLD;
-        } else {
-            calculatedTier = Tier.SILVER;
-        }
+        // Keep tier updated with lifetime points according to Admin-configured ranges (tiers NEVER downgrade on redemption or config adjustment)
+        Tier calculatedTier = loyaltyConfigService.calculateTier(lifetime, user.getTier());
 
-        if (user.getTier() == null || user.getTier().ordinal() < calculatedTier.ordinal()) {
+        if (user.getTier() == null || calculatedTier.ordinal() > user.getTier().ordinal()) {
             user.setTier(calculatedTier);
             user.setLifetimePoints(lifetime);
             userRepository.save(user);
         }
+
 
         // Guarantee user has a unique referral code
         if (user.getReferralCode() == null || user.getReferralCode().isBlank()) {

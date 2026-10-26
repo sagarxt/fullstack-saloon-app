@@ -119,6 +119,8 @@ export const publicApi = {
   searchProducts: (q: string) => apiClient.get(`/public/products/search?q=${encodeURIComponent(q)}`),
   getProductCategories: () => apiClient.get('/public/products/categories'),
   getProductBrands: () => apiClient.get('/public/products/brands'),
+  getBrands: () => apiClient.get('/public/brands'),
+  getPolicyFaq: (type?: string) => apiClient.get('/public/policy-faq', { params: type ? { type } : {} }),
   getGroomCoinConfig: () => apiClient.get('/public/groom-coin/config'),
   getHomeData: () => apiClient.get('/public/home'),
 };

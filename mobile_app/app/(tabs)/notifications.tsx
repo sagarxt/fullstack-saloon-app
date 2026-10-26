@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Colors } from '../../theme/colors';
 import TopHeader from '../../components/TopHeader';
+import { format12HourDateTime } from '../../utils/dateHelper';
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -177,7 +178,7 @@ export default function NotificationsScreen() {
               </View>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>You're all caught up!</Text>
               <Text style={[styles.emptySub, { color: colors.textMuted }]}>
-                New appointment alerts, slot reschedule updates, and VIP reward drops will appear here.
+                New booking alerts, slot reschedule updates, and VIP reward drops will appear here.
               </Text>
             </View>
           )}
@@ -227,7 +228,7 @@ export default function NotificationsScreen() {
                       style={[styles.notifTitle, { color: colors.textSecondary }, isUnread && [styles.notifTitleUnread, { color: colors.text }]]}
                       numberOfLines={1}
                     >
-                      {item.title || (isBooking ? 'Appointment Update' : 'Groomish Alert')}
+                      {item.title || (isBooking ? 'Booking Update' : 'Groomish Alert')}
                     </Text>
                     {isUnread && <View style={styles.unreadDot} />}
                   </View>
@@ -237,15 +238,7 @@ export default function NotificationsScreen() {
                   </Text>
 
                   <Text style={[styles.notifTime, { color: colors.textMuted }]}>
-                    {item.createdAt
-                      ? new Date(item.createdAt).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false,
-                        })
-                      : 'Recently'}
+                    {item.createdAt ? format12HourDateTime(item.createdAt) : 'Recently'}
                   </Text>
                 </View>
 

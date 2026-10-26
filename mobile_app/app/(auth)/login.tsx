@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -25,16 +26,44 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showStaffModal, setShowStaffModal] = useState(false);
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Oops!', 'Please enter your email and password.');
+    const cleanEmail = email.trim();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      Alert.alert('Required Fields', 'Please enter your email and password.');
       return;
     }
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(cleanEmail, cleanPassword);
     } catch (e: any) {
+      const isStaffRestricted =
+        e.code === 'STAFF_ADMIN_RESTRICTED' ||
+        e.message === 'STAFF_ADMIN_RESTRICTED' ||
+        (typeof e.message === 'string' && e.message.includes('STAFF_ADMIN_RESTRICTED'));
+
+      const isStaffOrAdminEmail =
+        cleanEmail.toLowerCase().includes('admin') ||
+        cleanEmail.toLowerCase().includes('staff');
+
+      const is401OrForbidden =
+        e.response?.status === 401 ||
+        e.response?.status === 403;
+
+      if (isStaffRestricted || (is401OrForbidden && isStaffOrAdminEmail)) {
+        setShowStaffModal(true);
+        return;
+      }
+
+      if (is401OrForbidden) {
+        const errorMsg = e.response?.data?.message || 'Invalid email or password. Please verify your credentials.';
+        Alert.alert('Login Failed', errorMsg);
+        return;
+      }
+
       const msg = e.response?.data?.message || e.response?.data || e.message || 'Login failed. Please check your credentials.';
       Alert.alert('Login Failed', typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
@@ -168,6 +197,65 @@ export default function LoginScreen() {
           <Text style={styles.groomCoinText}>Earn Groom Coins on every visit!</Text>
         </View>
       </ScrollView>
+
+      {/* ─── CUSTOM STAFF / ADMIN RESTRICTED ALERT MODAL ─── */}
+      <Modal
+        visible={showStaffModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowStaffModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            {/* Top Badge Icon */}
+            <View style={styles.modalIconCircle}>
+              <Ionicons name="desktop-outline" size={32} color={Colors.orange} />
+            </View>
+
+            {/* Title */}
+            <Text style={styles.modalTitle}>Staff & Admin Notice</Text>
+
+            {/* Custom Alert Message */}
+            <Text style={styles.modalMessage}>
+              Please visit website to access dashboard. Application is made for Customers only.
+            </Text>
+
+            <View style={styles.modalInfoPill}>
+              <Ionicons name="information-circle-outline" size={16} color={Colors.slateLight} />
+              <Text style={styles.modalInfoPillText}>
+                Mobile app features and bookings are dedicated for client accounts.
+              </Text>
+            </View>
+
+            {/* Action 1: Login with Customer */}
+            <TouchableOpacity
+              style={styles.modalPrimaryBtn}
+              onPress={() => {
+                setShowStaffModal(false);
+                setEmail('');
+                setPassword('');
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="person-circle-outline" size={20} color={Colors.white} />
+              <Text style={styles.modalPrimaryBtnText}>Login with Customer</Text>
+            </TouchableOpacity>
+
+            {/* Action 2: Home Page */}
+            <TouchableOpacity
+              style={styles.modalSecondaryBtn}
+              onPress={() => {
+                setShowStaffModal(false);
+                router.replace('/(tabs)/home');
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="home-outline" size={18} color={Colors.slate} />
+              <Text style={styles.modalSecondaryBtnText}>Home Page</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -329,6 +417,102 @@ const styles = StyleSheet.create({
   groomCoinText: {
     fontSize: Typography.sm,
     color: Colors.gold,
+    fontWeight: '600',
+  },
+
+  // Staff / Admin Restricted Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: Colors.white,
+    borderRadius: Radius['2xl'],
+    padding: Spacing['2xl'],
+    alignItems: 'center',
+    ...Shadows.lg,
+  },
+  modalIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#fff7ed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    borderWidth: 2,
+    borderColor: '#fed7aa',
+  },
+  modalTitle: {
+    fontSize: Typography.xl,
+    fontWeight: '800',
+    color: Colors.slate,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: Typography.base,
+    color: Colors.slate,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.md,
+    fontWeight: '500',
+  },
+  modalInfoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 6,
+    marginBottom: Spacing.xl,
+  },
+  modalInfoPillText: {
+    fontSize: Typography.xs,
+    color: Colors.slateLight,
+    flex: 1,
+    lineHeight: 16,
+  },
+  modalPrimaryBtn: {
+    width: '100%',
+    backgroundColor: Colors.orange,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+    ...Shadows.md,
+  },
+  modalPrimaryBtnText: {
+    color: Colors.white,
+    fontSize: Typography.base,
+    fontWeight: '700',
+  },
+  modalSecondaryBtn: {
+    width: '100%',
+    backgroundColor: '#f1f5f9',
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  modalSecondaryBtnText: {
+    color: Colors.slate,
+    fontSize: Typography.base,
     fontWeight: '600',
   },
 });

@@ -28,6 +28,18 @@ public class LoyaltyConfig {
     @Builder.Default
     private Double coinValueInInr = 1.0; // ₹ value of 1 Groom Coin when redeemed
 
+    @Builder.Default
+    private Integer silverMinPoints = 0; // Default starting tier
+
+    @Builder.Default
+    private Integer goldMinPoints = 50; // Points required for Gold VIP Tier
+
+    @Builder.Default
+    private Integer platinumMinPoints = 150; // Points required for Platinum VIP Tier
+
+    @Builder.Default
+    private Integer diamondMinPoints = 300; // Points required for Diamond VIP Tier
+
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 }

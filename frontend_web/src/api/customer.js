@@ -16,8 +16,10 @@ export const cancelBooking = (id) =>
 export const rescheduleBooking = (bookingId, scheduledAt) =>
   axiosClient.put(`/customer/bookings/${bookingId}/reschedule`, { scheduledAt });
 
-export const addServiceToBooking = (bookingId, serviceId) =>
-  axiosClient.post(`/customer/bookings/${bookingId}/services/${serviceId}`);
+export const addServiceToBooking = (bookingId, serviceId, subServiceName) =>
+  axiosClient.post(`/customer/bookings/${bookingId}/services/${serviceId}`, null, {
+    params: subServiceName ? { subServiceName } : {},
+  });
 
 export const removeServiceFromBooking = (bookingId, itemId) =>
   axiosClient.delete(`/customer/bookings/${bookingId}/items/${itemId}`);
