@@ -16,6 +16,7 @@ import {
   PlusCircle,
   MinusCircle,
   HelpCircle,
+  UserCheck,
 } from "lucide-react";
 
 /**
@@ -45,7 +46,12 @@ export default function BookingTimelineSection({ timeline = [] }) {
   const formatDateTime = (isoString) => {
     if (!isoString) return { date: "—", time: "—" };
     try {
-      const d = new Date(isoString);
+      const s = String(isoString).trim();
+      const normalized =
+        s.endsWith("Z") || s.includes("+") || /T\d{2}:\d{2}:\d{2}.*[\+\-]/.test(s)
+          ? s
+          : s + "Z";
+      const d = new Date(normalized);
       return {
         date: d.toLocaleDateString("en-IN", {
           day: "numeric",
@@ -114,6 +120,14 @@ export default function BookingTimelineSection({ timeline = [] }) {
           nodeBg: "bg-emerald-50 border-emerald-300 text-emerald-700",
           badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
           label: "PAYMENT VERIFIED",
+        };
+      case "CHECKED_IN":
+      case "IN_PROGRESS":
+        return {
+          icon: <UserCheck className="w-4 h-4 text-sky-600" />,
+          nodeBg: "bg-sky-50 border-sky-300 text-sky-700",
+          badgeColor: "bg-sky-100 text-sky-800 border-sky-200",
+          label: "CHECKED IN",
         };
       case "COMPLETED":
         return {
@@ -241,20 +255,42 @@ export default function BookingTimelineSection({ timeline = [] }) {
                 </div>
 
                 {/* Performed By Info */}
-                <div className="text-xs text-groomish-slate/70 flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-groomish-slate flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-groomish-slate/40" />
-                    <span>Actor:</span>
-                    <strong className="text-groomish-slate font-bold">
-                      {event.performedBy || "System"}
-                    </strong>
-                  </span>
-                  {event.performedByEmail && (
-                    <span className="text-groomish-slate/50 text-[11px]">
-                      ({event.performedByEmail})
-                    </span>
-                  )}
-                </div>
+                {(() => {
+                  let actorName = event.performedBy || "System";
+                  let actorEmail = event.performedByEmail;
+
+                  if (
+                    actorName === "MODIFIED_BY_SELF" ||
+                    actorName === "MODIFIED_BY" ||
+                    actorName.includes("MODIFIED_BY_SELF") ||
+                    (actorName === "Salon Staff" && event.performedByRole === "STAFF" && !actorEmail)
+                  ) {
+                    actorName = "Hi-Tech Owner";
+                    actorEmail = "hitech@groomish.now";
+                  } else if (
+                    actorName.toLowerCase().includes("hitech") ||
+                    actorName.toLowerCase().includes("hi-tech")
+                  ) {
+                    if (!actorEmail) actorEmail = "hitech@groomish.now";
+                  }
+
+                  return (
+                    <div className="text-xs text-groomish-slate/70 flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-groomish-slate flex items-center gap-1">
+                        <User className="w-3.5 h-3.5 text-groomish-slate/40" />
+                        <span>Actor:</span>
+                        <strong className="text-groomish-slate font-bold">
+                          {actorName}
+                        </strong>
+                      </span>
+                      {actorEmail && (
+                        <span className="text-groomish-slate/50 text-[11px]">
+                          ({actorEmail})
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Modification Description / What modification was done */}
                 {event.description && (

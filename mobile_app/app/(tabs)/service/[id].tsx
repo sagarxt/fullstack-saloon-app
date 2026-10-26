@@ -8,12 +8,14 @@ import {
   Image,
   ActivityIndicator,
   Share,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCart } from '../../../context/CartContext';
 import { useBranch } from '../../../context/BranchContext';
+import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { publicApi } from '../../../api/client';
 import { Colors } from '../../../theme/colors';
@@ -25,6 +27,7 @@ export default function ServiceDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isDark, colors } = useTheme();
   const { addItem, getItemCountForId } = useCart();
+  const { isStaffOrAdmin } = useAuth();
   const { selectedBranch } = useBranch();
 
   const [service, setService] = useState<any>(null);
@@ -85,6 +88,14 @@ export default function ServiceDetailsScreen() {
 
   const handleAddToCart = () => {
     if (!service) return;
+    if (isStaffOrAdmin) {
+      Alert.alert(
+        'Staff / Admin Account',
+        'Staff and Admin accounts can only browse products on the mobile app. You cannot book salon services here. Please use the Web Portal to manage services.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     const displayName = selectedSubService
       ? `${service.name} (${selectedSubService.name})`
       : service.name;
@@ -354,30 +365,39 @@ export default function ServiceDetailsScreen() {
           <Text style={[styles.bottomBarPrice, { color: colors.text }]}>₹{currentPrice}</Text>
         </View>
 
-        <View style={styles.bottomBarActions}>
-          <TouchableOpacity
-            style={styles.addCartBottomBtn}
-            onPress={handleAddToCart}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="bag-handle-outline" size={16} color={Colors.orange} />
-            <Text style={styles.addCartBottomText}>
-              {inCartCount > 0 ? `In Cart (${inCartCount})` : 'Add to Cart'}
+        {isStaffOrAdmin ? (
+          <View style={styles.staffNoticeBar}>
+            <Ionicons name="information-circle" size={16} color={Colors.orange} />
+            <Text style={styles.staffNoticeBarText}>
+              Staff/Admin: Service booking disabled on mobile
             </Text>
-          </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.bottomBarActions}>
+            <TouchableOpacity
+              style={styles.addCartBottomBtn}
+              onPress={handleAddToCart}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="bag-handle-outline" size={16} color={Colors.orange} />
+              <Text style={styles.addCartBottomText}>
+                {inCartCount > 0 ? `In Cart (${inCartCount})` : 'Add to Cart'}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.bookNowBottomBtn}
-            onPress={() => {
-              handleAddToCart();
-              router.push('/(tabs)/cart' as any);
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.bookNowBottomText}>Book Visit</Text>
-            <Ionicons name="arrow-forward" size={15} color={Colors.white} />
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={styles.bookNowBottomBtn}
+              onPress={() => {
+                handleAddToCart();
+                router.push('/(tabs)/cart' as any);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.bookNowBottomText}>Book Visit</Text>
+              <Ionicons name="arrow-forward" size={15} color={Colors.white} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -607,6 +627,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  staffNoticeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: Colors.orange,
+    maxWidth: 240,
+  },
+  staffNoticeBarText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9a3412',
+    flexShrink: 1,
   },
   addCartBottomBtn: {
     flexDirection: 'row',

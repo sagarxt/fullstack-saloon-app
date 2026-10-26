@@ -48,7 +48,7 @@ app.cors.allowed-origins=http://localhost:5173
 app.cors.allowed-methods=GET,POST,PUT,DELETE,OPTIONS
 app.cors.allowed-headers=Authorization,Content-Type
 app.cors.allow-credentials=true
-app.frontend.url=http://localhost:5173
+app.frontend.url=${APP_FRONTEND_URL:https://groomish-now.vercel.app}
 
 
 # LOGGING

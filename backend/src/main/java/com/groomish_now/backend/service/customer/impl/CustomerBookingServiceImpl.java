@@ -934,9 +934,22 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             }
         }
 
-        double pricePaid = Math.max(0.0, totalAmount - discount);
-        booking.setTotalAmount(totalAmount);
-        booking.setPricePaid(pricePaid);
+        double finalAmount = Math.max(0.0, totalAmount - discount);
+        booking.setTotalAmount(finalAmount);
+
+        // Preserve already confirmed paid amount (e.g. online payment received previously)
+        // Never increase pricePaid when new items are added without a corresponding payment
+        double currentPaid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
+        if (booking.getPayment() != null && booking.getPayment().getStatus() == com.groomish_now.backend.enums.PaymentStatus.COMPLETED) {
+            double confirmed = booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : currentPaid;
+            booking.setPricePaid(Math.min(confirmed, finalAmount));
+        } else if (booking.getPayment() != null && booking.getPayment().getStatus() == com.groomish_now.backend.enums.PaymentStatus.PENDING) {
+            if (booking.getStatus() != BookingStatus.COMPLETED) {
+                booking.setPricePaid(0.0);
+            }
+        } else {
+            booking.setPricePaid(Math.min(currentPaid, finalAmount));
+        }
         booking.setTotalDurationMinutes(totalDuration);
 
         // Recalculate snapshot expected reward points based on item snapshots (never live catalog)
@@ -957,7 +970,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             }
         } catch (Exception ignored) {}
 
-        int baseCoins = (int) Math.round((pricePaid / spendPerCoin) * multiplier);
+        int baseCoins = (int) Math.round((finalAmount / spendPerCoin) * multiplier);
         int bonusCoins = 0;
         if (booking.getBookingItems() != null) {
             bonusCoins = booking.getBookingItems().stream()
@@ -1007,12 +1020,25 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                     .mapToDouble(it -> it.getServicePriceSnapshot() != null && it.getServicePriceSnapshot() > 0 ? it.getServicePriceSnapshot()
                             : (it.getService() != null && it.getService().getPrice() != null ? it.getService().getPrice() : 0.0))
                     .sum();
+        }
+        if (totalAmount == null) totalAmount = 0.0;
+
+        if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.COMPLETED) {
             if (pricePaid == null || pricePaid == 0.0) {
-                pricePaid = totalAmount;
+                pricePaid = booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : totalAmount;
+            }
+        } else if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.PENDING) {
+            if (booking.getStatus() != BookingStatus.COMPLETED) {
+                pricePaid = 0.0;
             }
         }
-        dto.setTotalAmount(totalAmount != null ? totalAmount : 0.0);
-        dto.setPricePaid(pricePaid != null ? pricePaid : (totalAmount != null ? totalAmount : 0.0));
+        if (pricePaid == null) pricePaid = 0.0;
+        pricePaid = Math.min(pricePaid, totalAmount);
+        Double remainingAmount = Math.max(0.0, totalAmount - pricePaid);
+
+        dto.setTotalAmount(totalAmount);
+        dto.setPricePaid(pricePaid);
+        dto.setRemainingAmount(remainingAmount);
 
         dto.setCouponApplied(
                 booking.getCoupon() != null
@@ -1023,25 +1049,29 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         if (booking.getPayment() != null) {
             dto.setPaymentId(booking.getPayment().getId());
             dto.setPaymentMethod(booking.getPayment().getPaymentMethod() != null ? booking.getPayment().getPaymentMethod().name() : "CASH");
-            if (booking.getStatus() == BookingStatus.COMPLETED) {
-                dto.setPaymentStatus("COMPLETED");
-            } else if (booking.getStatus() == BookingStatus.CANCELLED) {
+            if (booking.getStatus() == BookingStatus.CANCELLED) {
                 if (booking.getPayment().getPaymentMethod() == PaymentMethod.CASH ||
                     booking.getPayment().getStatus() == PaymentStatus.PENDING) {
                     dto.setPaymentStatus("CANCELLED");
                 } else {
                     dto.setPaymentStatus(booking.getPayment().getStatus().name());
                 }
+            } else if (booking.getStatus() == BookingStatus.COMPLETED || (remainingAmount <= 0.01 && pricePaid > 0)) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (pricePaid > 0.01 && remainingAmount > 0.01) {
+                dto.setPaymentStatus("PARTIALLY_PAID");
             } else {
                 dto.setPaymentStatus(booking.getPayment().getStatus() != null ? booking.getPayment().getStatus().name() : "PENDING");
             }
             dto.setInvoiceNumber(booking.getPayment().getInvoiceNumber());
         } else {
             dto.setPaymentMethod("CASH");
-            if (booking.getStatus() == BookingStatus.COMPLETED) {
+            if (booking.getStatus() == BookingStatus.COMPLETED || (remainingAmount <= 0.01 && pricePaid > 0)) {
                 dto.setPaymentStatus("COMPLETED");
             } else if (booking.getStatus() == BookingStatus.CANCELLED) {
                 dto.setPaymentStatus("CANCELLED");
+            } else if (pricePaid > 0.01 && remainingAmount > 0.01) {
+                dto.setPaymentStatus("PARTIALLY_PAID");
             } else {
                 dto.setPaymentStatus("PENDING");
             }
@@ -1049,8 +1079,16 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
 
         dto.setExpectedRewardPoints(resolveBookingPoints(booking, dto.getPricePaid()));
         dto.setPointsConfirmed(booking.getStatus() == BookingStatus.COMPLETED);
+        dto.setCheckedInAt(booking.getCheckedInAt() != null ? booking.getCheckedInAt().toString() : null);
+        dto.setCompletedAt(booking.getCompletedAt() != null ? booking.getCompletedAt().toString() : null);
+        dto.setCancelledAt(booking.getCancelledAt() != null ? booking.getCancelledAt().toString() : null);
 
-        if (booking.getScheduledAt() != null && booking.getStatus() != BookingStatus.CANCELLED && booking.getStatus() != BookingStatus.COMPLETED) {
+        if (booking.getScheduledAt() != null &&
+            booking.getStatus() != BookingStatus.CANCELLED &&
+            booking.getStatus() != BookingStatus.COMPLETED &&
+            booking.getStatus() != BookingStatus.CHECKED_IN &&
+            booking.getStatus() != BookingStatus.IN_PROGRESS &&
+            booking.getCheckedInAt() == null) {
             LocalDateTime deadline = booking.getScheduledAt().plusHours(2);
             if (LocalDateTime.now().isAfter(booking.getScheduledAt())) {
                 long mins = java.time.Duration.between(LocalDateTime.now(), deadline).toMinutes();

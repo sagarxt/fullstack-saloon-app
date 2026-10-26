@@ -20,6 +20,7 @@ public class BookingDetailsResponse {
 
     private Double totalAmount;
     private Double pricePaid;
+    private Double remainingAmount;
 
     private String couponApplied;
 
@@ -42,4 +43,7 @@ public class BookingDetailsResponse {
     private List<BookingProductResponse> products;
     private List<BookingTimelineResponse> timeline;
     private List<ServiceReviewResponse> customerReviews;
+    private String checkedInAt;
+    private String completedAt;
+    private String cancelledAt;
 }

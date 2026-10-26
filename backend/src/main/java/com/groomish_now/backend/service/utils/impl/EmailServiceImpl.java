@@ -26,8 +26,35 @@ public class EmailServiceImpl implements EmailService {
     @Value("${GMAIL_SENDER_EMAIL:${gmail.api.sender-email:${gmail.sender-email:testmailemployee@gmail.com}}}")
     private String fromEmail;
 
-    @Value("${app.frontend.url:http://localhost:5173}")
+    @Value("${app.frontend.url:https://groomish-now.vercel.app}")
     private String frontendUrl;
+
+    public String getFrontendUrl() {
+        if (frontendUrl == null || frontendUrl.isBlank()) {
+            return "https://groomish-now.vercel.app";
+        }
+        if (frontendUrl.contains(",")) {
+            String[] parts = frontendUrl.split(",");
+            for (String p : parts) {
+                String trimmed = p.trim();
+                if (trimmed.startsWith("https://") && !trimmed.contains("localhost")) {
+                    return trimmed.replaceAll("/+$", "");
+                }
+            }
+            for (String p : parts) {
+                String trimmed = p.trim();
+                if (!trimmed.isBlank() && !trimmed.contains("localhost")) {
+                    return trimmed.replaceAll("/+$", "");
+                }
+            }
+            return parts[0].trim().replaceAll("/+$", "");
+        }
+        String trimmed = frontendUrl.trim().replaceAll("/+$", "");
+        if (trimmed.contains("localhost") && trimmed.contains("groomish-now.vercel.app")) {
+            return "https://groomish-now.vercel.app";
+        }
+        return trimmed;
+    }
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter
             .ofPattern("EEEE, MMM dd, yyyy 'at' hh:mm a");
@@ -72,7 +99,7 @@ public class EmailServiceImpl implements EmailService {
                 + "<p style='margin: 10px 0 0 0; color: #D5D8DF; font-size: 12px;'>Share this code with friends and family. When they complete their first visit, you both receive bonus Groomish Coins!</p>"
                 + "</div>"
                 + "<div style='text-align: center; margin: 26px 0;'>"
-                + "<a href='" + frontendUrl
+                + "<a href='" + getFrontendUrl()
                 + "/services' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 30px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>Browse Services & Book Now</a>"
                 + "</div>"
                 + "<p style='margin-top: 24px; font-size: 13px; color: #7A7E89;'>Warm regards,<br><strong style='color: #373A43;'>The Groomish Now Team</strong></p>"
@@ -122,10 +149,8 @@ public class EmailServiceImpl implements EmailService {
                 .append("</div>")
 
                 .append("<div style='text-align: center; margin: 26px 0 16px 0;'>")
-                .append("<a href='").append(frontendUrl).append("/customer/bookings/").append(dto.getBookingId())
-                .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 30px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35); margin-right: 10px;'>View Booking Details</a>")
-                .append("<a href='").append(dto.getStoreDirectionsUrl())
-                .append("' style='background: #373A43; color: #FFFFFF; text-decoration: none; padding: 13px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;'>🧭 Get Directions</a>")
+                .append("<a href='").append(getFrontendUrl()).append("/customer/bookings/").append(dto.getBookingId())
+                .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>View Booking Details</a>")
                 .append("</div>")
 
                 .append("<p style='margin-top: 28px; font-size: 13px; color: #7A7E89;'>Looking forward to serving you,<br><strong style='color: #373A43;'>Groomish Now</strong></p>")
@@ -208,7 +233,7 @@ public class EmailServiceImpl implements EmailService {
                 .append("<div style='text-align: center; margin: 28px 0 16px 0;'>")
                 .append("<a href='").append(dto.getStoreDirectionsUrl())
                 .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 26px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35); margin-right: 10px;'>🧭 Get Directions</a>")
-                .append("<a href='").append(frontendUrl).append("/customer/bookings/").append(dto.getBookingId())
+                .append("<a href='").append(getFrontendUrl()).append("/customer/bookings/").append(dto.getBookingId())
                 .append("?reschedule=true' style='background: #FAF6ED; color: #373A43; border: 1px solid rgba(55,58,67,0.2); text-decoration: none; padding: 13px 22px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;'>🔄 Reschedule Booking</a>")
                 .append("</div>")
 
@@ -275,10 +300,8 @@ public class EmailServiceImpl implements EmailService {
         }
 
         sb.append("<div style='text-align: center; margin: 26px 0 16px 0;'>")
-                .append("<a href='").append(frontendUrl).append("/customer/bookings/").append(dto.getBookingId())
-                .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 30px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35); margin-right: 10px;'>View Updated Booking</a>")
-                .append("<a href='").append(dto.getStoreDirectionsUrl())
-                .append("' style='background: #373A43; color: #FFFFFF; text-decoration: none; padding: 13px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;'>🧭 Get Directions</a>")
+                .append("<a href='").append(getFrontendUrl()).append("/customer/bookings/").append(dto.getBookingId())
+                .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>View Updated Booking</a>")
                 .append("</div>")
 
                 .append("<p style='margin-top: 28px; font-size: 13px; color: #7A7E89;'>Warm regards,<br><strong style='color: #373A43;'>Groomish Now Salon Team</strong></p>")
@@ -336,7 +359,7 @@ public class EmailServiceImpl implements EmailService {
 
                 // CTAs: Reschedule or Call Salon
                 .append("<div style='text-align: center; margin: 28px 0 16px 0;'>")
-                .append("<a href='").append(frontendUrl).append("/customer/bookings/").append(dto.getBookingId())
+                .append("<a href='").append(getFrontendUrl()).append("/customer/bookings/").append(dto.getBookingId())
                 .append("?reschedule=true' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35); margin-right: 10px;'>🔄 Reschedule Booking Now</a>")
                 .append("<a href='tel:").append(dto.getStorePhone())
                 .append("' style='background: #111317; color: #FFFFFF; text-decoration: none; padding: 13px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;'>📞 Call Salon for Help</a>")
@@ -424,8 +447,8 @@ public class EmailServiceImpl implements EmailService {
             subject = "Booking Modified: " + displayCode + " - Groomish Now";
         } else if (status != null && status.equalsIgnoreCase("CONFIRMED")) {
             subject = "Booking Confirmed: " + displayCode + " - Groomish Now";
-        } else if (status != null && status.equalsIgnoreCase("IN_PROGRESS")) {
-            subject = "Booking In Progress: " + displayCode + " - Groomish Now";
+        } else if (status != null && (status.equalsIgnoreCase("IN_PROGRESS") || status.equalsIgnoreCase("CHECKED_IN"))) {
+            subject = "Checked In & In Progress: " + displayCode + " - Groomish Now";
         } else if (status != null && status.equalsIgnoreCase("COMPLETED")) {
             subject = "Booking Completed: " + displayCode + " - Groomish Now";
         } else {
@@ -435,7 +458,7 @@ public class EmailServiceImpl implements EmailService {
         String statusColor = ("CANCELLED".equalsIgnoreCase(status) || "CANCELED".equalsIgnoreCase(status)
                 || "AUTO_CANCELLED".equalsIgnoreCase(status))
                         ? "#EA4158"
-                        : ("IN_PROGRESS".equalsIgnoreCase(status) ? "#7C3AED" : "#207FBD");
+                        : (("IN_PROGRESS".equalsIgnoreCase(status) || "CHECKED_IN".equalsIgnoreCase(status)) ? "#0284C7" : "#207FBD");
 
         String body = "<div style='color: #373A43; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>"
                 + "<h2 style='color: " + statusColor + "; margin-top: 0; font-size: 20px;'>Booking Update: " + status
@@ -590,7 +613,7 @@ public class EmailServiceImpl implements EmailService {
                 .append("</div>")
 
                 .append("<div style='text-align: center; margin: 28px 0 16px 0;'>")
-                .append("<a href='").append(frontendUrl)
+                .append("<a href='").append(getFrontendUrl())
                 .append("/services' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>Browse Services & Book Now</a>")
                 .append("</div>")
 
@@ -654,7 +677,7 @@ public class EmailServiceImpl implements EmailService {
                 + "</table>"
                 + "</div>"
                 + "<div style='text-align: center; margin: 28px 0 20px 0;'>"
-                + "<a href='" + frontendUrl
+                + "<a href='" + getFrontendUrl()
                 + "/customer/rewards' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>View Your Points & Rewards</a>"
                 + "</div>"
                 + "<p style='margin-top: 24px; font-size: 13px; color: #7A7E89;'>Thank you for choosing Groomish Now!<br><strong style='color: #373A43;'>The Groomish Now Team</strong></p>"
@@ -711,24 +734,20 @@ public class EmailServiceImpl implements EmailService {
             String storeAddress, String storePhone, String storeDirectionsUrl) {
         return "<table style='width: 100%; border-collapse: collapse; margin: 18px 0; background: #FAF6ED; border-radius: 14px; overflow: hidden; border: 1px solid rgba(55,58,67,0.08);'>"
                 + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.06);'>"
-                + "<td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; width: 34%; font-size: 13px;'>Booking Reference:</td>"
-                + "<td style='padding: 12px 16px; color: #373A43; font-weight: 800; font-family: monospace; font-size: 15px;'>"
+                + "<td style='padding: 12px 14px; font-weight: 600; color: #7A7E89; width: 36%; font-size: 13px;'>Booking Reference:</td>"
+                + "<td style='padding: 12px 14px; color: #373A43; font-weight: 800; font-family: monospace; font-size: 15px;'>"
                 + bookingCode + "</td>"
                 + "</tr>"
                 + "<tr style='border-bottom: 1px solid rgba(55,58,67,0.06);'>"
-                + "<td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Scheduled Date & Time:</td>"
-                + "<td style='padding: 12px 16px; color: #FC6957; font-weight: 700; font-size: 14px;'>📅 " + scheduledAt
+                + "<td style='padding: 12px 14px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Scheduled Date & Time:</td>"
+                + "<td style='padding: 12px 14px; color: #FC6957; font-weight: 700; font-size: 13px;'>📅 " + scheduledAt
                 + "</td>"
                 + "</tr>"
                 + "<tr>"
-                + "<td style='padding: 12px 16px; font-weight: 600; color: #7A7E89; font-size: 13px; vertical-align: top;'>Salon Branch:</td>"
-                + "<td style='padding: 12px 16px; color: #373A43; font-size: 13px;'>"
+                + "<td style='padding: 12px 14px; font-weight: 600; color: #7A7E89; font-size: 13px; vertical-align: top;'>Salon Branch:</td>"
+                + "<td style='padding: 12px 14px; color: #373A43; font-size: 13px;'>"
                 + "<div style='font-weight: 700; font-size: 14px;'>📍 " + storeName + "</div>"
-                + "<div style='color: #7A7E89; margin-top: 2px; font-size: 12px;'>" + storeAddress + "</div>"
-                + (storeDirectionsUrl != null && !storeDirectionsUrl.isBlank()
-                        ? "<div style='margin-top: 8px;'><a href='" + storeDirectionsUrl
-                                + "' style='display: inline-block; background: #373A43; color: #FFFFFF; text-decoration: none; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px;'>🧭 Get Directions</a></div>"
-                        : "")
+                + "<div style='color: #7A7E89; margin-top: 3px; font-size: 12px; line-height: 1.4;'>" + storeAddress + "</div>"
                 + "</td>"
                 + "</tr>"
                 + "</table>";
@@ -847,34 +866,10 @@ public class EmailServiceImpl implements EmailService {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("<table style='width: 100%; border-collapse: collapse; font-size: 13px;'>")
-                .append("<tr>")
-                .append("<td style='width: 50%; padding: 8px; vertical-align: top;'>")
-                .append("<div style='background: #FAF6ED; padding: 14px; border-radius: 10px; border: 1px solid rgba(55,58,67,0.08);'>")
-                .append("<p style='margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #7A7E89; text-transform: uppercase;'>Payment Mode</p>")
-                .append("<p style='margin: 0 0 8px 0; font-size: 13px; font-weight: 700; color: #373A43;'>")
-                .append(dto.getPaymentMethod() != null ? dto.getPaymentMethod() : "Pay at Salon").append("</p>")
-                .append("<p style='margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #7A7E89; text-transform: uppercase;'>Payment Status</p>")
-                .append("<p style='margin: 0 0 8px 0; font-size: 12px; font-weight: 700; color: ")
-                .append("COMPLETED".equalsIgnoreCase(dto.getPaymentStatus()) ? "#2E7D32" : "#B45309").append(";'>")
-                .append(dto.getPaymentStatus() != null ? dto.getPaymentStatus() : "PENDING").append("</p>");
 
-        if (couponCode != null && !couponCode.isBlank()) {
-            sb.append(
-                    "<p style='margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #7A7E89; text-transform: uppercase;'>Coupon Applied</p>")
-                    .append("<p style='margin: 0 0 8px 0; font-size: 12px; font-weight: 800; color: #2E7D32; font-family: monospace;'>🏷️ ")
-                    .append(couponCode).append("</p>");
-        }
-        if (voucherCode != null && !voucherCode.isBlank()) {
-            sb.append(
-                    "<p style='margin: 0 0 3px 0; font-size: 11px; font-weight: 700; color: #7A7E89; text-transform: uppercase;'>Voucher Applied</p>")
-                    .append("<p style='margin: 0 0 8px 0; font-size: 12px; font-weight: 800; color: #2E7D32; font-family: monospace;'>🎟️ ")
-                    .append(voucherCode).append("</p>");
-        }
-
-        sb.append("</div>")
-                .append("</td>")
-                .append("<td style='width: 50%; padding: 8px; vertical-align: top;'>")
+        // 1. PRICE & INVOICE BREAKDOWN (FULL WIDTH)
+        sb.append("<div style='background: #FAF6ED; border: 1px solid rgba(55,58,67,0.08); border-radius: 12px; padding: 16px; margin-bottom: 12px;'>")
+                .append("<h4 style='margin: 0 0 10px 0; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #7A7E89;'>Price & Invoice Summary</h4>")
                 .append("<table style='width: 100%; border-collapse: collapse; font-size: 13px;'>")
                 .append("<tr><td style='padding: 5px 0; color: #7A7E89;'>Subtotal:</td><td style='padding: 5px 0; text-align: right; color: #373A43; font-weight: 700;'>₹")
                 .append(String.format("%.2f", subtotal)).append("</td></tr>");
@@ -905,12 +900,47 @@ public class EmailServiceImpl implements EmailService {
 
         sb.append(
                 "<tr><td style='padding: 5px 0; color: #7A7E89;'>Salon Hygiene & Taxes:</td><td style='padding: 5px 0; text-align: right; color: #2E7D32; font-weight: 700; font-size: 11px;'>FREE</td></tr>")
-                .append("<tr style='border-top: 2px solid #FAF6ED;'><td style='padding: 8px 0; font-weight: 800; font-size: 14px; color: #373A43;'>Final Payable:</td><td style='padding: 8px 0; text-align: right; font-weight: 800; font-size: 18px; color: #FC6957;'>₹")
+                .append("<tr style='border-top: 2px solid rgba(55,58,67,0.1);'><td style='padding: 8px 0 2px 0; font-weight: 800; font-size: 14px; color: #373A43;'>Final Payable:</td><td style='padding: 8px 0 2px 0; text-align: right; font-weight: 800; font-size: 18px; color: #FC6957;'>₹")
                 .append(String.format("%.2f", paid)).append("</td></tr>")
                 .append("</table>")
+                .append("</div>");
+
+        // 2. PAYMENT DETAILS (PLACED AFTER PRICE & INVOICE DETAILS)
+        String payStatus = dto.getPaymentStatus() != null ? dto.getPaymentStatus() : "PENDING";
+        boolean isPaid = "COMPLETED".equalsIgnoreCase(payStatus) || "PAID".equalsIgnoreCase(payStatus);
+        String statusColor = isPaid ? "#2E7D32" : "#B45309";
+        String statusBg = isPaid ? "#E8F5E9" : "#FEF3C7";
+
+        sb.append("<div style='background: #FAF6ED; border: 1px solid rgba(55,58,67,0.08); border-radius: 12px; padding: 14px 16px;'>")
+                .append("<table style='width: 100%; border-collapse: collapse; font-size: 13px;'>")
+                .append("<tr>")
+                .append("<td style='padding: 2px 0; width: 50%; vertical-align: top;'>")
+                .append("<div style='font-size: 11px; font-weight: 700; color: #7A7E89; text-transform: uppercase;'>Payment Mode</div>")
+                .append("<div style='font-size: 13px; font-weight: 800; color: #373A43; margin-top: 2px;'>")
+                .append(dto.getPaymentMethod() != null ? dto.getPaymentMethod() : "Pay at Salon").append("</div>")
                 .append("</td>")
-                .append("</tr>")
-                .append("</table>");
+                .append("<td style='padding: 2px 0; width: 50%; text-align: right; vertical-align: top;'>")
+                .append("<div style='font-size: 11px; font-weight: 700; color: #7A7E89; text-transform: uppercase;'>Payment Status</div>")
+                .append("<div style='display: inline-block; background: ").append(statusBg).append("; color: ").append(statusColor)
+                .append("; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 12px; margin-top: 2px; text-transform: uppercase;'>")
+                .append(payStatus).append("</div>")
+                .append("</td>")
+                .append("</tr>");
+
+        if ((couponCode != null && !couponCode.isBlank()) || (voucherCode != null && !voucherCode.isBlank())) {
+            sb.append("<tr><td colspan='2' style='padding-top: 10px; border-top: 1px solid rgba(55,58,67,0.06); font-size: 12px;'>");
+            if (couponCode != null && !couponCode.isBlank()) {
+                sb.append("<span style='color: #2E7D32; font-weight: 700; margin-right: 14px;'>🏷️ Coupon: <strong>").append(couponCode).append("</strong></span>");
+            }
+            if (voucherCode != null && !voucherCode.isBlank()) {
+                sb.append("<span style='color: #2E7D32; font-weight: 700;'>🎟️ Voucher: <strong>").append(voucherCode).append("</strong></span>");
+            }
+            sb.append("</td></tr>");
+        }
+
+        sb.append("</table>")
+                .append("</div>");
+
         return sb.toString();
     }
 
@@ -919,7 +949,7 @@ public class EmailServiceImpl implements EmailService {
                 + "<div style='font-size: 26px; color: #FED652; letter-spacing: 4px; margin-bottom: 6px;'>★★★★★</div>"
                 + "<h3 style='margin: 0 0 6px 0; font-size: 16px; color: #373A43; font-weight: 800;'>How was your booking today?</h3>"
                 + "<p style='margin: 0 0 16px 0; font-size: 13px; color: #7A7E89;'>Your rating & honest feedback help us celebrate exceptional stylists and curate the best treatments.</p>"
-                + "<a href='" + frontendUrl + "/customer/bookings/" + bookingId
+                + "<a href='" + getFrontendUrl() + "/customer/bookings/" + bookingId
                 + "?review=true' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 32px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>⭐ Give Feedback & Review</a>"
                 + "</div>";
     }

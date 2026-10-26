@@ -147,38 +147,58 @@ public class BookingMapper {
                     .mapToDouble(it -> it.getServicePriceSnapshot() != null && it.getServicePriceSnapshot() > 0 ? it.getServicePriceSnapshot()
                             : (it.getService() != null && it.getService().getPrice() != null ? it.getService().getPrice() : 0.0))
                     .sum();
+        }
+        if (total == null) total = 0.0;
+
+        if (b.getPayment() != null && b.getPayment().getStatus() == PaymentStatus.COMPLETED) {
             if (paid == null || paid == 0.0) {
-                paid = total;
+                paid = b.getPayment().getAmount() != null ? b.getPayment().getAmount() : total;
+            }
+        } else if (b.getPayment() != null && b.getPayment().getStatus() == PaymentStatus.PENDING) {
+            if (b.getStatus() != BookingStatus.COMPLETED) {
+                paid = 0.0;
             }
         }
-        dto.setTotalAmount(total != null ? total : 0.0);
-        dto.setPricePaid(paid != null ? paid : (total != null ? total : 0.0));
+        if (paid == null) paid = 0.0;
+        paid = Math.min(paid, total);
+        Double remaining = Math.max(0.0, total - paid);
+
+        dto.setTotalAmount(total);
+        dto.setPricePaid(paid);
+        dto.setRemainingAmount(remaining);
         dto.setStatus(b.getStatus() != null ? b.getStatus().name() : null);
         dto.setScheduledAt(b.getScheduledAt());
         dto.setNote(b.getNote());
         dto.setBookedBy(b.getBookedBy());
+        dto.setCheckedInAt(b.getCheckedInAt());
+        dto.setCompletedAt(b.getCompletedAt());
+        dto.setCancelledAt(b.getCancelledAt());
         dto.setCreatedAt(b.getCreatedAt());
 
         if (b.getPayment() != null) {
             dto.setPaymentMethod(b.getPayment().getPaymentMethod() != null ? b.getPayment().getPaymentMethod().name() : "CASH");
             dto.setInvoiceNumber(b.getPayment().getInvoiceNumber());
-            if (b.getStatus() == BookingStatus.COMPLETED) {
-                dto.setPaymentStatus("COMPLETED");
-            } else if (b.getStatus() == BookingStatus.CANCELLED) {
+            if (b.getStatus() == BookingStatus.CANCELLED) {
                 if (b.getPayment().getPaymentMethod() == PaymentMethod.CASH || b.getPayment().getStatus() == PaymentStatus.PENDING) {
                     dto.setPaymentStatus("CANCELLED");
                 } else {
                     dto.setPaymentStatus(b.getPayment().getStatus().name());
                 }
+            } else if (b.getStatus() == BookingStatus.COMPLETED || (remaining <= 0.01 && paid > 0)) {
+                dto.setPaymentStatus("COMPLETED");
+            } else if (paid > 0.01 && remaining > 0.01) {
+                dto.setPaymentStatus("PARTIALLY_PAID");
             } else {
                 dto.setPaymentStatus(b.getPayment().getStatus() != null ? b.getPayment().getStatus().name() : "PENDING");
             }
         } else {
             dto.setPaymentMethod("CASH");
-            if (b.getStatus() == BookingStatus.COMPLETED) {
+            if (b.getStatus() == BookingStatus.COMPLETED || (remaining <= 0.01 && paid > 0)) {
                 dto.setPaymentStatus("COMPLETED");
             } else if (b.getStatus() == BookingStatus.CANCELLED) {
                 dto.setPaymentStatus("CANCELLED");
+            } else if (paid > 0.01 && remaining > 0.01) {
+                dto.setPaymentStatus("PARTIALLY_PAID");
             } else {
                 dto.setPaymentStatus("PENDING");
             }

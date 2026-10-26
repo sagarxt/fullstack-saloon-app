@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { customerApi } from '../api/client';
 import { useAuth } from './AuthContext';
@@ -40,7 +41,7 @@ const CART_STORAGE_KEY = '@groomish_mobile_cart';
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isStaffOrAdmin } = useAuth();
 
   useEffect(() => {
     loadLocalCart();
@@ -63,6 +64,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const addItem = async (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
+    if (item.itemType === 'SERVICE' && isStaffOrAdmin) {
+      Alert.alert(
+        'Booking Restricted',
+        'Staff and Admin accounts can only browse products on the mobile app. You cannot book salon services. Please use the Staff or Admin Web Portal to manage bookings.'
+      );
+      return;
+    }
+
     const qtyToAdd = item.quantity || 1;
     const existingIndex = items.findIndex((i) => {
       if (item.itemType === 'SERVICE') {

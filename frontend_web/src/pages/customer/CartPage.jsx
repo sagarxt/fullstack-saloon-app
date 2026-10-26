@@ -294,35 +294,35 @@ export default function CartPage() {
   const totalSavings = Math.max(0, totalMrp - totalAmount);
 
   return (
-    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans">
+    <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-clip">
       <Navbar />
 
-      <main className="flex-1 pb-8">
+      <main className="flex-1 w-full max-w-full pb-8">
         {/* BREADCRUMB */}
-        <div className="bg-white border-b border-groomish-slate/10 py-2.5">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 text-xs text-groomish-slate/60">
-            <Link to="/" className="hover:text-groomish-orange flex items-center gap-1">
+        <div className="bg-white border-b border-groomish-slate/10 py-2.5 sm:py-3 w-full overflow-hidden">
+          <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 flex items-center gap-1.5 sm:gap-2 text-xs text-groomish-slate/60 overflow-x-auto no-scrollbar whitespace-nowrap">
+            <Link to="/" className="hover:text-groomish-orange flex items-center gap-1 shrink-0">
               <Home className="w-3.5 h-3.5" />
               <span>Home</span>
             </Link>
-            <ChevronRight className="w-3 h-3 text-groomish-slate/30" />
+            <ChevronRight className="w-3 h-3 text-groomish-slate/30 shrink-0" />
             <span className="font-bold text-groomish-slate">Shopping Cart</span>
           </div>
         </div>
 
         {/* HEADER */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-groomish-orange text-white flex items-center justify-center shadow-sm">
-                  <ShoppingCart className="w-5 h-5" />
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-2 sm:pb-3 w-full max-w-full min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 min-w-0">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-groomish-orange text-white flex items-center justify-center shadow-sm shrink-0">
+                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-groomish-slate tracking-tight">
+                <div className="min-w-0">
+                  <h1 className="text-xl sm:text-3xl font-heading font-extrabold text-groomish-slate tracking-tight truncate">
                     Your Salon Cart
                   </h1>
-                  <p className="text-xs text-groomish-slate/60 mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-groomish-slate/60 mt-0.5 truncate">
                     Persistent database cart • Services and retail products ready for checkout
                   </p>
                 </div>
@@ -330,7 +330,7 @@ export default function CartPage() {
             </div>
 
             {items.length > 0 && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={clearCart}
@@ -345,7 +345,7 @@ export default function CartPage() {
         </div>
 
         {/* CONTENT */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 mt-3 sm:mt-4 w-full max-w-full min-w-0">
           {items.length === 0 ? (
             /* EMPTY CART STATE */
             <div className="bg-white rounded-3xl p-10 sm:p-16 border border-groomish-slate/10 shadow-soft text-center max-w-2xl mx-auto my-8">
@@ -378,24 +378,24 @@ export default function CartPage() {
             </div>
           ) : (
             /* ACTIVE CART GRID */
-            <div className="grid lg:grid-cols-12 gap-5 items-start">
+            <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full max-w-full min-w-0 items-start">
               {/* LEFT COLUMN: ITEMS & STORE */}
-              <div className="lg:col-span-8 space-y-4">
+              <div className="lg:col-span-8 space-y-4 w-full max-w-full min-w-0">
                 {/* SALON BRANCH SELECTION */}
-                <div className="bg-white rounded-3xl p-5 border border-groomish-slate/10 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-groomish-slate/10 shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 w-full min-w-0">
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                     <div className="w-9 h-9 rounded-xl bg-groomish-cream text-groomish-orange flex items-center justify-center shrink-0">
                       <Store className="w-5 h-5" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-groomish-slate/50 block">
                         Assigned Salon Branch
                       </span>
-                      <span className="text-xs font-extrabold text-groomish-slate">
+                      <span className="text-xs font-extrabold text-groomish-slate block truncate">
                         {cart?.storeName || "Select Salon Location"}
                       </span>
                       {cart?.storeAddress && (
-                        <p className="text-[11px] text-groomish-slate/60 truncate max-w-sm">
+                        <p className="text-[11px] text-groomish-slate/60 truncate max-w-full">
                           {cart.storeAddress}
                         </p>
                       )}
@@ -403,7 +403,7 @@ export default function CartPage() {
                   </div>
 
                   {stores && stores.length > 0 && (
-                    <div className="w-full sm:w-64 space-y-1">
+                    <div className="w-full sm:w-64 space-y-1 shrink-0">
                       {checkingBranch && (
                         <div className="flex items-center gap-1.5 text-[10px] text-groomish-orange font-bold">
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -414,7 +414,7 @@ export default function CartPage() {
                         value={cart?.storeId || selectedStore?.id || ""}
                         onChange={(e) => handleStoreChange(e.target.value)}
                         disabled={checkingBranch}
-                        className="py-1.5 text-xs bg-groomish-cream rounded-xl border-transparent"
+                        className="py-1.5 text-xs bg-groomish-cream rounded-xl border-transparent w-full"
                         options={stores.map((s) => ({
                           value: s.id,
                           label: `${s.name} (${s.city})`,
@@ -426,17 +426,17 @@ export default function CartPage() {
 
                 {/* SECTION 1: SALON SERVICES */}
                 {serviceItems.length > 0 && (
-                  <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-soft space-y-4">
-                    <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3 flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <Scissors className="w-4 h-4 text-groomish-orange" />
-                        <h2 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-groomish-slate/10 shadow-soft space-y-4 w-full min-w-0">
+                    <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3 flex-wrap gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Scissors className="w-4 h-4 text-groomish-orange shrink-0" />
+                        <h2 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate truncate">
                           Salon Services & Treatments ({serviceItems.length})
                         </h2>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                         <span className="text-[11px] font-bold text-groomish-slate/50">
-                          {totalDuration} mins estimated
+                          {totalDuration}m est.
                         </span>
                         <button
                           type="button"
@@ -458,9 +458,9 @@ export default function CartPage() {
                             className={`py-4 first:pt-0 last:pb-0 space-y-3 rounded-2xl transition ${unavailableInfo ? "bg-red-50/70 p-3 border border-red-200" : ""
                               }`}
                           >
-                            <div className="flex items-start gap-4 justify-between">
-                              <div className="flex items-start gap-3.5 min-w-0">
-                                <div className="w-16 h-16 rounded-2xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                            <div className="flex items-start gap-2.5 sm:gap-4 justify-between min-w-0">
+                              <div className="flex items-start gap-2.5 sm:gap-3.5 min-w-0 flex-1">
+                                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
                                   <img
                                     src={getOptimizedImageUrl(
                                       item.serviceImage || "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&q=80",
@@ -472,8 +472,8 @@ export default function CartPage() {
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                                     <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-groomish-cream text-groomish-slate">
                                       {item.serviceGender || "UNISEX"}
                                     </span>
@@ -488,36 +488,36 @@ export default function CartPage() {
                                       </span>
                                     )}
                                   </div>
-                                  <h3 className={`font-heading font-bold text-sm text-groomish-slate mt-1 truncate ${unavailableInfo ? "line-through text-groomish-crimson" : ""}`}>
+                                  <h3 className={`font-heading font-bold text-xs sm:text-sm text-groomish-slate mt-1 line-clamp-2 sm:truncate ${unavailableInfo ? "line-through text-groomish-crimson" : ""}`}>
                                     {formatServiceName(item.serviceName, item.subServiceName)}
                                   </h3>
                                   {item.subServiceName && (
-                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-0.5 rounded-md bg-amber-50 text-amber-800 text-[11px] font-semibold border border-amber-200/60">
+                                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 mt-0.5 rounded-md bg-amber-50 text-amber-800 text-[10px] sm:text-[11px] font-semibold border border-amber-200/60">
                                       <span>Option: {item.subServiceName}</span>
                                       {item.subServiceDuration && (
                                         <span className="text-[10px] text-amber-600/80">• {item.subServiceDuration}m</span>
                                       )}
                                     </div>
                                   )}
-                                  <div className="flex items-center gap-2 text-[11px] text-groomish-slate/60 mt-0.5">
-                                    <Clock className="w-3 h-3 text-groomish-gold" />
-                                    <span>{item.subServiceDuration || item.serviceDurationMinutes || 30} mins per treatment</span>
+                                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-groomish-slate/60 mt-0.5">
+                                    <Clock className="w-3 h-3 text-groomish-gold shrink-0" />
+                                    <span>{item.subServiceDuration || item.serviceDurationMinutes || 30}m per visit</span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Price */}
-                              <div className="text-right shrink-0">
-                                <span className={`text-base font-extrabold block ${unavailableInfo ? "text-groomish-crimson text-xs" : "text-groomish-slate"}`}>
+                              <div className="text-right shrink-0 pl-1.5">
+                                <span className={`text-sm sm:text-base font-extrabold block ${unavailableInfo ? "text-groomish-crimson text-xs" : "text-groomish-slate"}`}>
                                   {unavailableInfo ? "Unavailable" : `₹${item.totalPrice}`}
                                 </span>
                                 {(item.mrp || item.serviceMrp) && (item.mrp || item.serviceMrp) > item.unitPrice && !unavailableInfo && (
-                                  <span className="text-[11px] text-groomish-slate/40 line-through block">
+                                  <span className="text-[10px] sm:text-[11px] text-groomish-slate/40 line-through block">
                                     ₹{(item.mrp || item.serviceMrp) * item.quantity}
                                   </span>
                                 )}
                                 {item.quantity > 1 && !unavailableInfo && (
-                                  <span className="text-[11px] text-groomish-slate/40 block">
+                                  <span className="text-[10px] sm:text-[11px] text-groomish-slate/40 block">
                                     ₹{item.unitPrice} each
                                   </span>
                                 )}
@@ -525,15 +525,15 @@ export default function CartPage() {
                             </div>
 
                             {/* Controls Bar */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 pt-2 min-w-0 w-full">
                               {/* Quantity Controls */}
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 shrink-0">
                                 <span className="text-[11px] font-semibold text-groomish-slate/60">Qty:</span>
                                 <div className="flex items-center border border-groomish-slate/20 rounded-full bg-groomish-cream p-0.5">
                                   <button
                                     type="button"
                                     onClick={() => handleQuantityDelta(item, -1)}
-                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-groomish-slate transition"
+                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-groomish-slate transition cursor-pointer"
                                   >
                                     <Minus className="w-3 h-3" />
                                   </button>
@@ -543,7 +543,7 @@ export default function CartPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleQuantityDelta(item, 1)}
-                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-groomish-slate transition"
+                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-groomish-slate transition cursor-pointer"
                                   >
                                     <Plus className="w-3 h-3" />
                                   </button>
@@ -552,7 +552,7 @@ export default function CartPage() {
                                 <button
                                   type="button"
                                   onClick={() => removeItem(item.id, item.serviceName)}
-                                  className="p-1.5 rounded-full hover:bg-groomish-crimson/10 text-groomish-slate/40 hover:text-groomish-crimson transition ml-1"
+                                  className="p-1.5 rounded-full hover:bg-groomish-crimson/10 text-groomish-slate/40 hover:text-groomish-crimson transition ml-1 cursor-pointer"
                                   title="Remove service"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -560,14 +560,14 @@ export default function CartPage() {
                               </div>
 
                               {/* Note input */}
-                              <div className="flex-1 sm:max-w-xs">
+                              <div className="w-full sm:max-w-xs min-w-0 flex-1">
                                 <input
                                   type="text"
-                                  placeholder="Add preference note (e.g. low fade, sensitive skin)..."
+                                  placeholder="Add preference note (e.g. low fade)..."
                                   value={notesState[item.id] !== undefined ? notesState[item.id] : (item.customNotes || "")}
                                   onChange={(e) => setNotesState({ ...notesState, [item.id]: e.target.value })}
                                   onBlur={() => handleNoteBlur(item)}
-                                  className="w-full px-3 py-1 text-xs rounded-xl bg-groomish-cream border border-transparent focus:border-groomish-orange focus:bg-white outline-none transition placeholder:text-groomish-slate/40"
+                                  className="w-full px-3 py-1.5 text-xs rounded-xl bg-groomish-cream border border-transparent focus:border-groomish-orange focus:bg-white outline-none transition placeholder:text-groomish-slate/40"
                                 />
                               </div>
                             </div>
@@ -605,16 +605,16 @@ export default function CartPage() {
 
                 {/* SECTION 2: RETAIL PRODUCTS */}
                 {productItems.length > 0 && (
-                  <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-soft space-y-4">
-                    <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-groomish-orange" />
-                        <h2 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-groomish-slate/10 shadow-soft space-y-4 w-full min-w-0">
+                    <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-3 flex-wrap gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Package className="w-4 h-4 text-groomish-orange shrink-0" />
+                        <h2 className="font-heading font-extrabold text-sm sm:text-base text-groomish-slate truncate">
                           Retail Products & In-Store Pickup ({productItems.length})
                         </h2>
                       </div>
-                      <span className="text-[11px] font-bold text-groomish-green bg-groomish-greenLight px-2 py-0.5 rounded-full">
-                        In-Store Pickup Available
+                      <span className="text-[10px] sm:text-[11px] font-bold text-groomish-green bg-groomish-greenLight px-2 py-0.5 rounded-full shrink-0">
+                        Pickup Available
                       </span>
                     </div>
 
@@ -627,9 +627,9 @@ export default function CartPage() {
                             className={`py-4 first:pt-0 last:pb-0 space-y-3 rounded-2xl transition ${unavailableInfo ? "bg-red-50/70 p-3 border border-red-200" : ""
                               }`}
                           >
-                            <div className="flex items-start gap-4 justify-between">
-                              <div className="flex items-start gap-3.5 min-w-0">
-                                <div className="w-16 h-16 rounded-2xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 p-1 flex items-center justify-center shrink-0">
+                            <div className="flex items-start gap-2.5 sm:gap-4 justify-between min-w-0">
+                              <div className="flex items-start gap-2.5 sm:gap-3.5 min-w-0 flex-1">
+                                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 p-1 flex items-center justify-center shrink-0">
                                   <img
                                     src={getOptimizedImageUrl(
                                       item.productImage || "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=300&q=80",
@@ -641,8 +641,8 @@ export default function CartPage() {
                                     className="max-h-full max-w-full object-contain"
                                   />
                                 </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                                     <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-groomish-cream text-groomish-slate">
                                       {item.productBrand || "Groomish Pro"}
                                     </span>
@@ -662,23 +662,23 @@ export default function CartPage() {
                                       </span>
                                     )}
                                   </div>
-                                  <h3 className={`font-heading font-bold text-sm text-groomish-slate mt-1 truncate ${unavailableInfo ? "line-through text-groomish-crimson" : ""}`}>
+                                  <h3 className={`font-heading font-bold text-xs sm:text-sm text-groomish-slate mt-1 line-clamp-2 sm:truncate ${unavailableInfo ? "line-through text-groomish-crimson" : ""}`}>
                                     {item.productName}
                                   </h3>
-                                  <div className="flex items-center gap-1.5 text-[11px] text-groomish-slate/60 mt-0.5">
-                                    <Store className="w-3 h-3 text-groomish-orange" />
-                                    <span>Collect at front desk or receive during service</span>
+                                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-groomish-slate/60 mt-0.5">
+                                    <Store className="w-3 h-3 text-groomish-orange shrink-0" />
+                                    <span className="truncate">Collect at front desk or in visit</span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Price */}
-                              <div className="text-right shrink-0">
-                                <span className={`text-base font-extrabold block ${unavailableInfo ? "text-groomish-crimson text-xs" : "text-groomish-slate"}`}>
+                              <div className="text-right shrink-0 pl-1.5">
+                                <span className={`text-sm sm:text-base font-extrabold block ${unavailableInfo ? "text-groomish-crimson text-xs" : "text-groomish-slate"}`}>
                                   {unavailableInfo ? "Unavailable" : `₹${item.totalPrice}`}
                                 </span>
                                 {item.productMrp && item.productMrp > item.unitPrice && !unavailableInfo && (
-                                  <span className="text-[11px] text-groomish-slate/40 line-through block">
+                                  <span className="text-[10px] sm:text-[11px] text-groomish-slate/40 line-through block">
                                     ₹{item.productMrp * item.quantity}
                                   </span>
                                 )}
@@ -686,15 +686,15 @@ export default function CartPage() {
                             </div>
 
                             {/* Controls Bar */}
-                            <div className="flex items-center justify-between gap-3 pt-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 pt-2 min-w-0 w-full">
                               {/* Quantity Controls */}
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 shrink-0">
                                 <span className="text-[11px] font-semibold text-groomish-slate/60">Qty:</span>
                                 <div className="flex items-center border border-groomish-slate/20 rounded-full bg-groomish-cream p-0.5">
                                   <button
                                     type="button"
                                     onClick={() => handleQuantityDelta(item, -1)}
-                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-groomish-slate transition"
+                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-groomish-slate transition cursor-pointer"
                                   >
                                     <Minus className="w-3 h-3" />
                                   </button>
@@ -704,7 +704,7 @@ export default function CartPage() {
                                   <button
                                     type="button"
                                     onClick={() => handleQuantityDelta(item, 1)}
-                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-groomish-slate transition"
+                                    className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white text-groomish-slate transition cursor-pointer"
                                   >
                                     <Plus className="w-3 h-3" />
                                   </button>
@@ -713,16 +713,16 @@ export default function CartPage() {
                                 <button
                                   type="button"
                                   onClick={() => removeItem(item.id, item.productName)}
-                                  className="p-1.5 rounded-full hover:bg-groomish-crimson/10 text-groomish-slate/40 hover:text-groomish-crimson transition ml-1"
+                                  className="p-1.5 rounded-full hover:bg-groomish-crimson/10 text-groomish-slate/40 hover:text-groomish-crimson transition ml-1 cursor-pointer"
                                   title="Remove product"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
 
-                              <span className="text-[11px] font-bold text-groomish-slate flex items-center gap-1">
+                              <span className="text-[10px] sm:text-[11px] font-bold text-groomish-slate flex items-center gap-1 shrink-0">
                                 <GroomCoinIcon className="w-3.5 h-3.5" />
-                                <span>+{calculateCoins(item.totalPrice)} Groom Coins</span>
+                                <span>+{calculateCoins(item.totalPrice)} Coins</span>
                               </span>
                             </div>
                           </div>
@@ -750,8 +750,8 @@ export default function CartPage() {
               </div>
 
               {/* RIGHT COLUMN: ORDER SUMMARY & PROCEED TO CHECKOUT */}
-              <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-5">
-                <div className="bg-white rounded-3xl p-6 border border-groomish-slate/10 shadow-card space-y-5">
+              <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-4 sm:space-y-5 w-full max-w-full min-w-0">
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-groomish-slate/10 shadow-card space-y-4 sm:space-y-5 w-full min-w-0">
                   <h3 className="font-heading font-extrabold text-base text-groomish-slate border-b border-groomish-slate/10 pb-3">
                     Order Summary
                   </h3>

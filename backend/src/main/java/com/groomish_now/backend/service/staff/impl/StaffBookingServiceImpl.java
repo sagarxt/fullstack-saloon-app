@@ -540,9 +540,22 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             }
         }
 
-        double pricePaid = Math.max(0.0, totalAmount - discount);
-        booking.setTotalAmount(totalAmount);
-        booking.setPricePaid(pricePaid);
+        double finalAmount = Math.max(0.0, totalAmount - discount);
+        booking.setTotalAmount(finalAmount);
+
+        // Preserve already confirmed paid amount (e.g. online payment received previously)
+        // Never increase pricePaid when new items are added without a corresponding payment
+        double currentPaid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
+        if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.COMPLETED) {
+            double confirmed = booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : currentPaid;
+            booking.setPricePaid(Math.min(confirmed, finalAmount));
+        } else if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.PENDING) {
+            if (booking.getStatus() != BookingStatus.COMPLETED) {
+                booking.setPricePaid(0.0);
+            }
+        } else {
+            booking.setPricePaid(Math.min(currentPaid, finalAmount));
+        }
         booking.setTotalDurationMinutes(totalDuration);
 
         // Recalculate snapshot expected reward points based on item snapshots (never live catalog)
@@ -563,7 +576,7 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             }
         } catch (Exception ignored) {}
 
-        int baseCoins = (int) Math.round((pricePaid / spendPerCoin) * multiplier);
+        int baseCoins = (int) Math.round((finalAmount / spendPerCoin) * multiplier);
         int bonusCoins = 0;
         if (booking.getBookingItems() != null) {
             bonusCoins = booking.getBookingItems().stream()
@@ -644,6 +657,9 @@ public class StaffBookingServiceImpl implements StaffBookingService {
             throw new RuntimeException("Cannot start a " + booking.getStatus() + " booking");
         }
 
+        if (booking.getCheckedInAt() == null) {
+            booking.setCheckedInAt(LocalDateTime.now());
+        }
         booking.setStatus(BookingStatus.IN_PROGRESS);
         if (booking.getBookingItems() != null) {
             for (BookingItem bi : booking.getBookingItems()) {
@@ -686,6 +702,70 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     serviceName,
                     "IN_PROGRESS",
                     "Welcome to Groomish Now! Your stylist " + staff.getName() + " has checked you in and your booking is now in progress. Relax and enjoy your bespoke grooming treatments."
+            );
+        }
+
+        return toDto(saved);
+    }
+
+    @Override
+    public BookingResponse checkInBookingForCustomer(UUID staffId, UUID bookingId) {
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        validateStaffBranchAccess(staff, booking, "check-in");
+
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new RuntimeException("Cannot check in a " + booking.getStatus() + " booking");
+        }
+
+        booking.setStatus(BookingStatus.CHECKED_IN);
+        LocalDateTime now = LocalDateTime.now();
+        booking.setCheckedInAt(now);
+        if (booking.getBookingItems() != null) {
+            for (BookingItem bi : booking.getBookingItems()) {
+                bi.setStatus(BookingStatus.CHECKED_IN);
+                bookingItemRepository.save(bi);
+            }
+        }
+        booking.setBookedBy("CHECKED_IN_BY_STAFF - " + staff.getName());
+
+        Booking saved = bookingRepository.save(booking);
+
+        bookingTimelineService.recordTimeline(
+                saved,
+                "CHECKED_IN",
+                "Client Checked In",
+                "Customer arrived at the salon and checked in with stylist " + staff.getName() + ". Services are now underway.",
+                staff.getName(),
+                "STAFF",
+                staff.getEmail()
+        );
+
+        if (saved.getUser() != null) {
+            String displayCode = saved.getBookingCode() != null ? saved.getBookingCode() : "GN-" + saved.getId().toString().substring(0, 8).toUpperCase();
+            Notification notif = Notification.builder()
+                    .user(saved.getUser())
+                    .title("Checked In at Salon ✂️")
+                    .message("Welcome to Groomish Now! You are checked in (" + displayCode + "). Services are underway with stylist " + staff.getName() + ".")
+                    .type(NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
+                    .build();
+            notificationRepository.save(notif);
+
+            String serviceName = (saved.getBookingItems() != null && !saved.getBookingItems().isEmpty())
+                    ? saved.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Service";
+            emailService.sendBookingStatusEmail(
+                    saved.getUser().getEmail(),
+                    saved.getUser().getName(),
+                    displayCode,
+                    serviceName,
+                    "CHECKED_IN",
+                    "Welcome to Groomish Now! Stylist " + staff.getName() + " has checked you in for your appointment. Relax and enjoy your bespoke grooming treatments."
             );
         }
 

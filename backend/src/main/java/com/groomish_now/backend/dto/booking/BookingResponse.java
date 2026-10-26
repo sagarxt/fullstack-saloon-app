@@ -21,6 +21,7 @@ public class BookingResponse {
     private String couponApplied;
     private Double totalAmount;
     private Double pricePaid;
+    private Double remainingAmount;
     private String status;
     private String paymentMethod;
     private String paymentStatus;
@@ -40,5 +41,8 @@ public class BookingResponse {
     private List<BookingItemDetailsResponse> items;
     private List<BookingProductResponse> products;
     private List<BookingTimelineResponse> timeline;
+    private LocalDateTime checkedInAt;
+    private LocalDateTime completedAt;
+    private LocalDateTime cancelledAt;
     private LocalDateTime createdAt;
 }

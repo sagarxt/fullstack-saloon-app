@@ -138,55 +138,96 @@ export default function InvoiceBreakdownCard({
           <span className="text-groomish-green font-bold text-[11px]">FREE</span>
         </div>
 
-        {/* Divider before Final Payable */}
-        <div className="border-t border-dashed border-groomish-slate/20 pt-2.5 flex justify-between text-base font-heading font-extrabold text-groomish-slate">
-          <span>Final Payable</span>
-          <span className="text-groomish-orange font-black text-lg">
-            ₹{booking.pricePaid ?? booking.totalAmount ?? 0}
-          </span>
-        </div>
+        {/* Total Amount & Balance Breakdown */}
+        {(() => {
+          const totalAmount = Number(booking.totalAmount ?? booking.pricePaid ?? 0);
+          const pricePaid = Number(booking.pricePaid ?? 0);
+          const remainingAmount = Number(
+            booking.remainingAmount !== undefined && booking.remainingAmount !== null
+              ? booking.remainingAmount
+              : Math.max(0, totalAmount - pricePaid)
+          );
+          const isPartiallyPaid = pricePaid > 0.01 && remainingAmount > 0.01;
+          const isFullyPaid = remainingAmount <= 0.01 && (pricePaid > 0 || isCompleted);
 
-        {/* Payment Method */}
-        <div className="flex justify-between items-center py-1 pt-1.5 border-t border-groomish-slate/10">
-          <span className="text-groomish-slate/70">Payment Method</span>
-          <span className="font-bold text-groomish-slate">{paymentMethodLabel}</span>
-        </div>
-
-        {/* Payment Status */}
-        <div className="flex justify-between items-center py-1">
-          <span className="text-groomish-slate/70">Payment Status</span>
-          <div>
-            {isCancelled ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>Cancelled • No Payment Received</span>
-              </span>
-            ) : isCompleted ? (
-              booking.paymentMethod === "CASH" ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Paid at Salon</span>
+          return (
+            <>
+              {/* Grand Total */}
+              <div className="border-t border-dashed border-groomish-slate/20 pt-2.5 flex justify-between text-base font-heading font-extrabold text-groomish-slate">
+                <span>Total Amount</span>
+                <span className="text-groomish-slate font-black text-lg">
+                  ₹{totalAmount}
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>
-                    Paid Online ({booking.paymentMethod === "ONLINE" ? "Razorpay" : booking.paymentMethod || "Razorpay"})
+              </div>
+
+              {/* Already Paid Online (Partial Payment) */}
+              {isPartiallyPaid && (
+                <div className="flex justify-between py-1 text-xs text-emerald-700 font-bold bg-emerald-50/80 px-2.5 py-1 rounded-lg border border-emerald-200">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Already Paid Online</span>
                   </span>
-                </span>
-              )
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                <Clock className="w-3.5 h-3.5" />
-                <span>
-                  {booking.paymentMethod === "ONLINE"
-                    ? "Payment Pending (Online)"
-                    : "Payment Pending (Pay at Salon)"}
-                </span>
-              </span>
-            )}
-          </div>
-        </div>
+                  <span>-₹{pricePaid}</span>
+                </div>
+              )}
+
+              {/* Remaining Balance to Pay */}
+              {isPartiallyPaid && (
+                <div className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 font-bold">
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Remaining Balance to Pay:</span>
+                  </span>
+                  <span className="text-sm font-black text-amber-700 font-mono">
+                    ₹{remainingAmount}
+                  </span>
+                </div>
+              )}
+
+              {/* Payment Method */}
+              <div className="flex justify-between items-center py-1 pt-1.5 border-t border-groomish-slate/10">
+                <span className="text-groomish-slate/70">Payment Method</span>
+                <span className="font-bold text-groomish-slate">{paymentMethodLabel}</span>
+              </div>
+
+              {/* Payment Status */}
+              <div className="flex justify-between items-center py-1">
+                <span className="text-groomish-slate/70">Payment Status</span>
+                <div>
+                  {isCancelled ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>Cancelled • No Payment Received</span>
+                    </span>
+                  ) : isFullyPaid ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>
+                        {booking.paymentMethod === "CASH"
+                          ? "Paid at Salon"
+                          : `Paid Online (${booking.paymentMethod === "ONLINE" ? "Razorpay" : booking.paymentMethod || "Razorpay"})`}
+                      </span>
+                    </span>
+                  ) : isPartiallyPaid ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Partially Paid (₹{pricePaid} Paid • ₹{remainingAmount} Due)</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>
+                        {booking.paymentMethod === "ONLINE"
+                          ? "Payment Pending (Online)"
+                          : "Payment Pending (Pay at Salon)"}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Invoice Ref */}
         {booking.invoiceNumber && !isCancelled && (

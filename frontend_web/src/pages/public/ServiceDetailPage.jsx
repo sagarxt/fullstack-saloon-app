@@ -200,6 +200,94 @@ export default function ServiceDetailPage() {
   const averageRating = ratingSummary?.averageRating ? ratingSummary.averageRating.toFixed(1) : "4.9";
   const totalReviewsCount = ratingSummary?.totalReviews ?? reviews.length;
 
+  const reviewsSection = (
+    <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-soft space-y-4">
+      <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4 gap-3 flex-wrap">
+        <div className="min-w-0">
+          <h2 className="font-heading font-extrabold text-lg sm:text-xl text-groomish-slate flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-groomish-orange shrink-0" />
+            <span>Verified Client Reviews</span>
+          </h2>
+          <p className="text-xs text-groomish-slate/60 mt-0.5">
+            Authentic ratings from customers who experienced this treatment.
+          </p>
+        </div>
+
+        <div className="text-left sm:text-right shrink-0">
+          <div className="flex items-center gap-1 text-2xl font-heading font-extrabold text-groomish-slate">
+            <Star className="w-6 h-6 fill-groomish-gold text-groomish-gold" />
+            <span>{averageRating}</span>
+          </div>
+          <span className="text-[11px] text-groomish-slate/50">
+            Based on {totalReviewsCount} review{totalReviewsCount !== 1 ? "s" : ""}
+          </span>
+        </div>
+      </div>
+
+      {/* Reviews List */}
+      {reviews.length === 0 ? (
+        <div className="py-10 text-center text-xs text-groomish-slate/50 bg-groomish-cream/50 rounded-2xl">
+          <p>No written reviews yet for this treatment.</p>
+          <p className="mt-1 font-semibold text-groomish-orange">
+            Book this treatment and be the first to share your experience!
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {reviews.map((r) => (
+            <div
+              key={r.id}
+              className="p-4 rounded-2xl bg-groomish-cream/40 border border-groomish-slate/10 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-groomish-orangeLight text-groomish-orange flex items-center justify-center font-bold text-xs">
+                    {r.userName?.charAt(0) || "C"}
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs text-groomish-slate block">
+                      {r.userName || "Verified Customer"}
+                    </span>
+                    <span className="text-[10px] text-groomish-green font-semibold">
+                      ✓ Verified Visit
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-3.5 h-3.5 ${
+                        star <= (r.rating || 5)
+                          ? "fill-groomish-gold text-groomish-gold"
+                          : "text-gray-200"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {r.review && r.review.trim() && (
+                <p className="text-xs text-groomish-slate/80 leading-relaxed italic">
+                  "{r.review}"
+                </p>
+              )}
+
+              <div className="text-[10px] text-groomish-slate/40 text-right">
+                {r.createdAt
+                  ? new Date(r.createdAt).toLocaleDateString(undefined, {
+                      dateStyle: "medium",
+                    })
+                  : "Recently"}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-groomish-cream flex flex-col font-sans w-full max-w-full overflow-x-clip">
       <Navbar />
@@ -407,90 +495,9 @@ export default function ServiceDetailPage() {
                 </div>
               </div>
 
-              {/* VERIFIED CUSTOMER REVIEWS & RATINGS */}
-              <div className="bg-white rounded-2xl p-4 sm:p-5.5 border border-groomish-slate/10 shadow-soft space-y-4">
-                <div className="flex items-center justify-between border-b border-groomish-slate/10 pb-4 gap-3 flex-wrap">
-                  <div className="min-w-0">
-                    <h2 className="font-heading font-extrabold text-lg sm:text-xl text-groomish-slate flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5 text-groomish-orange shrink-0" />
-                      <span>Verified Client Reviews</span>
-                    </h2>
-                    <p className="text-xs text-groomish-slate/60 mt-0.5">
-                      Authentic ratings from customers who experienced this treatment.
-                    </p>
-                  </div>
-
-                  <div className="text-left sm:text-right shrink-0">
-                    <div className="flex items-center gap-1 text-2xl font-heading font-extrabold text-groomish-slate">
-                      <Star className="w-6 h-6 fill-groomish-gold text-groomish-gold" />
-                      <span>{averageRating}</span>
-                    </div>
-                    <span className="text-[11px] text-groomish-slate/50">
-                      Based on {totalReviewsCount} review{totalReviewsCount !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Reviews List */}
-                {reviews.length === 0 ? (
-                  <div className="py-10 text-center text-xs text-groomish-slate/50 bg-groomish-cream/50 rounded-2xl">
-                    <p>No written reviews yet for this treatment.</p>
-                    <p className="mt-1 font-semibold text-groomish-orange">
-                      Book this treatment and be the first to share your experience!
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {reviews.map((r) => (
-                      <div
-                        key={r.id}
-                        className="p-4 rounded-2xl bg-groomish-cream/40 border border-groomish-slate/10 space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-groomish-orangeLight text-groomish-orange flex items-center justify-center font-bold text-xs">
-                              {r.userName?.charAt(0) || "C"}
-                            </div>
-                            <div>
-                              <span className="font-bold text-xs text-groomish-slate block">
-                                {r.userName || "Verified Customer"}
-                              </span>
-                              <span className="text-[10px] text-groomish-green font-semibold">
-                                ✓ Verified Visit
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`w-3.5 h-3.5 ${star <= (r.rating || 5)
-                                    ? "fill-groomish-gold text-groomish-gold"
-                                    : "text-gray-200"
-                                  }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
-                        {r.review && r.review.trim() && (
-                          <p className="text-xs text-groomish-slate/80 leading-relaxed italic">
-                            "{r.review}"
-                          </p>
-                        )}
-
-                        <div className="text-[10px] text-groomish-slate/40 text-right">
-                          {r.createdAt
-                            ? new Date(r.createdAt).toLocaleDateString(undefined, {
-                              dateStyle: "medium",
-                            })
-                            : "Recently"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* DESKTOP REVIEWS (Shown in Left Column on Desktop >= lg) */}
+              <div className="hidden lg:block">
+                {reviewsSection}
               </div>
             </div>
 
@@ -697,6 +704,11 @@ export default function ServiceDetailPage() {
                     )}
                   </div>
                 )}
+
+                {/* MOBILE REVIEWS (Moved after Add to Cart and Offers on Mobile) */}
+                <div className="block lg:hidden pt-2">
+                  {reviewsSection}
+                </div>
               </div>
             </div>
           </section>
