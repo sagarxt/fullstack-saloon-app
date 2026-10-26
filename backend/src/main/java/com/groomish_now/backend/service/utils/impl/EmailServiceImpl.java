@@ -308,7 +308,7 @@ public class EmailServiceImpl implements EmailService {
                 "<div style='color: #373A43; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>")
                 .append("<div style='background: #FEF2F2; border: 1px solid #FCA5A5; border-left: 5px solid #EA4158; border-radius: 12px; padding: 20px; margin-bottom: 22px;'>")
                 .append("<div style='display: flex; align-items: center; gap: 8px;'>")
-                .append("<span style='font-size: 22px;'>⚠️</span>")
+//                .append("<span style='font-size: 22px;'>⚠️</span>")
                 .append("<h2 style='color: #EA4158; margin: 0; font-size: 18px; font-weight: 800;'>Action Required: Missed Salon Check-In</h2>")
                 .append("</div>")
                 .append("<p style='margin: 8px 0 0 0; font-size: 13px; color: #991B1B; line-height: 1.6;'>")
