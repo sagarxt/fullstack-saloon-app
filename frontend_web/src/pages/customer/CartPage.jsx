@@ -460,7 +460,7 @@ export default function CartPage() {
                           >
                             <div className="flex items-start gap-2.5 sm:gap-4 justify-between min-w-0">
                               <div className="flex items-start gap-2.5 sm:gap-3.5 min-w-0 flex-1">
-                                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                                <div className="w-16 sm:w-20 aspect-[4/3] rounded-xl sm:rounded-2xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
                                   <img
                                     src={getOptimizedImageUrl(
                                       item.serviceImage || "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&q=80",
@@ -957,7 +957,7 @@ export default function CartPage() {
                     className="p-3 rounded-2xl border border-groomish-slate/10 hover:border-groomish-orange/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition hover:bg-groomish-cream/30 bg-white"
                   >
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0 mt-0.5">
+                      <div className="w-14 aspect-[4/3] rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0 mt-0.5">
                         <img
                           src={
                             srv.image ||

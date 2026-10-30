@@ -2,7 +2,10 @@ package com.groomish_now.backend.controller.admin;
 
 import com.groomish_now.backend.dto.booking.BookingResponse;
 import com.groomish_now.backend.dto.booking.BookingUpdateRequest;
+import com.groomish_now.backend.dto.payment.AdminRefundRequest;
+import com.groomish_now.backend.dto.payment.RefundDetailResponse;
 import com.groomish_now.backend.service.admin.BookingAdminService;
+import com.groomish_now.backend.service.payment.RazorpayRefundService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +20,7 @@ import java.util.UUID;
 public class AdminBookingController {
 
     private final BookingAdminService bookingAdminService;
+    private final RazorpayRefundService razorpayRefundService;
 
     // ========== ADVANCED SEARCH ==========
     @GetMapping
@@ -78,6 +82,15 @@ public class AdminBookingController {
         return bookingAdminService.cancelBooking(id, note);
     }
 
+    // ========== MARK NO-SHOW ==========
+    @PostMapping("/{id}/no-show")
+    public BookingResponse markBookingNoShow(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String note
+    ) {
+        return bookingAdminService.markBookingNoShow(id, note);
+    }
+
     // ========== CHECK-IN BOOKING ==========
     @PostMapping("/{id}/check-in")
     public BookingResponse checkInBooking(
@@ -91,5 +104,21 @@ public class AdminBookingController {
             @PathVariable UUID id
     ) {
         return bookingAdminService.checkInBooking(id);
+    }
+
+    // ========== REFUND (RAZORPAY) ==========
+    @PostMapping("/{id}/refund")
+    public RefundDetailResponse refundBooking(
+            @PathVariable UUID id,
+            @RequestBody(required = false) AdminRefundRequest request
+    ) {
+        Double amount = request != null ? request.getAmount() : null;
+        String reason = request != null ? request.getReason() : null;
+        return razorpayRefundService.initiateCustomRefund(id, amount, reason);
+    }
+
+    @GetMapping("/{id}/refund-status")
+    public RefundDetailResponse getRefundStatus(@PathVariable UUID id) {
+        return razorpayRefundService.getLiveRefundStatus(id);
     }
 }

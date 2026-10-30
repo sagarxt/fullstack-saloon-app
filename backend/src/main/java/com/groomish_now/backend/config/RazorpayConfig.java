@@ -19,6 +19,12 @@ public class RazorpayConfig {
     @Value("${razorpay.key-secret:${razorpay.key.secret:}}")
     private String keySecret;
 
+    @Value("${razorpay.webhook-secret:${razorpay.webhook.secret:}}")
+    private String webhookSecret;
+
+    @Value("${razorpay.webhook.enabled:false}")
+    private boolean webhookEnabled;
+
     @Bean
     public RazorpayClient razorpayClient() {
         if (keyId != null && !keyId.isBlank() && keySecret != null && !keySecret.isBlank() && !keyId.contains("placeholder")) {

@@ -10,4 +10,8 @@ import java.util.UUID;
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     Page<Payment> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+
+    java.util.Optional<Payment> findByRazorpayOrderId(String razorpayOrderId);
+
+    java.util.Optional<Payment> findByPaymentGatewayId(String paymentGatewayId);
 }

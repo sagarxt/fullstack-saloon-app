@@ -1,4 +1,5 @@
 import { createContext, useState } from "react";
+import { logoutApi } from "../api/auth";
 
 export const AuthContext = createContext(null);
 
@@ -29,7 +30,12 @@ export default function AuthProvider({ children }) {
         }
     };
 
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await logoutApi();
+        } catch (e) {
+            // ignore logout error
+        }
         setUser(null);
         localStorage.removeItem("user");
         localStorage.removeItem("token");

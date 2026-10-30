@@ -256,6 +256,19 @@ public class BookingMapper {
         dto.setPointsConfirmed(b.getStatus() == BookingStatus.COMPLETED);
         dto.setTimeline(timeline != null ? timeline : new ArrayList<>());
 
+        // Map Refund tracking
+        String refStatus = b.getRefundStatus();
+        if ((refStatus == null || refStatus.equalsIgnoreCase("NONE")) && b.getPayment() != null && b.getPayment().getRefundStatus() != null) {
+            refStatus = b.getPayment().getRefundStatus();
+        }
+        dto.setRefundStatus(refStatus != null ? refStatus : "NONE");
+        dto.setRefundAmount(b.getRefundAmount() != null ? b.getRefundAmount() : (b.getPayment() != null ? b.getPayment().getRefundedAmount() : null));
+        dto.setRazorpayRefundId(b.getRazorpayRefundId() != null ? b.getRazorpayRefundId() : (b.getPayment() != null ? b.getPayment().getRazorpayRefundId() : null));
+        dto.setRefundArn(b.getRefundArn() != null ? b.getRefundArn() : (b.getPayment() != null ? b.getPayment().getRefundArn() : null));
+        dto.setRefundReason(b.getRefundReason() != null ? b.getRefundReason() : (b.getPayment() != null ? b.getPayment().getRefundReason() : null));
+        dto.setRefundedAt(b.getRefundedAt() != null ? b.getRefundedAt() : (b.getPayment() != null ? b.getPayment().getRefundedAt() : null));
+        dto.setRescheduleCount(b.getRescheduleCount() != null ? b.getRescheduleCount() : 0);
+
         return dto;
     }
 

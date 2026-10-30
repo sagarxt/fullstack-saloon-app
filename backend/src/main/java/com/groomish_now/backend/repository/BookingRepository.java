@@ -28,6 +28,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
 
     java.util.Optional<Booking> findFirstByBookingCodeStartingWithIgnoreCase(String prefix);
 
+    java.util.Optional<Booking> findByRazorpayOrderId(String razorpayOrderId);
+
     List<Booking> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     Page<Booking> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);

@@ -18,6 +18,7 @@ import { Colors } from '../../../theme/colors';
 import { useTheme } from '../../../context/ThemeContext';
 import TopHeader from '../../../components/TopHeader';
 import { format12HourDateTime, formatSlot12Hour, getLocalDateStr } from '../../../utils/dateHelper';
+import * as Clipboard from 'expo-clipboard';
 
 // Salon slots in 30-min intervals
 const SALON_SLOTS = [
@@ -34,6 +35,11 @@ export default function BookingDetailsScreen() {
 
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Refund Live Checking State
+  const [checkingRefund, setCheckingRefund] = useState(false);
+  const [copiedRefundId, setCopiedRefundId] = useState(false);
+  const [copiedArn, setCopiedArn] = useState(false);
 
   // Reschedule Modal State
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
@@ -68,6 +74,14 @@ export default function BookingDetailsScreen() {
 
   /* ─── RESCHEDULE LOGIC ─── */
   const handleOpenReschedule = () => {
+    if ((booking?.rescheduleCount ?? 0) >= 2) {
+      Alert.alert(
+        'Reschedule Limit Reached',
+        'You have reached the maximum allowed limit of 2 reschedules for this booking per salon policy. To choose another time, please contact salon reception or book a new appointment.'
+      );
+      return;
+    }
+
     const today = getLocalDateStr();
     let initialDate = today;
     let initialTime = '';
@@ -149,11 +163,65 @@ export default function BookingDetailsScreen() {
     }
   };
 
+  /* ─── LIVE RAZORPAY REFUND LOGIC ─── */
+  const handleCheckLiveRefund = async () => {
+    if (!booking?.id) return;
+    setCheckingRefund(true);
+    try {
+      const res = await customerApi.getRefundStatus(booking.id);
+      const data = res.data;
+      setBooking((prev: any) => ({
+        ...prev,
+        refundStatus: data.refundStatus || prev?.refundStatus,
+        refundAmount: data.refundAmount !== undefined ? data.refundAmount : prev?.refundAmount,
+        razorpayRefundId: data.razorpayRefundId || data.refundId || prev?.razorpayRefundId,
+        refundArn: data.refundArn || data.bankArn || prev?.refundArn,
+        refundReason: data.refundReason || data.message || prev?.refundReason,
+      }));
+      Alert.alert(
+        'Razorpay Live Sync',
+        `Status: ${data.refundStatus || 'ACTIVE'}\nRefund Amount: ₹${data.refundAmount || 0}${data.bankArn ? `\nBank ARN: ${data.bankArn}` : ''}\n${data.message || 'Direct sync from Razorpay API.'}`
+      );
+    } catch (err: any) {
+      Alert.alert('Refund Status Check', err.response?.data?.message || 'Could not check live refund status with Razorpay at this moment.');
+    } finally {
+      setCheckingRefund(false);
+    }
+  };
+
+  const handleCopyRefundId = async (rId: string) => {
+    if (!rId) return;
+    await Clipboard.setStringAsync(rId);
+    setCopiedRefundId(true);
+    setTimeout(() => setCopiedRefundId(false), 2000);
+  };
+
+  const handleCopyArn = async (arn: string) => {
+    if (!arn) return;
+    await Clipboard.setStringAsync(arn);
+    setCopiedArn(true);
+    setTimeout(() => setCopiedArn(false), 2000);
+  };
+
   /* ─── CANCEL LOGIC ─── */
   const handleCancelBooking = () => {
+    const isWithin2Hours = booking?.scheduledAt
+      ? (new Date(booking.scheduledAt).getTime() - Date.now()) <= 2 * 60 * 60 * 1000
+      : false;
+
+    const paidOnline = (booking?.pricePaid > 0.01) ||
+      (booking?.payment?.status === 'COMPLETED' && booking?.payment?.paymentMethod !== 'CASH');
+
+    const alertTitle = isWithin2Hours ? 'Late Cancellation Notice' : 'Cancel Salon Booking';
+    const alertMessage = isWithin2Hours
+      ? '⚠️ Your appointment is in less than 2 hours. In accordance with salon policy, a ₹200 advance deposit is retained. Any excess prepaid amount is refunded automatically to your original payment method via Razorpay within 5–7 business days. Proceed?'
+      : paidOnline
+      ? `Are you sure you want to cancel? Free cancellation is active (> 2h before slot). 100% of your advance payment (₹${booking.pricePaid}) will be refunded via Razorpay within 5–7 business days.`
+      : 'Are you sure you want to cancel this booking? Free cancellation is active (> 2h before slot).';
+
     Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking? Any Groom Coins spent will be refunded to your ledger.',
+      alertTitle,
+      alertMessage,
       [
         { text: 'Keep Booking', style: 'cancel' },
         {
@@ -162,7 +230,12 @@ export default function BookingDetailsScreen() {
           onPress: async () => {
             try {
               await customerApi.cancelBooking(id);
-              Alert.alert('Cancelled', 'Your booking has been cancelled.');
+              Alert.alert(
+                'Cancelled',
+                paidOnline
+                  ? 'Your booking has been cancelled and an automated Razorpay refund has been initiated. View refund details below.'
+                  : 'Your booking has been cancelled.'
+              );
               loadBooking();
             } catch (err: any) {
               Alert.alert('Error', err.response?.data?.message || 'Failed to cancel booking.');
@@ -217,6 +290,8 @@ export default function BookingDetailsScreen() {
         return { label: 'Completed', bg: Colors.blueLight, text: Colors.blue };
       case 'CANCELLED':
         return { label: 'Cancelled', bg: Colors.redLight, text: Colors.red };
+      case 'NO_SHOW':
+        return { label: 'No-Show', bg: '#FEE2E2', text: '#B91C1C' };
       case 'MODIFIED':
         return { label: 'Rescheduled', bg: '#F3E8FF', text: '#7E22CE' };
       default:
@@ -263,7 +338,7 @@ export default function BookingDetailsScreen() {
     isProduct: true,
   }));
   const items = [...serviceItems, ...productItems];
-  const isModifiable = booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED';
+  const isModifiable = booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED' && booking.status !== 'NO_SHOW';
 
   // Bill calculations
   const servicesMrp = (booking.items || booking.bookingItems || []).reduce(
@@ -286,18 +361,26 @@ export default function BookingDetailsScreen() {
     0
   );
   const calculatedTotalMrp = servicesMrp + productsMrp;
-  const baseBookingAmount = booking.totalAmount ?? 0;
-  const subtotal = calculatedTotalMrp > baseBookingAmount ? calculatedTotalMrp : (baseBookingAmount > 0 ? baseBookingAmount : (booking.pricePaid ?? 0));
-  const mrpDiscount = Math.max(0, subtotal - (baseBookingAmount > 0 ? baseBookingAmount : (booking.pricePaid ?? subtotal)));
-
-  const finalPayable = booking.pricePaid ?? baseBookingAmount;
-  const codeDiscount = baseBookingAmount > finalPayable ? Math.max(0, baseBookingAmount - finalPayable) : 0;
+  const servicesCatalogSum = (booking.items || []).reduce((sum: number, it: any) => sum + Number(it.servicePriceSnapshot ?? it.price ?? 0), 0);
+  const productsCatalogSum = (booking.products || []).reduce((sum: number, it: any) => sum + Number(it.unitPrice ?? 0) * (it.quantity || 1), 0);
+  const catalogSum = servicesCatalogSum + productsCatalogSum;
+  const totalAmount = Number(booking.totalAmount ?? catalogSum);
+  const subtotal = calculatedTotalMrp > catalogSum ? calculatedTotalMrp : (catalogSum > 0 ? catalogSum : totalAmount);
+  const mrpDiscount = Math.max(0, subtotal - (catalogSum > 0 ? catalogSum : totalAmount));
 
   const couponOrVoucherCode = booking.couponApplied || booking.coupon?.code || null;
   const isVoucher = Boolean(
     couponOrVoucherCode &&
     (couponOrVoucherCode.toUpperCase().includes('VOUCH') || couponOrVoucherCode.toUpperCase().includes('VIP'))
   );
+
+  const finalPayable = totalAmount > 0 ? totalAmount : (Number(booking.pricePaid) || catalogSum);
+  let codeDiscount = 0;
+  if (couponOrVoucherCode && catalogSum > 0 && totalAmount < catalogSum) {
+    codeDiscount = Math.max(0, catalogSum - totalAmount);
+  } else if (booking.pricePaid && catalogSum > 0 && Number(booking.pricePaid) < catalogSum && Number(booking.pricePaid) > 0) {
+    codeDiscount = Math.max(0, catalogSum - Number(booking.pricePaid));
+  }
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.bg }]} edges={['top']}>
@@ -351,6 +434,36 @@ export default function BookingDetailsScreen() {
               </Text>
               <Text style={[styles.branchBoxAddress, { color: colors.textMuted }]}>
                 {booking.storeAddress || booking.store?.address || 'Flagship Branch'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ─── NO-SHOW & DEPOSIT POLICY ─── */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder, borderLeftWidth: 4, borderLeftColor: Colors.orange }]}>
+          <View style={styles.cardHeaderRow}>
+            <View style={styles.cardHeaderLeft}>
+              <Ionicons name="shield-checkmark" size={16} color={Colors.orange} />
+              <Text style={[styles.cardHeaderTitle, { color: colors.text }]}>No-Show & Cancellation Policy</Text>
+            </View>
+          </View>
+          <View style={{ gap: 6, marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+              <Ionicons name="checkmark-circle" size={14} color={Colors.greenDark} style={{ marginTop: 2 }} />
+              <Text style={{ flex: 1, fontSize: 12, color: colors.textMuted, lineHeight: 18 }}>
+                <Text style={{ fontWeight: '700', color: colors.text }}>Free Cancellation:</Text> Reschedule or cancel free up to 2 hours before your slot.
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+              <Ionicons name="alert-circle" size={14} color={Colors.orange} style={{ marginTop: 2 }} />
+              <Text style={{ flex: 1, fontSize: 12, color: colors.textMuted, lineHeight: 18 }}>
+                <Text style={{ fontWeight: '700', color: colors.text }}>Within 2 Hours / No-Show:</Text> Cancellations within 2h or failure to arrive forfeit the advance deposit.
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
+              <Ionicons name="time-outline" size={14} color={Colors.slate} style={{ marginTop: 2 }} />
+              <Text style={{ flex: 1, fontSize: 12, color: colors.textMuted, lineHeight: 18 }}>
+                <Text style={{ fontWeight: '700', color: colors.text }}>Grace Period:</Text> Appointments are held for 30 minutes after scheduled time.
               </Text>
             </View>
           </View>
@@ -413,6 +526,146 @@ export default function BookingDetailsScreen() {
             })}
           </View>
         </View>
+
+        {/* ─── RAZORPAY REFUND DETAILS CARD ─── */}
+        {Boolean(
+          (booking.refundStatus && booking.refundStatus !== 'NONE') ||
+          booking.razorpayRefundId ||
+          (booking.status === 'CANCELLED' && Number(booking.pricePaid) > 0)
+        ) && (
+          <View style={[styles.card, styles.refundCard, { backgroundColor: colors.card, borderColor: '#38BDF8' }]}>
+            <View style={styles.refundHeaderRow}>
+              <View style={styles.refundHeaderLeft}>
+                <View style={styles.shieldIconWrap}>
+                  <Ionicons name="shield-checkmark" size={18} color="#0284C7" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.refundCardTitle, { color: colors.text }]}>Razorpay Refund Details</Text>
+                  <Text style={[styles.refundCardSub, { color: colors.textMuted }]}>
+                    Automated refund to original payment source
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.liveRefreshBtn}
+                onPress={handleCheckLiveRefund}
+                disabled={checkingRefund}
+                activeOpacity={0.8}
+              >
+                {checkingRefund ? (
+                  <ActivityIndicator size="small" color="#0284C7" />
+                ) : (
+                  <>
+                    <Ionicons name="sync-outline" size={13} color="#0284C7" />
+                    <Text style={styles.liveRefreshText}>Check Live Status</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Status & Amounts */}
+            <View style={styles.refundStatsRow}>
+              <View style={[styles.refundStatBox, { backgroundColor: colors.bg }]}>
+                <Text style={[styles.refundStatLabel, { color: colors.textMuted }]}>Status</Text>
+                <View style={[
+                  styles.refundStatusBadge,
+                  booking.refundStatus === 'PROCESSED' ? styles.refundBadgeProcessed :
+                  booking.refundStatus === 'FORFEITED' ? styles.refundBadgeForfeited :
+                  styles.refundBadgeInitiated
+                ]}>
+                  <Text style={[
+                    styles.refundStatusText,
+                    booking.refundStatus === 'PROCESSED' ? styles.refundTextProcessed :
+                    booking.refundStatus === 'FORFEITED' ? styles.refundTextForfeited :
+                    styles.refundTextInitiated
+                  ]}>
+                    {booking.refundStatus || 'INITIATED'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.refundStatBox, { backgroundColor: colors.bg }]}>
+                <Text style={[styles.refundStatLabel, { color: colors.textMuted }]}>Refunded</Text>
+                <Text style={styles.refundAmountVal}>
+                  ₹{booking.refundAmount !== undefined && booking.refundAmount !== null ? booking.refundAmount : (booking.pricePaid || 0)}
+                </Text>
+              </View>
+
+              <View style={[styles.refundStatBox, { backgroundColor: colors.bg }]}>
+                <Text style={[styles.refundStatLabel, { color: colors.textMuted }]}>Paid</Text>
+                <Text style={[styles.refundPaidVal, { color: colors.text }]}>
+                  ₹{booking.pricePaid || booking.totalAmount || 0}
+                </Text>
+              </View>
+            </View>
+
+            {/* Reference IDs with Copy */}
+            {booking.razorpayRefundId && (
+              <View style={[styles.refIdBox, { backgroundColor: colors.bg }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.refIdLabel, { color: colors.textMuted }]}>Razorpay Refund ID:</Text>
+                  <Text style={[styles.refIdCode, { color: '#0369A1' }]} selectable={true}>
+                    {booking.razorpayRefundId}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.copyIdBtn}
+                  onPress={() => handleCopyRefundId(booking.razorpayRefundId)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={copiedRefundId ? "checkmark" : "copy-outline"} size={13} color={copiedRefundId ? Colors.green : "#0284C7"} />
+                  <Text style={[styles.copyIdText, copiedRefundId && { color: Colors.green }]}>
+                    {copiedRefundId ? 'Copied' : 'Copy'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {booking.refundArn ? (
+              <View style={[styles.refIdBox, { backgroundColor: colors.bg }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.refIdLabel, { color: colors.textMuted }]}>Bank ARN (Reference No):</Text>
+                  <Text style={[styles.refIdCode, { color: colors.text }]} selectable={true}>
+                    {booking.refundArn}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.copyIdBtn}
+                  onPress={() => handleCopyArn(booking.refundArn)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={copiedArn ? "checkmark" : "copy-outline"} size={13} color={copiedArn ? Colors.green : "#0284C7"} />
+                  <Text style={[styles.copyIdText, copiedArn && { color: Colors.green }]}>
+                    {copiedArn ? 'Copied' : 'Copy ARN'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={[styles.refIdBox, { backgroundColor: colors.bg }]}>
+                <Ionicons name="time-outline" size={14} color="#0284C7" />
+                <Text style={[styles.arnNotice, { color: colors.textMuted }]}>
+                  Bank ARN will appear here once settled by your bank. Tap "Check Live Status" anytime.
+                </Text>
+              </View>
+            )}
+
+            {booking.refundReason && (
+              <View style={styles.refundReasonBox}>
+                <Text style={styles.refundReasonText}>
+                  <Text style={{ fontWeight: '700' }}>Reason: </Text>
+                  {booking.refundReason}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.refundTimelineRow}>
+              <Ionicons name="information-circle-outline" size={14} color="#0284C7" />
+              <Text style={[styles.refundTimelineText, { color: colors.textMuted }]}>
+                Refunds typically credit within <Text style={{ fontWeight: '700' }}>5–7 business days</Text> to original account.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* ─── BILL BREAKDOWN & REMAINING PAYABLE AMOUNT ─── */}
         {(() => {
@@ -529,7 +782,9 @@ export default function BookingDetailsScreen() {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.paymentMethodStatusTitle, { color: colors.text }]}>
                       {booking.status === 'CANCELLED'
-                        ? 'Cancelled • No Payment Received'
+                        ? booking.refundStatus && booking.refundStatus !== 'NONE'
+                          ? `Refund ${booking.refundStatus} (₹${booking.refundAmount || 0})`
+                          : 'Cancelled • No Online Payment'
                         : isFullyPaid
                         ? booking.paymentMethod === 'CASH'
                           ? 'Paid at Salon Reception'
@@ -615,6 +870,21 @@ export default function BookingDetailsScreen() {
               >
                 <Ionicons name="close" size={20} color={colors.text} />
               </TouchableOpacity>
+            </View>
+
+            {/* Reschedule Rules & Counter */}
+            <View style={[styles.reschedulePolicyBanner, { backgroundColor: colors.bg }]}>
+              <View style={styles.reschedulePolicyLeft}>
+                <Ionicons name="sparkles" size={14} color={Colors.orange} />
+                <Text style={[styles.reschedulePolicyText, { color: colors.text }]}>
+                  Max 2 reschedules permitted per booking.
+                </Text>
+              </View>
+              <View style={styles.reschedulePolicyBadge}>
+                <Text style={styles.reschedulePolicyBadgeText}>
+                  {booking?.rescheduleCount ?? 0} / 2 used
+                </Text>
+              </View>
             </View>
 
             {/* Date Quick Selector */}
@@ -1226,5 +1496,202 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 12,
     fontWeight: '700',
+  },
+  refundCard: {
+    borderWidth: 1.5,
+  },
+  refundHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0F2FE',
+    paddingBottom: 10,
+    marginBottom: 10,
+  },
+  refundHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  shieldIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refundCardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  refundCardSub: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+  liveRefreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  liveRefreshText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  refundStatsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  refundStatBox: {
+    flex: 1,
+    padding: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refundStatLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    marginBottom: 3,
+  },
+  refundAmountVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.greenDark,
+  },
+  refundPaidVal: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  refundStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  refundBadgeProcessed: {
+    backgroundColor: '#DCFCE7',
+  },
+  refundBadgeForfeited: {
+    backgroundColor: '#FEF3C7',
+  },
+  refundBadgeInitiated: {
+    backgroundColor: '#E0F2FE',
+  },
+  refundStatusText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  refundTextProcessed: {
+    color: '#15803D',
+  },
+  refundTextForfeited: {
+    color: '#B45309',
+  },
+  refundTextInitiated: {
+    color: '#0369A1',
+  },
+  refIdBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 8,
+    borderRadius: 10,
+    marginBottom: 6,
+    gap: 6,
+  },
+  refIdLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  refIdCode: {
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: 'monospace',
+    marginTop: 1,
+  },
+  copyIdBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  copyIdText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  arnNotice: {
+    fontSize: 10,
+    flex: 1,
+  },
+  refundReasonBox: {
+    backgroundColor: '#F0F9FF',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+    marginBottom: 6,
+  },
+  refundReasonText: {
+    fontSize: 10,
+    color: '#0369A1',
+    lineHeight: 14,
+  },
+  refundTimelineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  refundTimelineText: {
+    fontSize: 10,
+    flex: 1,
+  },
+  reschedulePolicyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  reschedulePolicyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  reschedulePolicyText: {
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+  },
+  reschedulePolicyBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  reschedulePolicyBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#B45309',
   },
 });

@@ -48,4 +48,15 @@ public class CustomerProfileController {
     ) {
         profileService.changePassword(user.getId(), request);
     }
+
+    /* ===============================
+       Register / update Expo push token
+       =============================== */
+    @PutMapping("/push-token")
+    public void updatePushToken(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestBody UpdatePushTokenRequest request
+    ) {
+        profileService.updatePushToken(user.getId(), request.getPushToken());
+    }
 }

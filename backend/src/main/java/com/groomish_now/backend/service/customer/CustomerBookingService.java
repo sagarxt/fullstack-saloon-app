@@ -60,4 +60,9 @@ public interface CustomerBookingService {
             UUID bookingId,
             UUID itemId
     );
+
+    com.groomish_now.backend.dto.payment.RefundDetailResponse getBookingRefundStatus(
+            UUID userId,
+            UUID bookingId
+    );
 }

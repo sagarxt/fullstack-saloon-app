@@ -32,6 +32,7 @@ public class UserAdminServiceImpl implements UserAdminService {
     private final EmailService emailService;
     private final EmailTemplateService templateService;
     private final UserMapper userMapper;
+    private final com.groomish_now.backend.service.auth.RefreshTokenService refreshTokenService;
 
     // ------------------------------------------
     // LIST USERS WITH SEARCH + FILTERS
@@ -100,6 +101,8 @@ public class UserAdminServiceImpl implements UserAdminService {
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setPasswordChangedAt(java.time.LocalDateTime.now());
+            refreshTokenService.revokeAllUserTokens(user);
         }
 
         if (request.getStoreId() != null) {

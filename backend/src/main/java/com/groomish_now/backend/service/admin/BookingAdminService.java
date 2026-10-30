@@ -26,5 +26,7 @@ public interface BookingAdminService {
 
     BookingResponse cancelBooking(UUID id, String note);
 
+    BookingResponse markBookingNoShow(UUID id, String note);
+
     BookingResponse checkInBooking(UUID id);
 }

@@ -57,7 +57,7 @@ export default function CategoryServicesModal({
             <img
               src={srv.image}
               alt={srv.name}
-              className="h-16 w-16 rounded object-cover"
+              className="w-20 aspect-[4/3] rounded object-cover shrink-0"
             />
 
             <div className="flex-1">

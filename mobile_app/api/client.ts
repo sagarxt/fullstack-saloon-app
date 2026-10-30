@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { getSecureItem, saveSecureItem, deleteSecureItem } from '../utils/secureStore';
 
 const RENDER_BACKEND_URL = 'https://groomish-now-backend.onrender.com/api/v1';
 
@@ -49,7 +50,24 @@ export function setOnUnauthorizedCallback(cb: (() => void) | null) {
   onUnauthorizedCallback = cb;
 }
 
-// Response interceptor for 401 handling & logging
+// Response interceptor with silent token refresh & queueing
+let isRefreshingMobile = false;
+let failedMobileQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
+
+const processMobileQueue = (error: any, token: string | null = null) => {
+  failedMobileQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token!);
+    }
+  });
+  failedMobileQueue = [];
+};
+
 apiClient.interceptors.response.use(
   (response) => {
     if (typeof response.data === 'string' && (response.data.includes('Friendly Reminder') || response.data.includes('localtunnel') || response.data.trim().startsWith('<!DOCTYPE html>'))) {
@@ -60,18 +78,99 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error) => {
+    const originalRequest = error.config;
     console.error(
-      `[API ERROR] ${error.config?.method?.toUpperCase()} ${error.config?.baseURL || ''}${error.config?.url || ''}:`,
+      `[API ERROR] ${originalRequest?.method?.toUpperCase()} ${originalRequest?.baseURL || ''}${originalRequest?.url || ''}:`,
       error.message,
       error.code,
       error.response ? `HTTP ${error.response.status}` : 'No response'
     );
-    if (error.response?.status === 401) {
-      await AsyncStorage.multiRemove(['token', 'user']);
-      if (onUnauthorizedCallback) {
-        onUnauthorizedCallback();
+
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      const reqUrl = originalRequest.url || '';
+      const isAuthEndpoint =
+        reqUrl.includes('/auth/login') ||
+        reqUrl.includes('/auth/register') ||
+        reqUrl.includes('/auth/refresh') ||
+        reqUrl.includes('/auth/send-otp') ||
+        reqUrl.includes('/auth/verify-otp') ||
+        reqUrl.includes('/auth/verify-referral');
+
+      if (isAuthEndpoint) {
+        await AsyncStorage.multiRemove(['token', 'user']);
+        await deleteSecureItem('refreshToken');
+        if (onUnauthorizedCallback) {
+          onUnauthorizedCallback();
+        }
+        return Promise.reject(error);
+      }
+
+      if (isRefreshingMobile) {
+        return new Promise<string>((resolve, reject) => {
+          failedMobileQueue.push({ resolve, reject });
+        })
+          .then((newToken) => {
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+            return apiClient(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshingMobile = true;
+
+      try {
+        const storedRefreshToken = await getSecureItem('refreshToken');
+        if (!storedRefreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const res = await axios.post(
+          `${BASE_URL}/auth/refresh`,
+          { refreshToken: storedRefreshToken },
+          { headers: { 'Content-Type': 'application/json' } }
+        );
+
+        const newAccessToken = res.data?.token || res.data?.accessToken;
+        const newRefreshToken = res.data?.refreshToken;
+
+        if (newAccessToken) {
+          await AsyncStorage.setItem('token', newAccessToken);
+          try {
+            const rawUser = await AsyncStorage.getItem('user');
+            if (rawUser) {
+              const u = JSON.parse(rawUser);
+              u.token = newAccessToken;
+              await AsyncStorage.setItem('user', JSON.stringify(u));
+            }
+          } catch (_) {}
+
+          if (newRefreshToken) {
+            await saveSecureItem('refreshToken', newRefreshToken);
+          }
+
+          apiClient.defaults.headers['Authorization'] = `Bearer ${newAccessToken}`;
+          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+
+          processMobileQueue(null, newAccessToken);
+          isRefreshingMobile = false;
+          return apiClient(originalRequest);
+        } else {
+          throw new Error('No new token in refresh response');
+        }
+      } catch (refreshErr) {
+        processMobileQueue(refreshErr, null);
+        isRefreshingMobile = false;
+
+        await AsyncStorage.multiRemove(['token', 'user']);
+        await deleteSecureItem('refreshToken');
+        if (onUnauthorizedCallback) {
+          onUnauthorizedCallback();
+        }
+        return Promise.reject(refreshErr);
       }
     }
+
     return Promise.reject(error);
   }
 );
@@ -84,6 +183,10 @@ export const authApi = {
     apiClient.post('/auth/login', data),
   register: (data: { name: string; email: string; password: string; referralCode?: string }) =>
     apiClient.post('/auth/register', data),
+  refresh: (refreshToken: string) =>
+    apiClient.post('/auth/refresh', { refreshToken }),
+  logout: (refreshToken?: string) =>
+    apiClient.post('/auth/logout', refreshToken ? { refreshToken } : {}),
   sendOtp: (data: { email: string }) =>
     apiClient.post('/auth/send-otp', data),
   verifyOtp: (data: { email: string; otp: string }) =>
@@ -131,10 +234,12 @@ export const customerApi = {
   getProfile: () => apiClient.get('/customer/profile'),
   updateProfile: (data: any) => apiClient.put('/customer/profile', data),
   changePassword: (data: any) => apiClient.put('/customer/profile/change-password', data),
+  updatePushToken: (pushToken: string) => apiClient.put('/customer/profile/push-token', { pushToken }),
 
   // Bookings
   getBookings: () => apiClient.get('/customer/bookings'),
   getBookingDetail: (id: string | number) => apiClient.get(`/customer/bookings/${id}`),
+  getRefundStatus: (id: string | number) => apiClient.get(`/customer/bookings/${id}/refund-status`),
   cancelBooking: (id: string | number) => apiClient.put(`/customer/bookings/${id}/cancel`),
   rescheduleBooking: (id: string | number, scheduledAt: string) =>
     apiClient.put(`/customer/bookings/${id}/reschedule`, { scheduledAt }),

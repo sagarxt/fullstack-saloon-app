@@ -66,6 +66,10 @@ public class User {
     private boolean active = true;
 
     private LocalDateTime lastLoginAt;
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "expo_push_token")
+    private String expoPushToken;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_groups", joinColumns = @JoinColumn(name = "user_id"))

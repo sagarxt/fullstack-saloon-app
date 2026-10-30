@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi, setOnUnauthorizedCallback } from '../api/client';
+import { saveSecureItem, getSecureItem, deleteSecureItem } from '../utils/secureStore';
+import { registerForPushNotificationsAsync } from '../utils/pushNotifications';
 
 interface User {
   id: number;
@@ -59,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setToken(t);
           setUser(parsed);
+          registerForPushNotificationsAsync().catch(() => {});
         }
       }
     } catch (_) {}
@@ -74,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (isStaffOrAdminUser) {
       await AsyncStorage.multiRemove(['token', 'user']);
+      await deleteSecureItem('refreshToken');
       setToken(null);
       setUser(null);
       const err: any = new Error('STAFF_ADMIN_RESTRICTED');
@@ -83,6 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const t = data.token || data.accessToken || data.jwt || data.user?.token;
+    const rt = data.refreshToken || userData.refreshToken;
+    if (rt) {
+      await saveSecureItem('refreshToken', rt);
+    }
+
     const u: User = {
       id: userData.id || userData.userId,
       name: userData.name || userData.fullName,
@@ -95,12 +104,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.multiSet([['token', t], ['user', JSON.stringify(u)]]);
     setToken(t);
     setUser(u);
+    registerForPushNotificationsAsync().catch(() => {});
   };
 
   const register = async (data: { name: string; email: string; password: string; referralCode?: string }) => {
     const res = await authApi.register(data);
     const resData = res.data;
-    const t = resData?.token;
+    const t = resData?.token || resData?.accessToken;
+    const rt = resData?.refreshToken;
+    if (rt) {
+      await saveSecureItem('refreshToken', rt);
+    }
+
     if (t) {
       const u: User = {
         id: resData.id,
@@ -114,12 +129,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AsyncStorage.multiSet([['token', t], ['user', JSON.stringify(u)]]);
       setToken(t);
       setUser(u);
+      registerForPushNotificationsAsync().catch(() => {});
     } else {
       await login(data.email, data.password);
     }
   };
 
   const logout = async () => {
+    try {
+      const rt = await getSecureItem('refreshToken');
+      await authApi.logout(rt || undefined);
+    } catch (_) {}
+    await deleteSecureItem('refreshToken');
     await AsyncStorage.multiRemove(['token', 'user']);
     setToken(null);
     setUser(null);

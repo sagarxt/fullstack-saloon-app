@@ -13,6 +13,9 @@ export const getMyBookingDetails = (id) =>
 export const cancelBooking = (id) =>
   axiosClient.put(`/customer/bookings/${id}/cancel`);
 
+export const getBookingRefundStatus = (bookingId) =>
+  axiosClient.get(`/customer/bookings/${bookingId}/refund-status`);
+
 export const rescheduleBooking = (bookingId, scheduledAt) =>
   axiosClient.put(`/customer/bookings/${bookingId}/reschedule`, { scheduledAt });
 

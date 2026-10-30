@@ -65,6 +65,7 @@ public class Booking {
 
     private Double totalAmount;
     private Double pricePaid;
+    private String razorpayOrderId;
 
     public Double getRemainingAmount() {
         double total = this.totalAmount != null ? this.totalAmount : 0.0;
@@ -89,6 +90,12 @@ public class Booking {
     private Integer expectedRewardPoints;
 
     @Builder.Default
+    private Boolean reminder24hSent = false;
+
+    @Builder.Default
+    private Boolean reminder2hSent = false;
+
+    @Builder.Default
     private Boolean reminderOneHourSent = false;
 
     @Builder.Default
@@ -102,6 +109,18 @@ public class Booking {
 
     @Builder.Default
     private Boolean autoCancelled = false;
+
+    @Builder.Default
+    private String refundStatus = "NONE";
+
+    private Double refundAmount;
+    private String razorpayRefundId;
+    private String refundArn;
+    private String refundReason;
+    private LocalDateTime refundedAt;
+
+    @Builder.Default
+    private Integer rescheduleCount = 0;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

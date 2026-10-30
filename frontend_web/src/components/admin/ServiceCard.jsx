@@ -56,7 +56,7 @@ export default function ServiceCard({ service, categories, refresh }) {
           alt={service.name}
           loading="lazy"
           decoding="async"
-          className="h-20 w-20 object-cover rounded-2xl border border-groomish-slate/10 shrink-0"
+          className="w-24 aspect-[4/3] object-cover rounded-xl border border-groomish-slate/10 shrink-0"
         />
 
         {/* Details */}

@@ -19,5 +19,7 @@ public interface CustomerPaymentService {
     PaymentResponse verifyRazorpayPayment(UUID userId, RazorpayVerifyRequest request);
 
     PaymentResponse switchToPayAtSalon(UUID userId, UUID bookingId);
+ 
+    void handleRazorpayWebhook(String payload, String signature);
 }
 

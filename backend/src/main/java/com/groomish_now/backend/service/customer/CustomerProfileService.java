@@ -20,4 +20,9 @@ public interface CustomerProfileService {
             UUID userId,
             ChangePasswordRequest request
     );
+
+    void updatePushToken(
+            UUID userId,
+            String pushToken
+    );
 }

@@ -10,6 +10,8 @@ RUN mvn -B clean package -DskipTests
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
+ENV TZ=Asia/Kolkata
+
 COPY --from=build /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
 
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java -Duser.timezone=Asia/Kolkata -Dserver.port=${PORT:-8080} -jar app.jar"]

@@ -1,7 +1,7 @@
 package com.groomish_now.backend.controller.customer;
 
 import com.groomish_now.backend.dto.booking.*;
-import com.groomish_now.backend.dto.booking.*;
+import com.groomish_now.backend.dto.payment.RefundDetailResponse;
 import com.groomish_now.backend.security.CustomUserDetails;
 import com.groomish_now.backend.service.customer.CustomerBookingService;
 import lombok.RequiredArgsConstructor;
@@ -91,5 +91,13 @@ public class CustomerBookingController {
             @PathVariable UUID itemId
     ) {
         return bookingService.removeServiceFromBooking(user.getId(), id, itemId);
+    }
+
+    @GetMapping("/{id}/refund-status")
+    public RefundDetailResponse getBookingRefundStatus(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable UUID id
+    ) {
+        return bookingService.getBookingRefundStatus(user.getId(), id);
     }
 }

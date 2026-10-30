@@ -398,6 +398,55 @@ public class BookingAdminServiceImpl implements BookingAdminService {
     }
 
     @Override
+    public BookingResponse markBookingNoShow(UUID id, String note) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        booking.setStatus(BookingStatus.NO_SHOW);
+        booking.setCancelledAt(LocalDateTime.now());
+        if (booking.getBookingItems() != null) {
+            for (BookingItem bi : booking.getBookingItems()) {
+                bi.setStatus(BookingStatus.NO_SHOW);
+                bookingItemRepository.save(bi);
+            }
+        }
+
+        if (note != null && !note.isBlank()) {
+            booking.setNote(note);
+        }
+
+        Booking saved = bookingRepository.save(booking);
+
+        if (saved.getUser() != null) {
+            String displayCode = saved.getBookingCode() != null ? saved.getBookingCode() : "GN-" + saved.getId().toString().substring(0, 8).toUpperCase();
+            Notification notif = Notification.builder()
+                    .user(saved.getUser())
+                    .title("Appointment Recorded as No-Show")
+                    .message("Your appointment (" + displayCode + ") was marked as a No-Show by salon administration. Advance deposit forfeited per policy.")
+                    .type(NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
+                    .build();
+            notificationRepository.save(notif);
+
+            BookingEmailDto dto = BookingEmailDto.fromBooking(saved);
+            emailService.sendBookingNoShowEmail(dto);
+        }
+
+        bookingTimelineService.recordTimeline(
+                saved,
+                "NO_SHOW",
+                "Booking Marked as No-Show by Admin",
+                "Booking marked as No-Show by administrative staff." + (note != null && !note.isBlank() ? " Reason: " + note : "") + " Advance deposit forfeited.",
+                "Admin Staff",
+                "ADMIN",
+                null
+        );
+
+        return toBookingResponse(saved);
+    }
+
+    @Override
     public BookingResponse checkInBooking(UUID id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));

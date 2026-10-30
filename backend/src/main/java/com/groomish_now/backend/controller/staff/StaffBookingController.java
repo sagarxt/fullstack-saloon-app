@@ -48,6 +48,15 @@ public class StaffBookingController {
         return staffBookingService.cancelBookingForCustomer(getCurrentStaffId(request), id, note);
     }
 
+    @PostMapping("/{id}/no-show")
+    public BookingResponse markNoShowForCustomer(
+            HttpServletRequest request,
+            @PathVariable UUID id,
+            @RequestParam(required = false) String note
+    ) {
+        return staffBookingService.markNoShowForCustomer(getCurrentStaffId(request), id, note);
+    }
+
     @PostMapping("/{id}/confirm")
     public BookingResponse confirmBookingForCustomer(
             HttpServletRequest request,

@@ -23,6 +23,7 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final com.groomish_now.backend.service.auth.RefreshTokenService refreshTokenService;
 
     @Override
     public CustomerProfileResponse getMyProfile(UUID userId) {
@@ -76,10 +77,21 @@ public class CustomerProfileServiceImpl implements CustomerProfileService {
         user.setPassword(
                 passwordEncoder.encode(request.getNewPassword())
         );
+        user.setPasswordChangedAt(java.time.LocalDateTime.now());
 
         userRepository.save(user);
 
+        refreshTokenService.revokeAllUserTokens(user);
+
         emailService.sendPasswordChangedEmail(user.getEmail(), user.getName());
+    }
+
+    @Override
+    public void updatePushToken(UUID userId, String pushToken) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setExpoPushToken(pushToken);
+        userRepository.save(user);
     }
 
     /* ===============================

@@ -44,5 +44,14 @@ public class BookingResponse {
     private LocalDateTime checkedInAt;
     private LocalDateTime completedAt;
     private LocalDateTime cancelledAt;
+
+    private String refundStatus;
+    private Double refundAmount;
+    private String razorpayRefundId;
+    private String refundArn;
+    private String refundReason;
+    private LocalDateTime refundedAt;
+    private Integer rescheduleCount;
+
     private LocalDateTime createdAt;
 }

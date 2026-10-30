@@ -32,6 +32,7 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
     private final EmailService emailService;
     private final PaymentRepository paymentRepository;
     private final BookingTimelineService bookingTimelineService;
+    private final com.groomish_now.backend.service.notification.ExpoPushNotificationService expoPushNotificationService;
 
     /**
      * Executes every 60 seconds to process booking lifecycle:
@@ -80,7 +81,109 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
                         ? b.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Booking";
                 String storeName = b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : (b.getStore() != null ? b.getStore().getName() : "Groomish Now Flagship");
 
-                // 1. REMINDER 30 MINUTES BEFORE BOOKING
+                // 1. REMINDER 24 HOURS BEFORE BOOKING
+                // Triggered if now is between [scheduledAt - 25 hours] and [scheduledAt - 23 hours]
+                if (!Boolean.TRUE.equals(b.getReminder24hSent()) &&
+                        (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.MODIFIED) &&
+                        now.isAfter(scheduledAt.minusHours(25)) &&
+                        now.isBefore(scheduledAt.minusHours(23))) {
+
+                    b.setReminder24hSent(true);
+                    bookingRepository.save(b);
+
+                    String timeStr = scheduledAt.toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"));
+                    String notifMsg = "Your booking (" + displayCode + ") for " + serviceName + " at " + storeName + " is scheduled for tomorrow at " + timeStr + ". Free cancellation available up to 2h before.";
+
+                    Notification notif = Notification.builder()
+                            .user(b.getUser())
+                            .title("Appointment Tomorrow at " + timeStr)
+                            .message(notifMsg)
+                            .type(NotificationType.BOOKING)
+                            .referenceId(b.getId())
+                            .link("/customer/bookings/" + b.getId())
+                            .build();
+                    notificationRepository.save(notif);
+
+                    BookingEmailDto dto = BookingEmailDto.fromBooking(b);
+                    emailService.sendAppointmentReminder24hEmail(dto);
+
+                    if (b.getUser().getExpoPushToken() != null && !b.getUser().getExpoPushToken().isBlank()) {
+                        java.util.Map<String, Object> pushData = new java.util.HashMap<>();
+                        pushData.put("bookingId", b.getId().toString());
+                        pushData.put("type", "BOOKING_REMINDER_24H");
+                        expoPushNotificationService.sendPushNotification(
+                                b.getUser().getExpoPushToken(),
+                                "Appointment Tomorrow at " + timeStr,
+                                "Your booking (" + displayCode + ") at " + storeName + " is scheduled for tomorrow. Free cancellation up to 2h before slot.",
+                                pushData
+                        );
+                    }
+
+                    bookingTimelineService.recordTimeline(
+                            b,
+                            "REMINDER_24H",
+                            "24-Hour Reminder Dispatched",
+                            "Automated 24h reminder sent via push & email. No-show and cancellation policy communicated.",
+                            "System Scheduler",
+                            "SYSTEM",
+                            "system@groomish.com"
+                    );
+
+                    log.info("Sent 24-hour booking reminder for booking {}", displayCode);
+                }
+
+                // 2. REMINDER 2 HOURS BEFORE BOOKING
+                // Triggered if now is between [scheduledAt - 135 minutes] and [scheduledAt - 105 minutes]
+                if (!Boolean.TRUE.equals(b.getReminder2hSent()) &&
+                        (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.MODIFIED) &&
+                        now.isAfter(scheduledAt.minusMinutes(135)) &&
+                        now.isBefore(scheduledAt.minusMinutes(105))) {
+
+                    b.setReminder2hSent(true);
+                    bookingRepository.save(b);
+
+                    String timeStr = scheduledAt.toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a"));
+                    String notifMsg = "Your booking (" + displayCode + ") starts in 2 hours at " + storeName + ". The free cancellation window is now closed. Please arrive on time!";
+
+                    Notification notif = Notification.builder()
+                            .user(b.getUser())
+                            .title("Appointment in 2 Hours! ⏳")
+                            .message(notifMsg)
+                            .type(NotificationType.BOOKING)
+                            .referenceId(b.getId())
+                            .link("/customer/bookings/" + b.getId())
+                            .build();
+                    notificationRepository.save(notif);
+
+                    BookingEmailDto dto = BookingEmailDto.fromBooking(b);
+                    emailService.sendAppointmentReminder2hEmail(dto);
+
+                    if (b.getUser().getExpoPushToken() != null && !b.getUser().getExpoPushToken().isBlank()) {
+                        java.util.Map<String, Object> pushData = new java.util.HashMap<>();
+                        pushData.put("bookingId", b.getId().toString());
+                        pushData.put("type", "BOOKING_REMINDER_2H");
+                        expoPushNotificationService.sendPushNotification(
+                                b.getUser().getExpoPushToken(),
+                                "Appointment in 2 Hours! ⏳",
+                                "Your stylist is getting ready at " + storeName + ". Free cancellation closed; see you at " + timeStr + "!",
+                                pushData
+                        );
+                    }
+
+                    bookingTimelineService.recordTimeline(
+                            b,
+                            "REMINDER_2H",
+                            "2-Hour Reminder Dispatched",
+                            "Automated 2h reminder sent via push & email. Free cancellation cutoff reached.",
+                            "System Scheduler",
+                            "SYSTEM",
+                            "system@groomish.com"
+                    );
+
+                    log.info("Sent 2-hour booking reminder for booking {}", displayCode);
+                }
+
+                // 3. REMINDER 30 MINUTES BEFORE BOOKING
                 // Triggered if now is between [scheduledAt - 35 min] and [scheduledAt]
                 if (!Boolean.TRUE.equals(b.getReminderThirtyMinSent()) &&
                         (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.MODIFIED) &&
@@ -103,10 +206,23 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
 
                     BookingEmailDto dto = BookingEmailDto.fromBooking(b);
                     emailService.sendBookingStartingSoonEmail(dto);
+
+                    if (b.getUser().getExpoPushToken() != null && !b.getUser().getExpoPushToken().isBlank()) {
+                        java.util.Map<String, Object> pushData = new java.util.HashMap<>();
+                        pushData.put("bookingId", b.getId().toString());
+                        pushData.put("type", "BOOKING_REMINDER_30M");
+                        expoPushNotificationService.sendPushNotification(
+                                b.getUser().getExpoPushToken(),
+                                "Booking in 30 Minutes! ⏰",
+                                "Your appointment (" + displayCode + ") starts in 30 minutes at " + storeName + ".",
+                                pushData
+                        );
+                    }
+
                     log.info("Sent 30-minute booking reminder for booking {}", displayCode);
                 }
 
-                // 2. AT BOOKING TIME REMINDER
+                // 4. AT BOOKING TIME REMINDER
                 // Triggered if now is between [scheduledAt] and [scheduledAt + 30 min]
                 if (!Boolean.TRUE.equals(b.getReminderStartSent()) &&
                         (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.MODIFIED) &&
@@ -134,12 +250,24 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
                             "STARTING NOW",
                             "Your booking is starting right now at " + storeName + ". Our styling team is ready to serve you."
                     );
+
+                    if (b.getUser().getExpoPushToken() != null && !b.getUser().getExpoPushToken().isBlank()) {
+                        java.util.Map<String, Object> pushData = new java.util.HashMap<>();
+                        pushData.put("bookingId", b.getId().toString());
+                        pushData.put("type", "BOOKING_STARTING_NOW");
+                        expoPushNotificationService.sendPushNotification(
+                                b.getUser().getExpoPushToken(),
+                                "Your Booking Starts Now!",
+                                "Our styling team is ready to welcome you at " + storeName + "!",
+                                pushData
+                        );
+                    }
+
                     log.info("Sent starting-now reminder for booking {}", displayCode);
                 }
 
-                // 3. 1 HOUR POST-SLOT WARNING: ATTENTION REQUIRED
+                // 5. 1 HOUR POST-SLOT WARNING: ATTENTION REQUIRED
                 // Customer gets warning to reschedule within 2 hours of slot to prevent auto-cancellation.
-                // As per business logic: Sent if booking is CONFIRMED or PENDING or MODIFIED, NOT if IN_PROGRESS.
                 if (!Boolean.TRUE.equals(b.getWarningPostOneHourSent()) &&
                         b.getStatus() != BookingStatus.IN_PROGRESS &&
                         b.getStatus() != BookingStatus.CHECKED_IN &&
@@ -157,7 +285,7 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
                     Notification notif = Notification.builder()
                             .user(b.getUser())
                             .title("Action Required: Missed Check-In!")
-                            .message("Your booking (" + displayCode + ") scheduled at " + scheduledAt.toLocalTime() + " has passed. Please visit by " + cutoffStr + " or reschedule to prevent automatic cancellation.")
+                            .message("Your booking (" + displayCode + ") scheduled at " + scheduledAt.toLocalTime() + " has passed. Please visit by " + cutoffStr + " or reschedule to prevent deposit forfeiture.")
                             .type(NotificationType.BOOKING)
                             .referenceId(b.getId())
                             .link("/customer/bookings/" + b.getId() + "?reschedule=true")
@@ -167,21 +295,34 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
                     BookingEmailDto dto = BookingEmailDto.fromBooking(b);
                     dto.setAutoCancelCutoffTime(cutoffTime);
                     emailService.sendBookingAttentionRequiredEmail(dto);
+
+                    if (b.getUser().getExpoPushToken() != null && !b.getUser().getExpoPushToken().isBlank()) {
+                        java.util.Map<String, Object> pushData = new java.util.HashMap<>();
+                        pushData.put("bookingId", b.getId().toString());
+                        pushData.put("type", "BOOKING_ATTENTION_REQUIRED");
+                        expoPushNotificationService.sendPushNotification(
+                                b.getUser().getExpoPushToken(),
+                                "Action Required: Missed Check-In! ⚠️",
+                                "Your booking (" + displayCode + ") has passed scheduled time. Please check in by " + cutoffStr + " to prevent deposit forfeiture.",
+                                pushData
+                        );
+                    }
+
                     log.info("Sent 1-hour post-slot attention required warning for booking {}", displayCode);
                 }
 
-                // 4. 2 HOURS POST-SLOT AUTO-CANCELLATION
-                // If 2 hours past scheduled time and customer NEVER checked in (NOT IN_PROGRESS / NOT CHECKED_IN), auto cancel
+                // 6. 2 HOURS POST-SLOT: NO-SHOW AUTO-CANCELLATION & DEPOSIT FORFEITURE
+                // If 2 hours past scheduled time and customer NEVER checked in (NOT IN_PROGRESS / NOT CHECKED_IN), record as NO_SHOW
                 if (b.getStatus() != BookingStatus.IN_PROGRESS &&
                         b.getStatus() != BookingStatus.CHECKED_IN &&
                         b.getCheckedInAt() == null &&
                         (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.MODIFIED) &&
                         now.isAfter(scheduledAt.plusMinutes(120))) {
 
-                    b.setStatus(BookingStatus.CANCELLED);
+                    b.setStatus(BookingStatus.NO_SHOW);
                     b.setCancelledAt(now);
                     b.setAutoCancelled(true);
-                    b.setNote("Auto-cancelled: Client did not check in or reschedule within 2-hour grace period.");
+                    b.setNote("Recorded as No-Show: Client did not check in or reschedule within 2-hour grace period. Advance deposit forfeited per policy.");
                     if (b.getPayment() != null) {
                         var p = b.getPayment();
                         if (p.getStatus() == PaymentStatus.PENDING ||
@@ -194,9 +335,9 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
 
                     bookingTimelineService.recordTimeline(
                             b,
-                            "CANCELLED",
-                            "Auto-Cancelled by System",
-                            "Automatically cancelled: Client did not check in or reschedule within 2 hours of scheduled slot.",
+                            "NO_SHOW",
+                            "Recorded as No-Show by System",
+                            "Automatically recorded as No-Show: Client did not arrive or reschedule within 2-hour grace period. Advance deposit forfeited per salon policy.",
                             "System Scheduler",
                             "SYSTEM",
                             "system@groomish.com"
@@ -204,23 +345,30 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
 
                     Notification notif = Notification.builder()
                             .user(b.getUser())
-                            .title("Booking Auto-Cancelled!")
-                            .message("Your booking (" + displayCode + ") was automatically cancelled as it was not attended or rescheduled within 2 hours of the slot.")
+                            .title("Appointment Recorded as No-Show")
+                            .message("Your booking (" + displayCode + ") was recorded as a No-Show. Advance booking deposit forfeited per policy.")
                             .type(NotificationType.BOOKING)
                             .referenceId(b.getId())
                             .link("/customer/bookings/" + b.getId())
                             .build();
                     notificationRepository.save(notif);
 
-                    emailService.sendBookingStatusEmail(
-                            b.getUser().getEmail(),
-                            b.getUser().getName(),
-                            displayCode,
-                            serviceName,
-                            "AUTO_CANCELLED",
-                            "Your booking (" + displayCode + ") was automatically cancelled because it was not attended or rescheduled within 2 hours of your scheduled time."
-                    );
-                    log.info("Auto-cancelled booking {} past 2-hour window", displayCode);
+                    BookingEmailDto dto = BookingEmailDto.fromBooking(b);
+                    emailService.sendBookingNoShowEmail(dto);
+
+                    if (b.getUser().getExpoPushToken() != null && !b.getUser().getExpoPushToken().isBlank()) {
+                        java.util.Map<String, Object> pushData = new java.util.HashMap<>();
+                        pushData.put("bookingId", b.getId().toString());
+                        pushData.put("type", "BOOKING_NO_SHOW");
+                        expoPushNotificationService.sendPushNotification(
+                                b.getUser().getExpoPushToken(),
+                                "Appointment Recorded as No-Show",
+                                "Your booking (" + displayCode + ") was recorded as a No-Show. Advance deposit forfeited per policy.",
+                                pushData
+                        );
+                    }
+
+                    log.info("Recorded booking {} as NO_SHOW past 2-hour window", displayCode);
                 }
 
             } catch (Exception ex) {

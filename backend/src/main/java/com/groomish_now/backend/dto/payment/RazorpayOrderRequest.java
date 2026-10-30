@@ -13,4 +13,5 @@ import java.util.UUID;
 @AllArgsConstructor
 public class RazorpayOrderRequest {
     private UUID bookingId;
+    private Double amount;
 }
