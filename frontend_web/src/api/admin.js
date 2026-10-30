@@ -82,8 +82,14 @@ export const checkInBookingByAdmin = (id) =>
   axiosClient.post(`/admin/bookings/${id}/check-in`);
 
 /* DASHBOARD */
-export const getDashboardMetrics = () =>
-  axiosClient.get("/admin/dashboard");
+export const getDashboardMetrics = (period = "30D", startDate = null, endDate = null) => {
+  const params = new URLSearchParams();
+  if (period) params.append("period", period);
+  if (startDate) params.append("startDate", startDate);
+  if (endDate) params.append("endDate", endDate);
+  const qs = params.toString();
+  return axiosClient.get(`/admin/dashboard${qs ? `?${qs}` : ""}`);
+};
 
 /* USERS & STAFF */
 export const getUsersApi = (roleOrParams, page = 0, size = 50, userGroup = null, search = null) => {
