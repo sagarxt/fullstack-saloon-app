@@ -122,7 +122,23 @@ export default function BookingDetailPage() {
 
   const payableDue = useMemo(() => {
     if (!booking) return 0;
-    const totalAmount = Number(booking.totalAmount ?? 0);
+
+    // Calculate items catalog sum fallback
+    const sSum = (booking.items || booking.bookingItems || []).reduce((sum, item) => {
+      return sum + Number(item.servicePriceSnapshot ?? item.price ?? item.service?.price ?? 0);
+    }, 0);
+    const pSum = (booking.products || booking.bookingProducts || []).reduce((sum, prod) => {
+      const price = Number(prod.unitPriceSnapshot ?? prod.unitPrice ?? 0);
+      const qty = Number(prod.quantity ?? 1);
+      return sum + (price * qty);
+    }, 0);
+    const catalogSum = sSum + pSum;
+
+    const totalAmount = Number(
+      booking.totalAmount != null && Number(booking.totalAmount) > 0
+        ? booking.totalAmount
+        : (catalogSum > 0 ? catalogSum : (booking.pricePaid || 0))
+    );
     const pricePaid = Number(booking.pricePaid ?? 0);
 
     // If remainingAmount is explicitly provided and positive, use it
@@ -135,8 +151,9 @@ export default function BookingDetailPage() {
     const diff = totalAmount - pricePaid;
     if (diff > 0) return diff;
 
-    // If completely unpaid (pricePaid === 0), it's the full totalAmount
+    // If completely unpaid (pricePaid === 0), it's the full totalAmount or catalogSum
     if (pricePaid <= 0 && totalAmount > 0) return totalAmount;
+    if (pricePaid <= 0 && catalogSum > 0) return catalogSum;
 
     return 0;
   }, [booking]);
@@ -915,19 +932,59 @@ export default function BookingDetailPage() {
                 </div>
 
                 {/* Right Hero Summary */}
-                <div className="sm:text-right">
-                  <div className="text-xs uppercase font-bold text-groomish-slate/50 tracking-wider">
-                    Amount Paid
-                  </div>
-                  <div className="text-3xl font-heading font-extrabold text-groomish-orange">
-                    ₹{booking.pricePaid}
-                  </div>
-                  {booking.totalAmount > booking.pricePaid && (
-                    <div className="text-xs text-groomish-slate/40 line-through">
-                      MRP: ₹{booking.totalAmount}
+                {(() => {
+                  const sSum = (booking.items || booking.bookingItems || []).reduce((sum, item) => {
+                    return sum + Number(item.servicePriceSnapshot ?? item.price ?? item.service?.price ?? 0);
+                  }, 0);
+                  const pSum = (booking.products || booking.bookingProducts || []).reduce((sum, prod) => {
+                    const price = Number(prod.unitPriceSnapshot ?? prod.unitPrice ?? 0);
+                    const qty = Number(prod.quantity ?? 1);
+                    return sum + (price * qty);
+                  }, 0);
+                  const catalogSum = sSum + pSum;
+
+                  const total = Number(
+                    booking.totalAmount != null && Number(booking.totalAmount) > 0
+                      ? booking.totalAmount
+                      : (catalogSum > 0 ? catalogSum : (booking.pricePaid || 0))
+                  );
+                  const paid = Number(booking.pricePaid || 0);
+                  const pending = Number(
+                    booking.remainingAmount !== undefined && booking.remainingAmount !== null && Number(booking.remainingAmount) > 0
+                      ? booking.remainingAmount
+                      : Math.max(0, total - paid)
+                  );
+
+                  if (pending > 0.01) {
+                    return (
+                      <div className="sm:text-right">
+                        <div className="text-xs uppercase font-bold text-amber-600 tracking-wider">
+                          Pending Amount
+                        </div>
+                        <div className="text-3xl font-heading font-extrabold text-groomish-orange">
+                          ₹{pending}
+                        </div>
+                        <div className="text-xs font-semibold text-groomish-slate/60 mt-0.5">
+                          Paid Amount: <span className="font-bold text-groomish-slate">₹{paid}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="sm:text-right">
+                      <div className="text-xs uppercase font-bold text-emerald-600 tracking-wider">
+                        Paid Amount
+                      </div>
+                      <div className="text-3xl font-heading font-extrabold text-emerald-600">
+                        ₹{paid}
+                      </div>
+                      <div className="text-xs font-semibold text-emerald-700 mt-0.5">
+                        Fully Settled
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
 
               {/* Appointment Schedule & Store Info Grid */}

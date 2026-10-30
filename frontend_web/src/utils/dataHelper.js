@@ -69,18 +69,14 @@ export const calculateGroomCoins = (amount, extraBonus = 0, spendRate = 100) => 
 };
 
 /**
- * Safely parse UTC timestamp strings from backend (which may lack 'Z')
- * and format in user's local date and 12-hour time (e.g., "26/10/2026, 04:40 pm").
+ * Safely parse timestamp strings from backend (in local application time)
+ * and format in user's local date and 12-hour time (e.g., "30/10/2026, 08:03 pm").
  */
 export const formatLocalDateTime = (dateStr, options = {}) => {
   if (!dateStr) return "";
   try {
-    const s = String(dateStr).trim();
-    const normalized =
-      s.endsWith("Z") || s.includes("+") || /T\d{2}:\d{2}:\d{2}.*[\+\-]/.test(s)
-        ? s
-        : s.replace(" ", "T") + "Z";
-    const d = new Date(normalized);
+    const s = String(dateStr).trim().replace(" ", "T");
+    const d = new Date(s);
     if (isNaN(d.getTime())) return String(dateStr);
 
     return d.toLocaleString("en-IN", {
@@ -111,11 +107,8 @@ export const sortBookingsWithTodayOnTop = (list) => {
 
   const parseTime = (dateVal) => {
     if (!dateVal) return 0;
-    const s = String(dateVal).trim();
-    const normalized = s.endsWith("Z") || s.includes("+") || /T\d{2}:\d{2}:\d{2}.*[\+\-]/.test(s)
-      ? s
-      : s.replace(" ", "T") + "Z";
-    const d = new Date(normalized);
+    const s = String(dateVal).trim().replace(" ", "T");
+    const d = new Date(s);
     return isNaN(d.getTime()) ? 0 : d.getTime();
   };
 

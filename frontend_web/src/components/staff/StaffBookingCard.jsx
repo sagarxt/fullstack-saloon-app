@@ -223,7 +223,7 @@ export default function StaffBookingCard({
 
             <span className="flex items-center gap-1.5 font-bold text-groomish-slate">
               <CreditCard className="w-3.5 h-3.5 text-groomish-slate/40" />
-              ₹{booking.pricePaid ?? booking.totalAmount}
+              ₹{booking.totalAmount != null && Number(booking.totalAmount) > 0 ? booking.totalAmount : (booking.pricePaid || 0)}
             </span>
 
             <span className="flex items-center gap-1 text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">

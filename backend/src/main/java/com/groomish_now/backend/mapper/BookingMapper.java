@@ -140,13 +140,30 @@ public class BookingMapper {
         dto.setCouponCode(b.getCoupon() != null ? b.getCoupon().getCode() : null);
         dto.setCouponApplied(b.getCoupon() != null ? b.getCoupon().getCode() : null);
 
+        // Map items safely (pre-fetch to accurately compute total if totalAmount was uninitialized)
+        List<BookingItem> items = b.getBookingItems();
+        if ((items == null || items.isEmpty()) && bookingItemRepository != null && b.getId() != null) {
+            items = bookingItemRepository.findByBookingId(b.getId());
+        }
+
         Double total = b.getTotalAmount();
         Double paid = b.getPricePaid();
-        if ((total == null || total == 0.0) && b.getBookingItems() != null && !b.getBookingItems().isEmpty()) {
-            total = b.getBookingItems().stream()
+        if (total == null || total <= 0.0) {
+            double itemsSum = items != null ? items.stream()
                     .mapToDouble(it -> it.getServicePriceSnapshot() != null && it.getServicePriceSnapshot() > 0 ? it.getServicePriceSnapshot()
                             : (it.getService() != null && it.getService().getPrice() != null ? it.getService().getPrice() : 0.0))
-                    .sum();
+                    .sum() : 0.0;
+            double prodsSum = prods != null ? prods.stream()
+                    .mapToDouble(p -> p.getTotalPrice() != null && p.getTotalPrice() > 0 ? p.getTotalPrice()
+                            : (p.getUnitPriceSnapshot() != null ? p.getUnitPriceSnapshot() * (p.getQuantity() != null ? p.getQuantity() : 1) : 0.0))
+                    .sum() : 0.0;
+            if (itemsSum + prodsSum > 0.0) {
+                total = itemsSum + prodsSum;
+            } else if (b.getPayment() != null && b.getPayment().getAmount() != null && b.getPayment().getAmount() > 0.0) {
+                total = b.getPayment().getAmount();
+            } else if (paid != null && paid > 0.0) {
+                total = paid;
+            }
         }
         if (total == null) total = 0.0;
 
@@ -218,11 +235,7 @@ public class BookingMapper {
             dto.setStoreAddress(b.getStoreAddressSnapshot());
         }
 
-        // Map items safely
-        List<BookingItem> items = b.getBookingItems();
-        if ((items == null || items.isEmpty()) && bookingItemRepository != null) {
-            items = bookingItemRepository.findByBookingId(b.getId());
-        }
+        // Map items
         if (items != null && !items.isEmpty()) {
             dto.setItems(items.stream().map(it -> toBookingItemDetailsResponse(it, b)).collect(Collectors.toList()));
             BookingItem first = items.get(0);

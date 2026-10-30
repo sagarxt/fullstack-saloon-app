@@ -62,10 +62,32 @@ export default function BookingCard({ booking, refresh }) {
     timeStyle: "short",
   }) : "Date pending";
 
+  const servicesCatalogSum = rawServices.reduce((sum, item) => {
+    return sum + Number(item.servicePriceSnapshot ?? item.price ?? item.service?.price ?? 0);
+  }, 0);
+  const productsCatalogSum = rawProducts.reduce((sum, prod) => {
+    const price = Number(prod.unitPriceSnapshot ?? prod.unitPrice ?? prod.product?.price ?? 0);
+    const qty = Number(prod.quantity ?? 1);
+    return sum + (price * qty);
+  }, 0);
+  const catalogSum = servicesCatalogSum + productsCatalogSum;
+
+  const displayAmount = Number(
+    booking.totalAmount != null && Number(booking.totalAmount) > 0
+      ? booking.totalAmount
+      : (catalogSum > 0
+          ? catalogSum
+          : (booking.pricePaid != null && Number(booking.pricePaid) > 0
+              ? booking.pricePaid
+              : (booking.remainingAmount != null && Number(booking.remainingAmount) > 0
+                  ? booking.remainingAmount
+                  : 0)))
+  );
+
   const rewardCoins =
     booking.expectedRewardPoints != null && booking.expectedRewardPoints > 0
       ? booking.expectedRewardPoints
-      : Math.max(1, Math.round((booking.pricePaid || 0) / 100));
+      : Math.max(1, Math.round((displayAmount || booking.pricePaid || 0) / 100));
 
   const isTodayBooking = (() => {
     if (!booking.scheduledAt) return false;
@@ -146,7 +168,7 @@ export default function BookingCard({ booking, refresh }) {
           )}
           <span className="flex items-center gap-1.5 font-bold text-groomish-slate">
             <CreditCard className="w-3.5 h-3.5 text-groomish-slate/40" />
-            ₹{booking.totalAmount != null && booking.totalAmount > 0 ? booking.totalAmount : (booking.pricePaid ?? 0)}
+            ₹{displayAmount}
           </span>
           {booking.status === "COMPLETED" ? (
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-groomish-green bg-groomish-greenLight px-2 py-0.5 rounded-lg border border-groomish-green/20">
