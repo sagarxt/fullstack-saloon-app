@@ -267,6 +267,10 @@ export default function AdminBookingDetailPage() {
   }
 
   const bookingCode = booking.bookingCode || `GN-${booking.id.slice(0, 8).toUpperCase()}`;
+  const rawServices = booking.items || booking.bookingItems || [];
+  const groupedServices = groupBookingServices(rawServices);
+  const rawProducts = booking.products || booking.bookingProducts || [];
+  const hasServices = groupedServices.length > 0 || (rawServices.length === 0 && rawProducts.length === 0 && Boolean(booking.serviceName));
 
   return (
     <div className="space-y-4 animate-fade-in pb-6">
@@ -560,8 +564,8 @@ export default function AdminBookingDetailPage() {
                             minute: "2-digit",
                             hour12: true,
                           })
-                        : ""}{" "}
-                      ({booking.totalDurationMinutes || 45} mins)
+                        : ""}
+                      {booking.totalDurationMinutes > 0 ? ` (${booking.totalDurationMinutes} mins)` : ""}
                     </span>
                   </p>
                 </div>
@@ -569,25 +573,26 @@ export default function AdminBookingDetailPage() {
             </div>
           </div>
 
-          {/* Booked Services Card */}
-          <div className="bg-white rounded-3xl border border-groomish-slate/10 p-6 shadow-soft space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Scissors className="w-4 h-4 text-groomish-orange" />
-                <h3 className="font-heading font-bold text-base text-groomish-slate">
-                  Selected Salon Services ({booking.bookingItems?.length || 1})
-                </h3>
+          {/* Booked Services Card (only when booking includes salon services or legacy service) */}
+          {hasServices && (
+            <div className="bg-white rounded-3xl border border-groomish-slate/10 p-6 shadow-soft space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Scissors className="w-4 h-4 text-groomish-orange" />
+                  <h3 className="font-heading font-bold text-base text-groomish-slate">
+                    Selected Salon Services ({rawServices.length || groupedServices.length || 1})
+                  </h3>
+                </div>
+                {booking.totalDurationMinutes > 0 && (
+                  <span className="text-xs text-groomish-slate/50">
+                    Duration: {booking.totalDurationMinutes} mins
+                  </span>
+                )}
               </div>
-              <span className="text-xs text-groomish-slate/50">
-                Duration: {booking.totalDurationMinutes || 45} mins
-              </span>
-            </div>
 
-            <div className="divide-y divide-groomish-slate/10 border border-groomish-slate/10 rounded-2xl overflow-hidden">
-              {(() => {
-                const grouped = groupBookingServices(booking.items || booking.bookingItems || []);
-                if (grouped.length > 0) {
-                  return grouped.map((grp, idx) => (
+              <div className="divide-y divide-groomish-slate/10 border border-groomish-slate/10 rounded-2xl overflow-hidden">
+                {groupedServices.length > 0 ? (
+                  groupedServices.map((grp, idx) => (
                     <div
                       key={grp.key || idx}
                       className="p-4 flex items-center justify-between gap-4 hover:bg-groomish-cream/20 transition"
@@ -648,9 +653,8 @@ export default function AdminBookingDetailPage() {
                         )}
                       </div>
                     </div>
-                  ));
-                }
-                return (
+                  ))
+                ) : (
                   <div className="p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div className="w-7 h-7 rounded-xl bg-groomish-orangeLight text-groomish-orange font-bold text-xs flex items-center justify-center">
@@ -662,7 +666,7 @@ export default function AdminBookingDetailPage() {
                         </p>
                         <p className="text-[11px] text-groomish-slate/50 flex items-center gap-1.5 mt-0.5">
                           <Clock className="w-3 h-3" />
-                          <span>{booking.totalDurationMinutes || 45} mins</span>
+                          <span>{booking.totalDurationMinutes || 0} mins</span>
                           <span>•</span>
                           <span className={booking.status === "CANCELLED" ? "text-groomish-crimson font-bold uppercase" : "capitalize"}>
                             {booking.status === "CANCELLED" ? "CANCELLED" : booking.status}
@@ -681,10 +685,10 @@ export default function AdminBookingDetailPage() {
                       )}
                     </div>
                   </div>
-                );
-              })()}
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Retail Products Card (if any) */}
           {booking.products && booking.products.length > 0 && (

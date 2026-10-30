@@ -182,11 +182,19 @@ public class BookingEmailDto {
             }
         }
 
-        double paid = b.getPricePaid() != null ? b.getPricePaid() : (baseBookingAmount > 0 ? baseBookingAmount : calculatedMrp);
-        double subtotal = calculatedMrp > baseBookingAmount ? calculatedMrp : (baseBookingAmount > 0 ? baseBookingAmount : paid);
-        double mrpDiscount = Math.max(0.0, subtotal - (baseBookingAmount > 0 ? baseBookingAmount : paid));
+        // Calculate item totals
+        double catalogTotal = billItems.stream().mapToDouble(BillItemDto::getTotalPrice).sum();
+        double totalMrp = calculatedMrp > 0 ? calculatedMrp : (catalogTotal > 0 ? catalogTotal : baseBookingAmount);
+        if (totalMrp < catalogTotal) {
+            totalMrp = catalogTotal;
+        }
 
-        double codeDiscount = baseBookingAmount > paid ? Math.max(0.0, baseBookingAmount - paid) : 0.0;
+        double subtotal = totalMrp;
+        double mrpDiscount = Math.max(0.0, totalMrp - catalogTotal);
+
+        double finalPayable = baseBookingAmount > 0 ? baseBookingAmount : (catalogTotal > 0 ? catalogTotal : subtotal);
+        double actualPricePaid = b.getPricePaid() != null ? b.getPricePaid() : 0.0;
+
         String couponCode = null;
         Double couponDiscount = null;
         String voucherCode = null;
@@ -195,19 +203,22 @@ public class BookingEmailDto {
         if (b.getCoupon() != null && b.getCoupon().getCode() != null) {
             String c = b.getCoupon().getCode();
             boolean isVoucher = c.toUpperCase().contains("VOUCH") || c.toUpperCase().contains("VIP");
+            double discountVal = 0.0;
+            if (catalogTotal > 0 && finalPayable < catalogTotal) {
+                discountVal = Math.max(0.0, catalogTotal - finalPayable);
+            } else if (b.getCoupon().getDiscount() != null && b.getCoupon().getDiscount() > 0) {
+                discountVal = Math.min(b.getCoupon().getDiscount(), catalogTotal > 0 ? catalogTotal : finalPayable);
+            }
             if (isVoucher) {
                 voucherCode = c;
-                voucherDiscount = codeDiscount > 0 ? codeDiscount : null;
+                voucherDiscount = discountVal > 0 ? discountVal : null;
             } else {
                 couponCode = c;
-                couponDiscount = codeDiscount > 0 ? codeDiscount : null;
+                couponDiscount = discountVal > 0 ? discountVal : null;
             }
-        } else if (codeDiscount > 0) {
-            couponCode = "PROMO";
-            couponDiscount = codeDiscount;
         }
 
-        String coupon = b.getCoupon() != null && b.getCoupon().getCode() != null ? b.getCoupon().getCode() : (couponCode != null ? couponCode : voucherCode);
+        String coupon = couponCode != null ? couponCode : voucherCode;
 
         String payMethod = "Pay at Salon";
         String payStatus = "PENDING";
@@ -224,7 +235,7 @@ public class BookingEmailDto {
 
         int coins = b.getExpectedRewardPoints() != null && b.getExpectedRewardPoints() > 0
                 ? b.getExpectedRewardPoints()
-                : Math.max(1, (int) Math.round(paid / 100.0));
+                : Math.max(1, (int) Math.round(finalPayable / 100.0));
 
         return BookingEmailDto.builder()
                 .bookingId(b.getId() != null ? b.getId().toString() : "")
@@ -239,8 +250,8 @@ public class BookingEmailDto {
                 .items(billItems)
                 .totalMrp(subtotal)
                 .subtotal(subtotal)
-                .pricePaid(paid)
-                .finalPayable(paid)
+                .pricePaid(actualPricePaid)
+                .finalPayable(finalPayable)
                 .discountAmount(mrpDiscount)
                 .mrpDiscount(mrpDiscount)
                 .couponCode(couponCode)

@@ -51,11 +51,9 @@ export function calculateInvoiceBreakdown(booking) {
   let codeDiscount = 0;
   if (couponCode && catalogSum > 0 && totalAmount < catalogSum) {
     codeDiscount = Math.max(0, catalogSum - totalAmount);
-  } else if (booking.pricePaid && catalogSum > 0 && Number(booking.pricePaid) < catalogSum && Number(booking.pricePaid) > 0) {
-    codeDiscount = Math.max(0, catalogSum - Number(booking.pricePaid));
   }
 
-  const finalPayable = totalAmount > 0 ? totalAmount : (Number(booking.pricePaid) || catalogSum);
+  const finalPayable = totalAmount > 0 ? totalAmount : (catalogSum > 0 ? catalogSum : Number(booking.pricePaid) || 0);
 
   return {
     subtotal,
@@ -127,7 +125,7 @@ export default function InvoiceBreakdownCard({
         )}
 
         {/* Coupon Applied */}
-        {invoiceBreakdown?.couponOrVoucherCode && !invoiceBreakdown.isVoucher && (
+        {invoiceBreakdown?.couponOrVoucherCode && !invoiceBreakdown.isVoucher && invoiceBreakdown.codeDiscount > 0 && (
           <div className="flex justify-between py-1 text-groomish-green font-semibold">
             <span className="flex items-center gap-1.5">
               <Tag className="w-3.5 h-3.5" />
@@ -138,7 +136,7 @@ export default function InvoiceBreakdownCard({
         )}
 
         {/* Voucher Applied */}
-        {invoiceBreakdown?.couponOrVoucherCode && invoiceBreakdown.isVoucher && (
+        {invoiceBreakdown?.couponOrVoucherCode && invoiceBreakdown.isVoucher && invoiceBreakdown.codeDiscount > 0 && (
           <div className="flex justify-between py-1 text-groomish-green font-semibold">
             <span className="flex items-center gap-1.5">
               <Tag className="w-3.5 h-3.5" />

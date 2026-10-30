@@ -348,7 +348,7 @@ export default function BookingsScreen() {
                   <View>
                     <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Payable</Text>
                     <Text style={[styles.priceAmount, { color: colors.text }]}>
-                      ₹{item.pricePaid ?? item.totalAmount ?? (item.items?.reduce((sum: number, it: any) => sum + (it.price ?? it.servicePriceSnapshot ?? 0), 0) || item.finalAmount || item.totalPrice || item.subtotal || 0)}
+                      ₹{item.totalAmount != null && item.totalAmount > 0 ? item.totalAmount : (item.pricePaid != null && item.pricePaid > 0 ? item.pricePaid : (item.items?.reduce((sum: number, it: any) => sum + (it.price ?? it.servicePriceSnapshot ?? 0), 0) || item.finalAmount || item.totalPrice || item.subtotal || 0))}
                     </Text>
                   </View>
 
