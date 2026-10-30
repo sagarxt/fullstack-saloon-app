@@ -160,12 +160,15 @@ public class BookingMapper {
             }
         }
         if (paid == null) paid = 0.0;
-        paid = Math.min(paid, total);
         Double remaining = Math.max(0.0, total - paid);
+        Double refundDue = (b.getRefundDueAmount() != null && b.getRefundDueAmount() > 0)
+                ? b.getRefundDueAmount()
+                : Math.max(0.0, paid - total);
 
         dto.setTotalAmount(total);
         dto.setPricePaid(paid);
         dto.setRemainingAmount(remaining);
+        dto.setRefundDueAmount(refundDue);
         dto.setStatus(b.getStatus() != null ? b.getStatus().name() : null);
         dto.setScheduledAt(b.getScheduledAt());
         dto.setNote(b.getNote());

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -46,7 +47,20 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
        =============================== */
     @Query("""
         SELECT b FROM Booking b
-        WHERE b.status IN ('PENDING', 'CONFIRMED', 'MODIFIED', 'IN_PROGRESS', 'CHECKED_IN')
+        WHERE b.status IN ('PENDING', 'CONFIRMED', 'MODIFIED', 'NO_SHOW', 'IN_PROGRESS', 'CHECKED_IN')
     """)
     List<Booking> findAllActiveBookings();
+
+    @Query("""
+        SELECT b FROM Booking b
+        WHERE b.scheduledAt IS NOT NULL
+          AND b.scheduledAt < :cutoff
+          AND b.status IN (
+              com.groomish_now.backend.enums.BookingStatus.MODIFIED,
+              com.groomish_now.backend.enums.BookingStatus.CONFIRMED,
+              com.groomish_now.backend.enums.BookingStatus.PENDING,
+              com.groomish_now.backend.enums.BookingStatus.NO_SHOW
+          )
+    """)
+    List<Booking> findOverdueBookingsForCancellation(@Param("cutoff") LocalDateTime cutoff);
 }

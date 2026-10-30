@@ -85,27 +85,23 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
             throw new RuntimeException("Access denied to this booking");
         }
 
-        boolean isAlreadyCompleted = booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.COMPLETED;
-        double confirmedPaid = isAlreadyCompleted
-                ? (booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : (booking.getPricePaid() != null ? booking.getPricePaid() : 0.0))
-                : 0.0;
+        double total = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
+        double paid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
+        if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.COMPLETED) {
+            double pAmt = booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : 0.0;
+            paid = Math.max(paid, pAmt);
+        }
 
+        double remainingDue = Math.max(0.0, total - paid);
         double payableRemaining;
-        if (isAlreadyCompleted) {
-            double total = booking.getTotalAmount() != null ? booking.getTotalAmount() : confirmedPaid;
-            payableRemaining = Math.max(0.0, total - confirmedPaid);
-            if (payableRemaining <= 0.01) {
-                log.info("Idempotent check: Payment for booking {} has already been completed in full. Returning existing payment.", booking.getId());
-                return toDto(booking.getPayment());
-            }
+
+        if (paid > 0.01 && remainingDue > 0.01) {
+            payableRemaining = remainingDue;
+        } else if (remainingDue <= 0.01 && paid > 0.01) {
+            log.info("Idempotent check: Payment for booking {} has already been completed in full. Returning existing payment.", booking.getId());
+            return toDto(booking.getPayment());
         } else {
-            if (booking.getPayment() != null && booking.getPayment().getAmount() != null && booking.getPayment().getAmount() > 0) {
-                payableRemaining = booking.getPayment().getAmount();
-            } else if (booking.getPricePaid() != null && booking.getPricePaid() > 0) {
-                payableRemaining = booking.getPricePaid();
-            } else {
-                payableRemaining = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
-            }
+            payableRemaining = total > 0 ? total : paid;
         }
 
         PaymentMethod method;
@@ -120,9 +116,12 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
                 ? request.getPaymentGatewayId()
                 : "PAY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-        double newPaidTotal = confirmedPaid + payableRemaining;
+        double newPaidTotal = paid + payableRemaining;
         booking.setPricePaid(newPaidTotal);
-        booking.setTotalAmount(newPaidTotal);
+        if (booking.getTotalAmount() == null || booking.getTotalAmount() < newPaidTotal) {
+            booking.setTotalAmount(newPaidTotal);
+        }
+        booking.setRefundDueAmount(0.0);
 
         Payment payment = booking.getPayment();
         if (payment == null) {
@@ -240,30 +239,29 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
             throw new RuntimeException("Access denied to this booking");
         }
 
-        boolean isAlreadyCompleted = booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.COMPLETED;
-        double confirmedPaid = isAlreadyCompleted
-                ? (booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : (booking.getPricePaid() != null ? booking.getPricePaid() : 0.0))
-                : 0.0;
+        double total = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
+        double paid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
+        if (booking.getPayment() != null && booking.getPayment().getStatus() == PaymentStatus.COMPLETED) {
+            double pAmt = booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : 0.0;
+            paid = Math.max(paid, pAmt);
+        }
 
+        double remainingDue = Math.max(0.0, total - paid);
         double payableAmount;
-        if (isAlreadyCompleted) {
-            double total = booking.getTotalAmount() != null ? booking.getTotalAmount() : confirmedPaid;
-            payableAmount = Math.max(0.0, total - confirmedPaid);
-            if (payableAmount <= 0.01) {
-                throw new RuntimeException("Payment has already been completed in full for this booking (no outstanding balance).");
-            }
+
+        if (paid > 0.01 && remainingDue > 0.01) {
+            // Outstanding balance on existing booking after modifications (e.g. 1598 - 599 = 999)
+            payableAmount = remainingDue;
+        } else if (remainingDue <= 0.01 && paid > 0.01) {
+            throw new RuntimeException("Payment has already been completed in full for this booking (no outstanding balance).");
+        } else if (request.getAmount() != null && request.getAmount() > 0) {
+            payableAmount = request.getAmount();
+        } else if (booking.getPayment() != null && booking.getPayment().getAmount() != null && booking.getPayment().getAmount() > 0) {
+            payableAmount = booking.getPayment().getAmount();
+        } else if (booking.getPricePaid() != null && booking.getPricePaid() > 0) {
+            payableAmount = booking.getPricePaid();
         } else {
-            // Fresh / Pending booking: Nothing has been paid yet.
-            // Determine net actual price:
-            if (request.getAmount() != null && request.getAmount() > 0) {
-                payableAmount = request.getAmount();
-            } else if (booking.getPayment() != null && booking.getPayment().getAmount() != null && booking.getPayment().getAmount() > 0) {
-                payableAmount = booking.getPayment().getAmount();
-            } else if (booking.getPricePaid() != null && booking.getPricePaid() > 0) {
-                payableAmount = booking.getPricePaid();
-            } else {
-                payableAmount = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
-            }
+            payableAmount = total;
         }
 
         long amountInPaise = Math.round(payableAmount * 100);

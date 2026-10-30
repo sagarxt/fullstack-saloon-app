@@ -66,11 +66,21 @@ public class Booking {
     private Double totalAmount;
     private Double pricePaid;
     private String razorpayOrderId;
+    private Double refundDueAmount;
 
     public Double getRemainingAmount() {
         double total = this.totalAmount != null ? this.totalAmount : 0.0;
         double paid = this.pricePaid != null ? this.pricePaid : 0.0;
         return Math.max(0.0, total - paid);
+    }
+
+    public Double getRefundDueAmount() {
+        double total = this.totalAmount != null ? this.totalAmount : 0.0;
+        double paid = this.pricePaid != null ? this.pricePaid : 0.0;
+        if (paid > total) {
+            return paid - total;
+        }
+        return this.refundDueAmount != null ? this.refundDueAmount : 0.0;
     }
 
     @Enumerated(EnumType.STRING)

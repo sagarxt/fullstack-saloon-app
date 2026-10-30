@@ -227,7 +227,15 @@ public class ProductServiceImpl implements ProductService {
         // Update booking totals: increase totalAmount, but preserve existing pricePaid
         // (customer must pay the remaining balance online or at salon)
         double currentTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0;
-        booking.setTotalAmount(currentTotal + itemTotal);
+        double newTotal = currentTotal + itemTotal;
+        booking.setTotalAmount(newTotal);
+
+        double paidSoFar = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
+        if (paidSoFar > newTotal) {
+            booking.setRefundDueAmount(paidSoFar - newTotal);
+        } else {
+            booking.setRefundDueAmount(0.0);
+        }
 
         Booking savedBooking = bookingRepository.save(booking);
         String[] actor = resolveCurrentStaffActor(savedBooking);
@@ -270,7 +278,12 @@ public class ProductServiceImpl implements ProductService {
 
         double newTotal = Math.max(0, currentTotal - diff);
         booking.setTotalAmount(newTotal);
-        booking.setPricePaid(Math.min(currentPaid, newTotal));
+
+        if (currentPaid > newTotal) {
+            booking.setRefundDueAmount(currentPaid - newTotal);
+        } else {
+            booking.setRefundDueAmount(0.0);
+        }
 
         bookingProductRepository.delete(bp);
         Booking saved = bookingRepository.save(booking);
@@ -307,6 +320,27 @@ public class ProductServiceImpl implements ProductService {
         }
 
         double totalAmount = booking.getTotalAmount() != null ? booking.getTotalAmount() : (booking.getPricePaid() != null ? booking.getPricePaid() : 0.0);
+        Double refundDue = booking.getRefundDueAmount();
+        if (refundDue != null && refundDue > 0) {
+            log.info("Processing excess payment refund of ₹{} for completed booking {}", refundDue, booking.getId());
+            booking.setRefundStatus("PROCESSED");
+            booking.setRefundAmount((booking.getRefundAmount() != null ? booking.getRefundAmount() : 0.0) + refundDue);
+            booking.setRefundReason("Excess payment refund following service modifications");
+            booking.setRefundedAt(LocalDateTime.now());
+            if (booking.getRazorpayRefundId() == null) {
+                booking.setRazorpayRefundId("rfnd_auto_" + UUID.randomUUID().toString().replace("-", "").substring(0, 14));
+            }
+            bookingTimelineService.recordTimeline(
+                    booking,
+                    "REFUND_PROCESSED",
+                    "Excess Payment Refunded",
+                    "Excess payment of ₹" + refundDue + " has been refunded to customer's account upon appointment completion.",
+                    "System",
+                    "SYSTEM",
+                    null
+            );
+            booking.setRefundDueAmount(0.0);
+        }
         booking.setPricePaid(totalAmount);
         double finalAmount = totalAmount;
         double originalTotal = booking.getTotalAmount() != null ? booking.getTotalAmount() : finalAmount;
