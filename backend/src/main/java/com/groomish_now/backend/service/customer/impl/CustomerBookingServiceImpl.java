@@ -978,13 +978,21 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         double currentPaid = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
         if (booking.getPayment() != null && booking.getPayment().getStatus() == com.groomish_now.backend.enums.PaymentStatus.COMPLETED) {
             double confirmed = booking.getPayment().getAmount() != null ? booking.getPayment().getAmount() : currentPaid;
-            booking.setPricePaid(Math.min(confirmed, finalAmount));
+            booking.setPricePaid(confirmed);
         } else if (booking.getPayment() != null && booking.getPayment().getStatus() == com.groomish_now.backend.enums.PaymentStatus.PENDING) {
             if (booking.getStatus() != BookingStatus.COMPLETED) {
                 booking.setPricePaid(0.0);
             }
         } else {
-            booking.setPricePaid(Math.min(currentPaid, finalAmount));
+            booking.setPricePaid(currentPaid);
+        }
+
+        // Calculate refundDueAmount if modified booking total is less than what was already paid
+        double paidSoFar = booking.getPricePaid() != null ? booking.getPricePaid() : 0.0;
+        if (paidSoFar > finalAmount) {
+            booking.setRefundDueAmount(paidSoFar - finalAmount);
+        } else {
+            booking.setRefundDueAmount(0.0);
         }
         booking.setTotalDurationMinutes(totalDuration);
 
@@ -1069,12 +1077,15 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             }
         }
         if (pricePaid == null) pricePaid = 0.0;
-        pricePaid = Math.min(pricePaid, totalAmount);
         Double remainingAmount = Math.max(0.0, totalAmount - pricePaid);
+        Double refundDue = (booking.getRefundDueAmount() != null && booking.getRefundDueAmount() > 0)
+                ? booking.getRefundDueAmount()
+                : Math.max(0.0, pricePaid - totalAmount);
 
         dto.setTotalAmount(totalAmount);
         dto.setPricePaid(pricePaid);
         dto.setRemainingAmount(remainingAmount);
+        dto.setRefundDueAmount(refundDue);
 
         dto.setCouponApplied(
                 booking.getCoupon() != null

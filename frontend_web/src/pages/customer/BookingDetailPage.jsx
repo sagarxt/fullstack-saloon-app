@@ -122,11 +122,37 @@ export default function BookingDetailPage() {
 
   const payableDue = useMemo(() => {
     if (!booking) return 0;
-    const rem = Number(booking.remainingAmount);
-    if (!isNaN(rem) && rem > 0) return rem;
-    const tot = Number(booking.totalAmount);
-    if (!isNaN(tot) && tot > 0) return tot;
-    return Number(booking.pricePaid || 0);
+    const totalAmount = Number(booking.totalAmount ?? 0);
+    const pricePaid = Number(booking.pricePaid ?? 0);
+
+    // If remainingAmount is explicitly provided and positive, use it
+    if (booking.remainingAmount !== undefined && booking.remainingAmount !== null) {
+      const rem = Number(booking.remainingAmount);
+      if (!isNaN(rem) && rem > 0) return rem;
+    }
+
+    // Otherwise calculate remaining balance: totalAmount - pricePaid
+    const diff = totalAmount - pricePaid;
+    if (diff > 0) return diff;
+
+    // If completely unpaid (pricePaid === 0), it's the full totalAmount
+    if (pricePaid <= 0 && totalAmount > 0) return totalAmount;
+
+    return 0;
+  }, [booking]);
+
+  const refundDue = useMemo(() => {
+    if (!booking) return 0;
+    if (booking.refundDueAmount !== undefined && booking.refundDueAmount !== null) {
+      const val = Number(booking.refundDueAmount);
+      if (!isNaN(val) && val > 0) return val;
+    }
+    const totalAmount = Number(booking.totalAmount ?? 0);
+    const pricePaid = Number(booking.pricePaid ?? 0);
+    if (pricePaid > totalAmount && booking.status !== "CANCELLED") {
+      return pricePaid - totalAmount;
+    }
+    return 0;
   }, [booking]);
 
   const handlePayOnlineSubmit = async (e) => {
@@ -827,7 +853,7 @@ export default function BookingDetailPage() {
                   className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition shadow-soft flex items-center justify-center gap-1.5"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>Pay Online (₹{booking.pricePaid})</span>
+                  <span>Pay Online (₹{payableDue})</span>
                 </button>
               </div>
             )}
@@ -1388,8 +1414,14 @@ export default function BookingDetailPage() {
                       ? booking.remainingAmount
                       : Math.max(0, totalAmount - pricePaid)
                   );
+                  const refundDue = Number(
+                    booking.refundDueAmount !== undefined && booking.refundDueAmount !== null && Number(booking.refundDueAmount) > 0
+                      ? booking.refundDueAmount
+                      : Math.max(0, pricePaid - totalAmount)
+                  );
+                  const hasRefundDue = refundDue > 0.01 && booking.status !== "CANCELLED";
                   const isPartiallyPaid = pricePaid > 0.01 && remainingAmount > 0.01;
-                  const isFullyPaid = remainingAmount <= 0.01 && (pricePaid > 0 || booking.status === "COMPLETED" || booking.paymentStatus === "COMPLETED");
+                  const isFullyPaid = remainingAmount <= 0.01 && (pricePaid > 0 || booking.status === "COMPLETED" || booking.paymentStatus === "COMPLETED") && !hasRefundDue;
                   const hasRemainingBalance = remainingAmount > 0.01 && booking.status !== "CANCELLED" && booking.status !== "COMPLETED";
 
                   return (
@@ -1415,6 +1447,17 @@ export default function BookingDetailPage() {
                                 <span>Cancelled • No Online Payment</span>
                               </span>
                             )
+                          ) : hasRefundDue ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-900 border border-sky-300">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
+                              <span>
+                                {booking.refundStatus === "PROCESSED"
+                                  ? `Refund Processed (₹${booking.refundAmount || refundDue})`
+                                  : booking.status === "COMPLETED"
+                                  ? `Refund Initiated (₹${refundDue})`
+                                  : `Excess Paid (₹${refundDue} Refund Pending)`}
+                              </span>
+                            </span>
                           ) : isFullyPaid ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1455,14 +1498,14 @@ export default function BookingDetailPage() {
                         <span className="text-groomish-slate font-black text-lg">₹{totalAmount}</span>
                       </div>
 
-                      {/* Already Paid Online (Partial) */}
-                      {isPartiallyPaid && (
+                      {/* Already Paid Online */}
+                      {pricePaid > 0 && (
                         <div className="flex justify-between py-1 text-xs text-emerald-700 font-bold bg-emerald-50/80 px-2.5 py-1 rounded-lg border border-emerald-200">
                           <span className="flex items-center gap-1.5">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             <span>Already Paid Online</span>
                           </span>
-                          <span>-₹{pricePaid}</span>
+                          <span>{pricePaid > totalAmount ? `₹${pricePaid}` : `-₹${pricePaid}`}</span>
                         </div>
                       )}
 
@@ -1478,12 +1521,25 @@ export default function BookingDetailPage() {
                           </span>
                         </div>
                       )}
+
+                      {/* Refund Due to Client (Excess Paid) */}
+                      {hasRefundDue && (
+                        <div className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-sky-50 border border-sky-300 text-sky-950 font-bold">
+                          <span className="flex items-center gap-1.5 text-xs">
+                            <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
+                            <span>Refund Due to You:</span>
+                          </span>
+                          <span className="text-base font-black text-sky-700 font-mono">
+                            ₹{refundDue}
+                          </span>
+                        </div>
+                      )}
                     </>
                   );
                 })()}
               </div>
 
-              {/* Pay Balance Action Callout */}
+              {/* Pay Balance Action Callout or Refund Notice */}
               {(() => {
                 const totalAmount = Number(booking.totalAmount ?? booking.pricePaid ?? 0);
                 const pricePaid = Number(booking.pricePaid ?? 0);
@@ -1492,8 +1548,38 @@ export default function BookingDetailPage() {
                     ? booking.remainingAmount
                     : Math.max(0, totalAmount - pricePaid)
                 );
+                const refundDue = Number(
+                  booking.refundDueAmount !== undefined && booking.refundDueAmount !== null && Number(booking.refundDueAmount) > 0
+                    ? booking.refundDueAmount
+                    : Math.max(0, pricePaid - totalAmount)
+                );
+                const hasRefundDue = refundDue > 0.01 && booking.status !== "CANCELLED";
                 const isPartiallyPaid = pricePaid > 0.01 && remainingAmount > 0.01;
                 const hasRemainingBalance = remainingAmount > 0.01 && booking.status !== "CANCELLED" && booking.status !== "COMPLETED";
+
+                if (hasRefundDue) {
+                  return (
+                    <div className="mt-3 p-4 rounded-2xl bg-gradient-to-r from-sky-50 via-indigo-50 to-sky-50 border-2 border-sky-300 shadow-soft space-y-2">
+                      <div className="flex items-center gap-2 text-sky-950 font-extrabold text-xs uppercase tracking-wider">
+                        <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
+                        <span>Adjustment Refund of ₹{refundDue}</span>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        Booking was modified: your revised total is <strong>₹{totalAmount}</strong>, and you already paid <strong>₹{pricePaid}</strong> online.
+                      </p>
+                      <div className="p-2.5 rounded-xl bg-white/80 border border-sky-200 text-xs text-sky-900 font-medium flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                        <span>
+                          {booking.refundStatus === "PROCESSED"
+                            ? `Refund of ₹${booking.refundAmount || refundDue} has been processed back to your original payment method (Ref: ${booking.refundId || "Completed"}).`
+                            : booking.status === "COMPLETED"
+                            ? `Your appointment is completed. Refund of ₹${refundDue} has been initiated back to your account.`
+                            : `Refund of ₹${refundDue} will process once the booking is completed.`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
 
                 if (!hasRemainingBalance) return null;
 
@@ -2334,7 +2420,7 @@ export default function BookingDetailPage() {
                 >
                   <ShieldCheck className="w-4 h-4" />
                   <span>
-                    {payLoading ? "Processing Payment..." : `Pay ₹${booking?.pricePaid} Online`}
+                    {payLoading ? "Processing Payment..." : `Pay ₹${payableDue} Online`}
                   </span>
                 </button>
               </div>

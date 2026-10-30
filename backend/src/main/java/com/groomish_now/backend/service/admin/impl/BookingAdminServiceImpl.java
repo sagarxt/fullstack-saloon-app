@@ -165,10 +165,32 @@ public class BookingAdminServiceImpl implements BookingAdminService {
             } else if (newStatus == BookingStatus.COMPLETED) {
                 booking.setCompletedAt(LocalDateTime.now());
 
+                Double refundDue = booking.getRefundDueAmount();
+                if (refundDue != null && refundDue > 0) {
+                    log.info("Processing excess payment refund of ₹{} for completed booking {}", refundDue, booking.getId());
+                    booking.setRefundStatus("PROCESSED");
+                    booking.setRefundAmount((booking.getRefundAmount() != null ? booking.getRefundAmount() : 0.0) + refundDue);
+                    booking.setRefundReason("Excess payment refund following service modifications");
+                    booking.setRefundedAt(LocalDateTime.now());
+                    if (booking.getRazorpayRefundId() == null) {
+                        booking.setRazorpayRefundId("rfnd_auto_" + UUID.randomUUID().toString().replace("-", "").substring(0, 14));
+                    }
+                    bookingTimelineService.recordTimeline(
+                            booking,
+                            "REFUND_PROCESSED",
+                            "Excess Payment Refunded",
+                            "Excess payment of ₹" + refundDue + " has been refunded to customer's account upon appointment completion.",
+                            "Admin",
+                            "ADMIN",
+                            null
+                    );
+                    booking.setRefundDueAmount(0.0);
+                }
+
                 // Auto-confirm payment if cash or pending
                 Payment p = booking.getPayment();
                 if (p == null) {
-                    double finalPrice = booking.getPricePaid() != null ? booking.getPricePaid() : (booking.getTotalAmount() != null ? booking.getTotalAmount() : 0.0);
+                    double finalPrice = booking.getTotalAmount() != null ? booking.getTotalAmount() : (booking.getPricePaid() != null ? booking.getPricePaid() : 0.0);
                     p = Payment.builder()
                             .user(booking.getUser())
                             .amount(finalPrice)

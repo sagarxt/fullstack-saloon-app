@@ -163,8 +163,14 @@ export default function InvoiceBreakdownCard({
               ? booking.remainingAmount
               : Math.max(0, totalAmount - pricePaid)
           );
+          const refundDue = Number(
+            booking.refundDueAmount !== undefined && booking.refundDueAmount !== null && Number(booking.refundDueAmount) > 0
+              ? booking.refundDueAmount
+              : Math.max(0, pricePaid - totalAmount)
+          );
+          const hasRefundDue = refundDue > 0.01 && !isCancelled;
           const isPartiallyPaid = pricePaid > 0.01 && remainingAmount > 0.01;
-          const isFullyPaid = remainingAmount <= 0.01 && (pricePaid > 0 || isCompleted);
+          const isFullyPaid = remainingAmount <= 0.01 && (pricePaid > 0 || isCompleted) && !hasRefundDue;
 
           return (
             <>
@@ -176,14 +182,14 @@ export default function InvoiceBreakdownCard({
                 </span>
               </div>
 
-              {/* Already Paid Online (Partial Payment) */}
-              {isPartiallyPaid && (
+              {/* Already Paid Online */}
+              {pricePaid > 0 && (
                 <div className="flex justify-between py-1 text-xs text-emerald-700 font-bold bg-emerald-50/80 px-2.5 py-1 rounded-lg border border-emerald-200">
                   <span className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Already Paid Online</span>
                   </span>
-                  <span>-₹{pricePaid}</span>
+                  <span>{pricePaid > totalAmount ? `₹${pricePaid}` : `-₹${pricePaid}`}</span>
                 </div>
               )}
 
@@ -196,6 +202,19 @@ export default function InvoiceBreakdownCard({
                   </span>
                   <span className="text-sm font-black text-amber-700 font-mono">
                     ₹{remainingAmount}
+                  </span>
+                </div>
+              )}
+
+              {/* Refund Due (Excess Paid) */}
+              {hasRefundDue && (
+                <div className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-sky-50 border border-sky-300 text-sky-950 font-bold">
+                  <span className="flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
+                    <span>Refund Due (Excess Paid):</span>
+                  </span>
+                  <span className="text-sm font-black text-sky-700 font-mono">
+                    ₹{refundDue}
                   </span>
                 </div>
               )}
@@ -214,6 +233,17 @@ export default function InvoiceBreakdownCard({
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
                       <AlertCircle className="w-3.5 h-3.5" />
                       <span>Cancelled • No Payment Received</span>
+                    </span>
+                  ) : hasRefundDue ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-900 border border-sky-300">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-sky-600" />
+                      <span>
+                        {booking.refundStatus === "PROCESSED"
+                          ? `Refund Processed (₹${booking.refundAmount || refundDue})`
+                          : isCompleted
+                          ? `Refund Initiated (₹${refundDue})`
+                          : `Excess Paid (₹${refundDue} Due)`}
+                      </span>
                     </span>
                   ) : isFullyPaid ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
@@ -241,6 +271,17 @@ export default function InvoiceBreakdownCard({
                   )}
                 </div>
               </div>
+
+              {/* Excess Refund Note */}
+              {hasRefundDue && !isCancelled && (
+                <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900 leading-snug">
+                  <strong>Excess Amount Paid:</strong> Customer paid ₹{pricePaid} online for an adjusted booking total of ₹{totalAmount}.
+                  {" "}
+                  {isCompleted
+                    ? `A refund of ₹${refundDue} has been processed back to the original payment method.`
+                    : `The excess balance of ₹${refundDue} will be refunded once the appointment is completed.`}
+                </div>
+              )}
             </>
           );
         })()}

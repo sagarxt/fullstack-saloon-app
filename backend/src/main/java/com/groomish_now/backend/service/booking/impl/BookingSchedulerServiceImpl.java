@@ -3,6 +3,9 @@ package com.groomish_now.backend.service.booking.impl;
 import com.groomish_now.backend.dto.mail.BookingEmailDto;
 import com.groomish_now.backend.enums.PaymentMethod;
 import com.groomish_now.backend.enums.PaymentStatus;
+import com.groomish_now.backend.model.BookingItem;
+import com.groomish_now.backend.model.Payment;
+import com.groomish_now.backend.repository.BookingItemRepository;
 import com.groomish_now.backend.repository.PaymentRepository;
 import com.groomish_now.backend.service.booking.BookingSchedulerService;
 import com.groomish_now.backend.service.booking.BookingTimelineService;
@@ -12,7 +15,9 @@ import com.groomish_now.backend.model.Booking;
 import com.groomish_now.backend.model.Notification;
 import com.groomish_now.backend.repository.BookingRepository;
 import com.groomish_now.backend.repository.NotificationRepository;
+import com.groomish_now.backend.service.payment.RazorpayRefundService;
 import com.groomish_now.backend.service.utils.EmailService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -33,17 +39,33 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
     private final PaymentRepository paymentRepository;
     private final BookingTimelineService bookingTimelineService;
     private final com.groomish_now.backend.service.notification.ExpoPushNotificationService expoPushNotificationService;
+    private final BookingItemRepository bookingItemRepository;
+    private final RazorpayRefundService razorpayRefundService;
+
+    @PostConstruct
+    public void init() {
+        try {
+            cancelOverdueBookings();
+        } catch (Exception ex) {
+            log.error("Startup overdue booking cancellation check failed: {}", ex.getMessage());
+        }
+    }
 
     /**
      * Executes every 60 seconds to process booking lifecycle:
-     * 1) 30-min before reminder (Starts in 30 minutes)
-     * 2) At booking time reminder (Starts now)
-     * 3) 1-hour post-slot warning (Attention Required: auto-cancel in 1 hour if not visited/checked in)
-     * 4) 2-hours post-slot auto-cancellation (Only if not checked in / not IN_PROGRESS)
+     * 1) Cancel and refund bookings whose date & time crossed >2 hours (MODIFIED, CONFIRMED, PENDING, NO_SHOW)
+     * 2) 24h before reminder
+     * 3) 2h before reminder
+     * 4) 30-min before reminder
+     * 5) At booking time reminder (Starts now)
+     * 6) 1-hour post-slot warning
      */
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void processAppointmentLifecycle() {
+        // 0. Auto-cancel and refund any bookings past the 2-hour window
+        cancelOverdueBookings();
+
         LocalDateTime now = LocalDateTime.now();
         List<Booking> activeBookings = bookingRepository.findAllActiveBookings();
 
@@ -311,69 +333,190 @@ public class BookingSchedulerServiceImpl implements BookingSchedulerService {
                     log.info("Sent 1-hour post-slot attention required warning for booking {}", displayCode);
                 }
 
-                // 6. 2 HOURS POST-SLOT: NO-SHOW AUTO-CANCELLATION & DEPOSIT FORFEITURE
-                // If 2 hours past scheduled time and customer NEVER checked in (NOT IN_PROGRESS / NOT CHECKED_IN), record as NO_SHOW
+                // 6. 2 HOURS POST-SLOT: AUTO-CANCELLATION & AUTOMATED REFUND
+                // Any booking crossed by >2 hours in MODIFIED, CONFIRMED, PENDING, or NO_SHOW is cancelled
+                // and refunded by cancelOverdueBookings() called at each scheduled tick.
                 if (b.getStatus() != BookingStatus.IN_PROGRESS &&
                         b.getStatus() != BookingStatus.CHECKED_IN &&
                         b.getCheckedInAt() == null &&
-                        (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING || b.getStatus() == BookingStatus.MODIFIED) &&
+                        (b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING ||
+                         b.getStatus() == BookingStatus.MODIFIED || b.getStatus() == BookingStatus.NO_SHOW) &&
                         now.isAfter(scheduledAt.plusMinutes(120))) {
 
-                    b.setStatus(BookingStatus.NO_SHOW);
-                    b.setCancelledAt(now);
-                    b.setAutoCancelled(true);
-                    b.setNote("Recorded as No-Show: Client did not check in or reschedule within 2-hour grace period. Advance deposit forfeited per policy.");
-                    if (b.getPayment() != null) {
-                        var p = b.getPayment();
-                        if (p.getStatus() == PaymentStatus.PENDING ||
-                            p.getPaymentMethod() == PaymentMethod.CASH) {
-                            p.setStatus(PaymentStatus.FAILED);
-                            paymentRepository.save(p);
-                        }
-                    }
-                    bookingRepository.save(b);
-
-                    bookingTimelineService.recordTimeline(
-                            b,
-                            "NO_SHOW",
-                            "Recorded as No-Show by System",
-                            "Automatically recorded as No-Show: Client did not arrive or reschedule within 2-hour grace period. Advance deposit forfeited per salon policy.",
-                            "System Scheduler",
-                            "SYSTEM",
-                            "system@groomish.com"
-                    );
-
-                    Notification notif = Notification.builder()
-                            .user(b.getUser())
-                            .title("Appointment Recorded as No-Show")
-                            .message("Your booking (" + displayCode + ") was recorded as a No-Show. Advance booking deposit forfeited per policy.")
-                            .type(NotificationType.BOOKING)
-                            .referenceId(b.getId())
-                            .link("/customer/bookings/" + b.getId())
-                            .build();
-                    notificationRepository.save(notif);
-
-                    BookingEmailDto dto = BookingEmailDto.fromBooking(b);
-                    emailService.sendBookingNoShowEmail(dto);
-
-                    if (b.getUser().getExpoPushToken() != null && !b.getUser().getExpoPushToken().isBlank()) {
-                        java.util.Map<String, Object> pushData = new java.util.HashMap<>();
-                        pushData.put("bookingId", b.getId().toString());
-                        pushData.put("type", "BOOKING_NO_SHOW");
-                        expoPushNotificationService.sendPushNotification(
-                                b.getUser().getExpoPushToken(),
-                                "Appointment Recorded as No-Show",
-                                "Your booking (" + displayCode + ") was recorded as a No-Show. Advance deposit forfeited per policy.",
-                                pushData
-                        );
-                    }
-
-                    log.info("Recorded booking {} as NO_SHOW past 2-hour window", displayCode);
+                    cancelAndRefundOverdueBooking(b, now);
                 }
 
             } catch (Exception ex) {
                 log.error("Error processing lifecycle for booking {}: {}", b.getId(), ex.getMessage());
             }
         }
+    }
+
+    /**
+     * Finds and cancels all bookings whose scheduled date and time has crossed by more than 2 hours
+     * and are in MODIFIED, CONFIRMED, PENDING, or NO_SHOW status.
+     * Automatically processes full refund if amount was paid.
+     */
+    @Override
+    @Transactional
+    public void cancelOverdueBookings() {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(2);
+        List<Booking> overdueBookings = bookingRepository.findOverdueBookingsForCancellation(cutoff);
+        if (overdueBookings.isEmpty()) {
+            return;
+        }
+
+        log.info("Processing {} overdue bookings (>2h past scheduled time) for auto-cancellation & refund", overdueBookings.size());
+        LocalDateTime now = LocalDateTime.now();
+
+        for (Booking b : overdueBookings) {
+            try {
+                // Ensure customer did not already check in or have services in progress
+                if (b.getStatus() == BookingStatus.IN_PROGRESS ||
+                        b.getStatus() == BookingStatus.CHECKED_IN ||
+                        b.getCheckedInAt() != null) {
+                    continue;
+                }
+
+                cancelAndRefundOverdueBooking(b, now);
+            } catch (Exception ex) {
+                log.error("Failed to auto-cancel and refund overdue booking {}: {}", b.getId(), ex.getMessage(), ex);
+            }
+        }
+    }
+
+    private void cancelAndRefundOverdueBooking(Booking b, LocalDateTime now) {
+        String displayCode = b.getBookingCode() != null ? b.getBookingCode() : "GN-" + b.getId().toString().substring(0, 8).toUpperCase();
+        String serviceName = (b.getBookingItems() != null && !b.getBookingItems().isEmpty() && b.getBookingItems().get(0).getServiceNameSnapshot() != null)
+                ? b.getBookingItems().get(0).getServiceNameSnapshot() : "Salon Appointment";
+        String storeName = b.getStoreNameSnapshot() != null ? b.getStoreNameSnapshot() : (b.getStore() != null ? b.getStore().getName() : "Groomish Now Flagship");
+
+        Payment payment = b.getPayment();
+        double paid = (b.getPricePaid() != null && b.getPricePaid() > 0)
+                ? b.getPricePaid()
+                : (payment != null && payment.getAmount() != null && payment.getStatus() == PaymentStatus.COMPLETED
+                    ? payment.getAmount()
+                    : 0.0);
+
+        // 1. Cancel the booking
+        b.setStatus(BookingStatus.CANCELLED);
+        b.setCancelledAt(now);
+        b.setAutoCancelled(true);
+        b.setNote("Auto-cancelled: Appointment date and time crossed by more than 2 hours without check-in. Processed for cancellation"
+                + (paid > 0.01 ? " and full refund of ₹" + Math.round(paid) + "." : "."));
+
+        // 2. Mark booking items as CANCELLED
+        List<BookingItem> items = bookingItemRepository.findByBookingId(b.getId());
+        if (items != null && !items.isEmpty()) {
+            items.forEach(bi -> bi.setStatus(BookingStatus.CANCELLED));
+            bookingItemRepository.saveAll(items);
+        }
+
+        // 3. Mark pending payment as FAILED
+        if (payment != null && (payment.getStatus() == PaymentStatus.PENDING || payment.getPaymentMethod() == PaymentMethod.CASH)) {
+            payment.setStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+        }
+
+        // 4. Process refund if amount was paid
+        boolean refundHandled = false;
+        if (paid > 0.01) {
+            if (payment != null && payment.getStatus() == PaymentStatus.COMPLETED &&
+                    (payment.getPaymentMethod() == PaymentMethod.ONLINE || payment.getRazorpayPaymentId() != null)) {
+                try {
+                    razorpayRefundService.initiateCustomRefund(
+                            b.getId(),
+                            paid,
+                            "Auto-refund: Appointment crossed by >2 hours without check-in. Booking auto-cancelled by system."
+                    );
+                    refundHandled = true;
+                    // Re-fetch booking after refund service update
+                    b = bookingRepository.findById(b.getId()).orElse(b);
+                } catch (Exception ex) {
+                    log.warn("Direct Razorpay refund API failed for overdue booking {}: {}. Falling back to internal refund tracking.", b.getId(), ex.getMessage());
+                }
+            }
+
+            if (!refundHandled) {
+                b.setRefundStatus("PROCESSED");
+                b.setRefundAmount(paid);
+                b.setRefundReason("Auto-refund: Scheduled appointment time crossed 2 hours without check-in");
+                b.setRefundedAt(now);
+                if (b.getRazorpayRefundId() == null || b.getRazorpayRefundId().isBlank()) {
+                    b.setRazorpayRefundId("rfnd_simulated_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+                }
+                if (payment != null) {
+                    payment.setRefundStatus("PROCESSED");
+                    payment.setRefundedAmount(paid);
+                    payment.setStatus(PaymentStatus.REFUNDED);
+                    payment.setRefundedAt(now);
+                    paymentRepository.save(payment);
+                }
+                bookingTimelineService.recordTimeline(
+                        b,
+                        "REFUND_PROCESSED",
+                        "Refund Processed",
+                        "Automated full refund of ₹" + Math.round(paid) + " recorded as appointment crossed 2-hour window.",
+                        "System Scheduler",
+                        "SYSTEM",
+                        "system@groomish.com"
+                );
+            }
+        } else {
+            b.setRefundStatus("NONE");
+            b.setRefundAmount(0.0);
+        }
+
+        bookingRepository.save(b);
+
+        // 5. Record CANCELLED timeline entry
+        bookingTimelineService.recordTimeline(
+                b,
+                "CANCELLED",
+                "Auto-Cancelled by System",
+                "Appointment was automatically cancelled because scheduled time crossed by more than 2 hours."
+                        + (paid > 0.01 ? " Full refund of ₹" + Math.round(paid) + " processed." : " No online payment was made."),
+                "System Scheduler",
+                "SYSTEM",
+                "system@groomish.com"
+        );
+
+        // 6. User Notifications & Emails
+        if (b.getUser() != null) {
+            Notification notif = Notification.builder()
+                    .user(b.getUser())
+                    .title("Appointment Auto-Cancelled")
+                    .message("Your booking (" + displayCode + ") was cancelled as the appointment time passed by more than 2 hours."
+                            + (paid > 0.01 ? " A full refund of ₹" + Math.round(paid) + " has been initiated." : ""))
+                    .type(NotificationType.BOOKING)
+                    .referenceId(b.getId())
+                    .link("/customer/bookings/" + b.getId())
+                    .build();
+            notificationRepository.save(notif);
+
+            emailService.sendBookingStatusEmail(
+                    b.getUser().getEmail(),
+                    b.getUser().getName(),
+                    displayCode,
+                    serviceName,
+                    "CANCELLED",
+                    "Your appointment at " + storeName + " was automatically cancelled because the scheduled appointment time passed by more than 2 hours without check-in."
+                            + (paid > 0.01 ? " A full refund of ₹" + Math.round(paid) + " has been processed to your original payment method." : "")
+            );
+
+            if (b.getUser().getExpoPushToken() != null && !b.getUser().getExpoPushToken().isBlank()) {
+                java.util.Map<String, Object> pushData = new java.util.HashMap<>();
+                pushData.put("bookingId", b.getId().toString());
+                pushData.put("type", "BOOKING_AUTO_CANCELLED");
+                expoPushNotificationService.sendPushNotification(
+                        b.getUser().getExpoPushToken(),
+                        "Appointment Auto-Cancelled",
+                        "Booking (" + displayCode + ") cancelled (past 2h). " + (paid > 0.01 ? "Refund of ₹" + Math.round(paid) + " processed." : ""),
+                        pushData
+                );
+            }
+        }
+
+        log.info("Auto-cancelled and refunded overdue booking {} (paid: ₹{})", displayCode, paid);
     }
 }

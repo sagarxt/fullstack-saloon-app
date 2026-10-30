@@ -21,6 +21,7 @@ public class BookingDetailsResponse {
     private Double totalAmount;
     private Double pricePaid;
     private Double remainingAmount;
+    private Double refundDueAmount;
 
     private String couponApplied;
 

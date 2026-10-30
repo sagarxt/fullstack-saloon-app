@@ -22,6 +22,7 @@ public class BookingResponse {
     private Double totalAmount;
     private Double pricePaid;
     private Double remainingAmount;
+    private Double refundDueAmount;
     private String status;
     private String paymentMethod;
     private String paymentStatus;
