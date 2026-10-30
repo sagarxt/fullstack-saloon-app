@@ -42,16 +42,14 @@ export default function BookingTimelineSection({ timeline = [] }) {
     );
   }
 
-  // Format date & time
+  // Format date & time safely preserving original local timestamp
   const formatDateTime = (isoString) => {
     if (!isoString) return { date: "—", time: "—" };
     try {
-      const s = String(isoString).trim();
-      const normalized =
-        s.endsWith("Z") || s.includes("+") || /T\d{2}:\d{2}:\d{2}.*[\+\-]/.test(s)
-          ? s
-          : s + "Z";
-      const d = new Date(normalized);
+      const s = String(isoString).trim().replace(" ", "T");
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return { date: String(isoString), time: "" };
+
       return {
         date: d.toLocaleDateString("en-IN", {
           day: "numeric",

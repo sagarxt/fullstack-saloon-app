@@ -1057,13 +1057,30 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             dto.setStoreAddress(booking.getStoreAddressSnapshot());
         }
 
+        List<BookingProduct> prods = bookingProductRepository != null && booking.getId() != null
+                ? bookingProductRepository.findByBookingId(booking.getId())
+                : Collections.emptyList();
+
         Double totalAmount = booking.getTotalAmount();
         Double pricePaid = booking.getPricePaid();
-        if ((totalAmount == null || totalAmount == 0.0) && booking.getBookingItems() != null && !booking.getBookingItems().isEmpty()) {
-            totalAmount = booking.getBookingItems().stream()
+        if (totalAmount == null || totalAmount <= 0.0) {
+            double servicesSum = (booking.getBookingItems() != null)
+                    ? booking.getBookingItems().stream()
                     .mapToDouble(it -> it.getServicePriceSnapshot() != null && it.getServicePriceSnapshot() > 0 ? it.getServicePriceSnapshot()
                             : (it.getService() != null && it.getService().getPrice() != null ? it.getService().getPrice() : 0.0))
-                    .sum();
+                    .sum() : 0.0;
+            double prodsSum = (prods != null)
+                    ? prods.stream()
+                    .mapToDouble(p -> p.getTotalPrice() != null && p.getTotalPrice() > 0 ? p.getTotalPrice()
+                            : (p.getUnitPriceSnapshot() != null ? p.getUnitPriceSnapshot() * (p.getQuantity() != null ? p.getQuantity() : 1) : 0.0))
+                    .sum() : 0.0;
+            if (servicesSum + prodsSum > 0.0) {
+                totalAmount = servicesSum + prodsSum;
+            } else if (booking.getPayment() != null && booking.getPayment().getAmount() != null && booking.getPayment().getAmount() > 0.0) {
+                totalAmount = booking.getPayment().getAmount();
+            } else if (pricePaid != null && pricePaid > 0.0) {
+                totalAmount = pricePaid;
+            }
         }
         if (totalAmount == null) totalAmount = 0.0;
 
@@ -1157,7 +1174,6 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             dto.setItems(new ArrayList<>());
         }
 
-        List<BookingProduct> prods = bookingProductRepository.findByBookingId(booking.getId());
         if (prods != null && !prods.isEmpty()) {
             dto.setProducts(prods.stream().map(bp -> BookingProductResponse.builder()
                     .id(bp.getId())
