@@ -37,7 +37,30 @@ public class RedeemedVoucher {
 
     private UUID serviceId;
     private String serviceName;
+
+    private UUID productId;
+    private String productName;
+
+    @Builder.Default
+    private String targetType = "ALL";
+
+    @Builder.Default
+    private String conditionOperator = "OR";
+
     private Integer discountPercent;
+    private Double discountAmount;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "voucher_eligible_categories", joinColumns = @JoinColumn(name = "voucher_id"))
+    @Column(name = "category_name")
+    @Builder.Default
+    private java.util.List<String> eligibleCategories = new java.util.ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "voucher_eligible_brands", joinColumns = @JoinColumn(name = "voucher_id"))
+    @Column(name = "brand_name")
+    @Builder.Default
+    private java.util.List<String> eligibleBrands = new java.util.ArrayList<>();
 
     private Integer pointsSpent;
 

@@ -13,5 +13,7 @@ public class CouponRequest {
     private String expiryDate; // ISO: 2025-01-25T00:00:00
     private Boolean active;
     private java.util.List<String> eligibleCategories;
+    private java.util.List<String> eligibleBrands;
+    private String categoryBrandOperator; // "OR" or "AND"
     private java.util.List<String> applicableUserGroups;
 }

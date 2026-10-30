@@ -6,6 +6,9 @@ import {
   deactivateAdminRewardApi,
   getServicesApi,
 } from "../../api/admin";
+import { getCategoriesApi } from "../../api/category";
+import { getPublicProducts } from "../../api/products";
+import { getAdminBrands } from "../../api/brand";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import { extractList } from "../../utils/dataHelper";
 import {
@@ -26,6 +29,9 @@ import {
   Percent,
   Save,
   Crown,
+  ShoppingBag,
+  Tag,
+  Check,
 } from "lucide-react";
 import { showConfirm } from "../../context/ConfirmContext";
 import { forceDeleteRewardApi } from "../../api/maintenance";
@@ -33,11 +39,15 @@ import { useGroomCoin } from "../../context/GroomCoinContext";
 import GroomCoinIcon from "../../components/common/GroomCoinIcon";
 import CloudinaryImageUploader from "../../components/common/CloudinaryImageUploader";
 import CustomSelect from "../../components/common/CustomSelect";
+import CustomMultiSelect from "../../components/common/CustomMultiSelect";
 import CustomDatePicker from "../../components/common/CustomDatePicker";
 
 export default function AdminRewardsPage() {
   const [rewards, setRewards] = useState([]);
   const [services, setServices] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterActive, setFilterActive] = useState("ALL"); // ALL, ACTIVE, INACTIVE
@@ -109,11 +119,18 @@ export default function AdminRewardsPage() {
     pointsRequired: 100,
     serviceId: "",
     serviceName: "",
+    productId: "",
+    productName: "",
+    targetType: "ALL",
+    conditionOperator: "OR",
     discountPercent: 100,
+    discountAmount: "",
     validityDays: 30,
     stock: 50,
     expiryDate: "",
     image: "",
+    eligibleCategories: [],
+    eligibleBrands: [],
     active: true,
   });
 
@@ -127,12 +144,18 @@ export default function AdminRewardsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [rewRes, servRes] = await Promise.all([
+      const [rewRes, servRes, prodRes, catRes, brandsRes] = await Promise.all([
         getAdminRewardsApi({ size: 100 }),
         getServicesApi().catch(() => ({ data: [] })),
+        getPublicProducts().catch(() => ({ data: [] })),
+        getCategoriesApi().catch(() => ({ data: [] })),
+        getAdminBrands().catch(() => ({ data: [] })),
       ]);
       setRewards(extractList(rewRes.data));
       setServices(extractList(servRes.data));
+      setProducts(extractList(prodRes.data));
+      setCategories(extractList(catRes.data));
+      setBrands(extractList(brandsRes.data));
     } catch (err) {
       console.error("Failed to load rewards/services:", err);
       setRewards([]);
@@ -155,11 +178,18 @@ export default function AdminRewardsPage() {
       pointsRequired: 100,
       serviceId: "",
       serviceName: "",
+      productId: "",
+      productName: "",
+      targetType: "ALL",
+      conditionOperator: "OR",
       discountPercent: 100,
+      discountAmount: "",
       validityDays: 30,
       stock: 50,
       expiryDate: futureDate.toISOString().split("T")[0],
       image: "",
+      eligibleCategories: [],
+      eligibleBrands: [],
       active: true,
     });
     setError("");
@@ -178,11 +208,18 @@ export default function AdminRewardsPage() {
       pointsRequired: reward.pointsRequired !== undefined ? reward.pointsRequired : 100,
       serviceId: reward.serviceId || "",
       serviceName: reward.serviceName || "",
+      productId: reward.productId || "",
+      productName: reward.productName || "",
+      targetType: reward.targetType || "ALL",
+      conditionOperator: reward.conditionOperator || "OR",
       discountPercent: reward.discountPercent !== undefined ? reward.discountPercent : 100,
+      discountAmount: reward.discountAmount != null ? String(reward.discountAmount) : "",
       validityDays: reward.validityDays !== undefined ? reward.validityDays : 30,
       stock: reward.stock !== undefined ? reward.stock : 50,
       expiryDate: dateStr,
       image: reward.image || "",
+      eligibleCategories: reward.eligibleCategories || [],
+      eligibleBrands: reward.eligibleBrands || [],
       active: reward.active !== undefined ? reward.active : true,
     });
     setError("");
@@ -200,6 +237,20 @@ export default function AdminRewardsPage() {
       serviceId,
       serviceName: selected ? selected.name : "",
       title: prev.title || (selected ? `Free ${selected.name} Voucher` : ""),
+    }));
+  };
+
+  const handleProductSelect = (productId) => {
+    if (!productId) {
+      setForm((prev) => ({ ...prev, productId: "", productName: "" }));
+      return;
+    }
+    const selected = products.find((p) => p.id === productId);
+    setForm((prev) => ({
+      ...prev,
+      productId,
+      productName: selected ? selected.name : "",
+      title: prev.title || (selected ? `Exclusive ${selected.name} Voucher` : ""),
     }));
   };
 
@@ -224,9 +275,16 @@ export default function AdminRewardsPage() {
         pointsRequired: Number(form.pointsRequired),
         serviceId: form.serviceId ? form.serviceId : null,
         serviceName: form.serviceName ? form.serviceName.trim() : null,
-        discountPercent: Number(form.discountPercent || 100),
+        productId: form.productId ? form.productId : null,
+        productName: form.productName ? form.productName.trim() : null,
+        targetType: form.targetType || "ALL",
+        conditionOperator: form.conditionOperator || "OR",
+        discountPercent: form.discountPercent !== "" ? Number(form.discountPercent) : 100,
+        discountAmount: form.discountAmount ? Number(form.discountAmount) : null,
         validityDays: Number(form.validityDays || 30),
         stock: Number(form.stock || 0),
+        eligibleCategories: form.eligibleCategories || [],
+        eligibleBrands: form.eligibleBrands || [],
         active: Boolean(form.active),
         image: form.image?.trim() || null,
         expiryDate: form.expiryDate ? form.expiryDate : null,
@@ -493,7 +551,7 @@ export default function AdminRewardsPage() {
               <thead>
                 <tr className="bg-groomish-cream/70 border-b border-groomish-slate/10 text-groomish-slate font-extrabold uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-3.5 text-left">Voucher Title</th>
-                  <th className="py-3 px-3 text-left">Service Scope</th>
+                  <th className="py-3 px-3 text-left">Scope & Eligibility</th>
                   <th className="py-3 px-2.5 text-center">Groom Coins</th>
                   <th className="py-3 px-2.5 text-center">Discount</th>
                   <th className="py-3 px-3 text-left">Validity & Expiry</th>
@@ -550,19 +608,45 @@ export default function AdminRewardsPage() {
                         </div>
                       </td>
 
-                      {/* Applicable Service */}
+                      {/* Applicable Scope & Eligibility */}
                       <td className="py-3 px-3">
-                        {reward.serviceName ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-groomish-orange/10 text-groomish-orange border border-groomish-orange/25 max-w-[150px]">
-                            <Scissors className="w-3 h-3 shrink-0" />
-                            <span className="truncate">{reward.serviceName}</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-groomish-cream text-groomish-slate/75 border border-groomish-slate/15">
-                            <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
-                            <span>All Services</span>
-                          </span>
-                        )}
+                        <div className="flex flex-col gap-1 max-w-[210px]">
+                          {reward.serviceName && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-groomish-orange/10 text-groomish-orange border border-groomish-orange/25 truncate">
+                              <Scissors className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{reward.serviceName}</span>
+                            </span>
+                          )}
+                          {reward.productName && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 truncate">
+                              <ShoppingBag className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{reward.productName}</span>
+                            </span>
+                          )}
+                          {reward.eligibleCategories?.length > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 truncate" title={reward.eligibleCategories.join(", ")}>
+                              <Layers className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Cats: {reward.eligibleCategories.join(", ")}</span>
+                            </span>
+                          )}
+                          {reward.eligibleBrands?.length > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200 truncate" title={reward.eligibleBrands.join(", ")}>
+                              <Tag className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Brands: {reward.eligibleBrands.join(", ")}</span>
+                            </span>
+                          )}
+                          {(!reward.serviceName && !reward.productName && (!reward.eligibleCategories || reward.eligibleCategories.length === 0) && (!reward.eligibleBrands || reward.eligibleBrands.length === 0)) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-groomish-cream text-groomish-slate/75 border border-groomish-slate/15">
+                              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                              <span>Universal (All Items)</span>
+                            </span>
+                          )}
+                          {((reward.eligibleCategories?.length > 0 && reward.eligibleBrands?.length > 0) || reward.targetType === "CUSTOM") && (
+                            <span className="text-[9px] font-black uppercase tracking-wider text-groomish-slateLight/80">
+                              Rule: {reward.conditionOperator || "OR"}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Groom Coins Required */}
@@ -573,12 +657,18 @@ export default function AdminRewardsPage() {
                         </span>
                       </td>
 
-                      {/* Discount % */}
+                      {/* Discount */}
                       <td className="py-3 px-2.5 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-lg text-xs font-black bg-rose-50 text-rose-600 border border-rose-200 shadow-2xs">
-                          <Percent className="w-3 h-3 text-rose-500" />
-                          <span>{reward.discountPercent || 100}% OFF</span>
-                        </span>
+                        {reward.discountAmount ? (
+                          <span className="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-lg text-xs font-black bg-rose-50 text-rose-600 border border-rose-200 shadow-2xs">
+                            <span>₹{reward.discountAmount} OFF</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-lg text-xs font-black bg-rose-50 text-rose-600 border border-rose-200 shadow-2xs">
+                            <Percent className="w-3 h-3 text-rose-500" />
+                            <span>{reward.discountPercent || 100}% OFF</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Validity & Expiry */}
@@ -622,9 +712,21 @@ export default function AdminRewardsPage() {
                       <td className="py-3 px-3.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => handleToggleActive(reward)}
+                            className={`p-1.5 rounded-xl border transition shadow-2xs cursor-pointer active:scale-95 ${
+                              reward.active
+                                ? "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100"
+                                : "text-gray-400 bg-gray-50 border-gray-200 hover:bg-gray-100"
+                            }`}
+                            title={reward.active ? "Deactivate Voucher" : "Activate Voucher"}
+                          >
+                            <Power className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
                             onClick={() => openEditModal(reward)}
                             className="p-1.5 rounded-xl text-groomish-slate bg-white hover:bg-groomish-orangeLight hover:text-groomish-orange border border-groomish-slate/15 hover:border-groomish-orange/40 transition shadow-2xs cursor-pointer active:scale-95"
-                            title="Edit Voucher (Includes Status Toggle)"
+                            title="Edit Voucher"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -691,43 +793,179 @@ export default function AdminRewardsPage() {
               />
             </div>
 
-            {/* Applicable Service (Dropdown) - Groomish Themed */}
-            <div className="p-3.5 rounded-2xl bg-groomish-cream/40 border border-groomish-slate/15 space-y-2">
-              <label className="block font-bold text-groomish-slate flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5">
-                  <Scissors className="w-3.5 h-3.5 text-groomish-orange" />
-                  <span>Special Applicable Service (Set by Admin)</span>
+            {/* Voucher Scope & Multi-Condition Logic (Set by Admin) */}
+            <div className="p-4 rounded-2xl bg-groomish-cream/40 border border-groomish-slate/15 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-groomish-slate flex items-center gap-1.5 text-xs">
+                  <Layers className="w-3.5 h-3.5 text-groomish-orange" />
+                  <span>Voucher Applicability & Multi-Condition Rules</span>
                 </span>
-                {form.serviceId ? (
-                  <span className="text-[10px] font-bold text-groomish-orange bg-groomish-orangeLight px-2 py-0.5 rounded-full border border-groomish-orange/20">
-                    Linked Service
+                <span className="text-[10px] font-bold text-groomish-slate/60 bg-white px-2 py-0.5 rounded-full border border-groomish-slate/10">
+                  Target: {form.targetType}
+                </span>
+              </div>
+
+              {/* Target Selector Buttons */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-center">
+                {[
+                  { id: "ALL", label: "Universal", icon: Sparkles },
+                  { id: "SERVICE", label: "Service", icon: Scissors },
+                  { id: "PRODUCT", label: "Product", icon: ShoppingBag },
+                  { id: "CATEGORY", label: "Category", icon: Layers },
+                  { id: "BRAND", label: "Brand", icon: Tag },
+                  { id: "CUSTOM", label: "Multi-Rule", icon: Crown },
+                ].map((t) => {
+                  const Icon = t.icon;
+                  const active = form.targetType === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, targetType: t.id }))}
+                      className={`p-2 rounded-xl border flex flex-col items-center gap-1 transition text-[11px] font-bold ${
+                        active
+                          ? "bg-groomish-orange text-white border-groomish-orange shadow-xs"
+                          : "bg-white text-groomish-slate border-groomish-slate/15 hover:bg-groomish-cream"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Specific Service Dropdown */}
+              {(form.targetType === "SERVICE" || form.targetType === "CUSTOM") && (
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-groomish-slate/75">
+                    Target Salon Service
+                  </label>
+                  <CustomSelect
+                    name="serviceId"
+                    value={form.serviceId}
+                    onChange={(e, val) => handleServiceSelect(val ?? e.target?.value)}
+                    options={[
+                      { value: "", label: "✨ Any Service (Universal)" },
+                      ...services.map((s) => ({
+                        value: s.id,
+                        label: `${s.name} (₹${s.price} • ${s.durationMinutes || 30}m)`,
+                      })),
+                    ]}
+                    placeholder="Select specific service..."
+                    searchPlaceholder="Search services..."
+                    className="text-xs font-semibold"
+                  />
+                </div>
+              )}
+
+              {/* Specific Product Dropdown */}
+              {(form.targetType === "PRODUCT" || form.targetType === "CUSTOM") && (
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-groomish-slate/75">
+                    Target Retail Product
+                  </label>
+                  <CustomSelect
+                    name="productId"
+                    value={form.productId}
+                    onChange={(e, val) => handleProductSelect(val ?? e.target?.value)}
+                    options={[
+                      { value: "", label: "✨ Any Product (Universal)" },
+                      ...products.map((p) => ({
+                        value: p.id,
+                        label: `${p.name} (₹${p.price} • ${p.brand || "Retail"})`,
+                      })),
+                    ]}
+                    placeholder="Select specific product..."
+                    searchPlaceholder="Search products..."
+                    className="text-xs font-semibold"
+                  />
+                </div>
+              )}
+
+              {/* Eligible Categories Multi-Select */}
+              {(form.targetType === "CATEGORY" || form.targetType === "CUSTOM") && (
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-groomish-slate/75">
+                    Eligible Salon Categories
+                  </label>
+                  <CustomMultiSelect
+                    value={form.eligibleCategories}
+                    onChange={(selected) => setForm({ ...form, eligibleCategories: selected })}
+                    options={categories.map((c) => ({
+                      value: c.name,
+                      label: c.name,
+                    }))}
+                    placeholder="🌐 All Categories"
+                    searchPlaceholder="Filter categories..."
+                  />
+                </div>
+              )}
+
+              {/* Eligible Brands Multi-Select */}
+              {(form.targetType === "BRAND" || form.targetType === "CUSTOM") && (
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-bold text-groomish-slate/75">
+                    Eligible Product Brands
+                  </label>
+                  <CustomMultiSelect
+                    value={form.eligibleBrands}
+                    onChange={(selected) => setForm({ ...form, eligibleBrands: selected })}
+                    options={brands.map((b) => {
+                      const bName = typeof b === "string" ? b : (b.name || b.id);
+                      return { value: bName, label: bName };
+                    })}
+                    placeholder="🏷️ All Product Brands"
+                    searchPlaceholder="Filter product brands (e.g. L'Oreal, Beardo)..."
+                  />
+                </div>
+              )}
+
+              {/* Multi-Condition Operator (OR / AND) */}
+              {form.targetType === "CUSTOM" && (
+                <div className="pt-2 border-t border-groomish-slate/10 space-y-1.5">
+                  <span className="block text-[11px] font-bold text-groomish-slate">
+                    Condition Matching Operator
                   </span>
-                ) : (
-                  <span className="text-[10px] font-semibold text-groomish-slate/50">
-                    General Salon Perk
-                  </span>
-                )}
-              </label>
-              <CustomSelect
-                name="serviceId"
-                value={form.serviceId}
-                onChange={(e, val) => handleServiceSelect(val ?? e.target?.value)}
-                options={[
-                  { value: "", label: "✨ All Services / General Salon Perk" },
-                  ...services.map((s) => ({
-                    value: s.id,
-                    label: `${s.name} (₹${s.price} • ${s.durationMinutes || 30}m)`,
-                  })),
-                ]}
-                placeholder="Select applicable salon service..."
-                searchPlaceholder="Search services..."
-                className="text-xs font-semibold"
-              />
-              <p className="text-[11px] text-groomish-slate/60">
-                {form.serviceId
-                  ? `Redeemed vouchers will specifically apply to "${form.serviceName}" with a ${form.discountPercent}% discount.`
-                  : "When not linked to a specific service, this voucher applies as a general salon perk across all services."}
-              </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, conditionOperator: "OR" })}
+                      className={`p-2 rounded-xl border text-left text-xs transition ${
+                        form.conditionOperator === "OR"
+                          ? "bg-white border-groomish-orange text-groomish-orange font-bold shadow-xs"
+                          : "bg-white/60 border-groomish-slate/15 text-groomish-slate"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold text-xs">
+                        <span>OR Option (Default)</span>
+                        {form.conditionOperator === "OR" && <Check className="w-3 h-3 text-groomish-orange" />}
+                      </div>
+                      <span className="text-[10px] text-groomish-slate/60 block font-normal mt-0.5">
+                        Matches Service OR Product OR Category OR Brand
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, conditionOperator: "AND" })}
+                      className={`p-2 rounded-xl border text-left text-xs transition ${
+                        form.conditionOperator === "AND"
+                          ? "bg-white border-groomish-orange text-groomish-orange font-bold shadow-xs"
+                          : "bg-white/60 border-groomish-slate/15 text-groomish-slate"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold text-xs">
+                        <span>AND Option</span>
+                        {form.conditionOperator === "AND" && <Check className="w-3 h-3 text-groomish-orange" />}
+                      </div>
+                      <span className="text-[10px] text-groomish-slate/60 block font-normal mt-0.5">
+                        Must match ALL configured conditions
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Points Required & Discount % in 2 columns */}

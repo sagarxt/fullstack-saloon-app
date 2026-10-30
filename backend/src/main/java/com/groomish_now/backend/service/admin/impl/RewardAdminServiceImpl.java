@@ -20,6 +20,7 @@ public class RewardAdminServiceImpl implements RewardAdminService {
 
     private final RewardRepository rewardRepository;
     private final ServiceRepository serviceRepository;
+    private final com.groomish_now.backend.repository.ProductRepository productRepository;
 
     // =================== CREATE ===================
     @Override
@@ -39,8 +40,26 @@ public class RewardAdminServiceImpl implements RewardAdminService {
             r.setServiceName(request.getServiceName());
         }
 
-        r.setDiscountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : 100);
+        if (request.getProductId() != null) {
+            r.setProductId(request.getProductId());
+            productRepository.findById(request.getProductId()).ifPresent(p -> r.setProductName(p.getName()));
+        } else if (request.getProductName() != null) {
+            r.setProductName(request.getProductName());
+        }
+
+        r.setTargetType(request.getTargetType() != null && !request.getTargetType().isBlank() ? request.getTargetType().trim().toUpperCase() : "ALL");
+        r.setConditionOperator(request.getConditionOperator() != null && !request.getConditionOperator().isBlank() ? request.getConditionOperator().trim().toUpperCase() : "OR");
+
+        r.setDiscountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : (request.getDiscountAmount() != null ? 0 : 100));
+        r.setDiscountAmount(request.getDiscountAmount());
         r.setValidityDays(request.getValidityDays() != null ? request.getValidityDays() : 30);
+
+        if (request.getEligibleCategories() != null) {
+            r.setEligibleCategories(new java.util.ArrayList<>(request.getEligibleCategories()));
+        }
+        if (request.getEligibleBrands() != null) {
+            r.setEligibleBrands(new java.util.ArrayList<>(request.getEligibleBrands()));
+        }
 
         if (request.getExpiryDate() != null && !request.getExpiryDate().isBlank()) {
             r.setExpiryDate(parseDateSafely(request.getExpiryDate()));
@@ -70,8 +89,30 @@ public class RewardAdminServiceImpl implements RewardAdminService {
             r.setServiceName(request.getServiceName());
         }
 
+        if (request.getProductId() != null) {
+            r.setProductId(request.getProductId());
+            productRepository.findById(request.getProductId()).ifPresent(p -> r.setProductName(p.getName()));
+        } else if (request.getProductName() != null) {
+            r.setProductName(request.getProductName());
+        }
+
+        if (request.getTargetType() != null && !request.getTargetType().isBlank()) {
+            r.setTargetType(request.getTargetType().trim().toUpperCase());
+        }
+        if (request.getConditionOperator() != null && !request.getConditionOperator().isBlank()) {
+            r.setConditionOperator(request.getConditionOperator().trim().toUpperCase());
+        }
+
         if (request.getDiscountPercent() != null) r.setDiscountPercent(request.getDiscountPercent());
+        if (request.getDiscountAmount() != null) r.setDiscountAmount(request.getDiscountAmount());
         if (request.getValidityDays() != null) r.setValidityDays(request.getValidityDays());
+
+        if (request.getEligibleCategories() != null) {
+            r.setEligibleCategories(new java.util.ArrayList<>(request.getEligibleCategories()));
+        }
+        if (request.getEligibleBrands() != null) {
+            r.setEligibleBrands(new java.util.ArrayList<>(request.getEligibleBrands()));
+        }
 
         if (request.getExpiryDate() != null) {
             r.setExpiryDate(parseDateSafely(request.getExpiryDate()));
@@ -150,8 +191,15 @@ public class RewardAdminServiceImpl implements RewardAdminService {
         dto.setStock(r.getStock());
         dto.setServiceId(r.getServiceId());
         dto.setServiceName(r.getServiceName());
+        dto.setProductId(r.getProductId());
+        dto.setProductName(r.getProductName());
+        dto.setTargetType(r.getTargetType() != null ? r.getTargetType() : "ALL");
+        dto.setConditionOperator(r.getConditionOperator() != null ? r.getConditionOperator() : "OR");
         dto.setDiscountPercent(r.getDiscountPercent());
+        dto.setDiscountAmount(r.getDiscountAmount());
         dto.setValidityDays(r.getValidityDays());
+        dto.setEligibleCategories(r.getEligibleCategories() != null ? new java.util.ArrayList<>(r.getEligibleCategories()) : new java.util.ArrayList<>());
+        dto.setEligibleBrands(r.getEligibleBrands() != null ? new java.util.ArrayList<>(r.getEligibleBrands()) : new java.util.ArrayList<>());
         dto.setExpiryDate(r.getExpiryDate() != null ? r.getExpiryDate().toString() : null);
         dto.setActive(r.isActive());
         return dto;

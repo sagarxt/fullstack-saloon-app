@@ -17,6 +17,7 @@ import java.util.UUID;
 public class AdminUserController {
 
     private final UserAdminService userAdminService;
+    private final com.groomish_now.backend.service.admin.CohortAdminService cohortAdminService;
 
     // LIST USERS
     @GetMapping
@@ -32,22 +33,10 @@ public class AdminUserController {
         return userAdminService.listUsers(search, role, active, userGroup, pageable);
     }
 
-    // GET STANDARD USER GROUPS CATALOG
+    // GET STANDARD & CUSTOM COHORTS CATALOG
     @GetMapping("/groups")
     public java.util.List<java.util.Map<String, String>> getAvailableUserGroups() {
-        return java.util.List.of(
-            java.util.Map.of("id", "NEW_USER", "name", "New Customers", "description", "Joined within last 30 days or first order pending"),
-            java.util.Map.of("id", "SILVER", "name", "Silver Tier", "description", "Entry level loyalty tier (1x multiplier)"),
-            java.util.Map.of("id", "GOLD", "name", "Gold Tier", "description", "VIP salon patrons with 1.5x coin earn rate"),
-            java.util.Map.of("id", "PLATINUM", "name", "Platinum Tier", "description", "Top salon patrons with 2x coin multiplier"),
-            java.util.Map.of("id", "1_YEAR_PLUS", "name", "1 Year+ Loyalists", "description", "Patrons registered for over 1 year"),
-            java.util.Map.of("id", "2_YEAR_PLUS", "name", "2 Years+ Ambassadors", "description", "Long-term VIP patrons for 2+ years"),
-            java.util.Map.of("id", "VIP", "name", "VIP Members", "description", "High-value spenders and exclusive patrons"),
-            java.util.Map.of("id", "FREQUENT_VISITOR", "name", "Frequent Visitors", "description", "Repeat clients with active appointments"),
-            java.util.Map.of("id", "CHURN_RISK", "name", "Churn Risk / Inactive", "description", "Clients with no visit in the last 60 days"),
-            java.util.Map.of("id", "STUDENT", "name", "Students", "description", "Campus / Student pass members"),
-            java.util.Map.of("id", "BIRTHDAY_SPECIAL", "name", "Birthday Month", "description", "Patrons celebrating birthday this month")
-        );
+        return cohortAdminService.getAvailableUserGroupsCatalog();
     }
 
     // GET USER

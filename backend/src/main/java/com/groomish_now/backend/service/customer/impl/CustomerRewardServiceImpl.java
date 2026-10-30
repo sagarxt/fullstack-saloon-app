@@ -111,7 +111,14 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
                 .image(reward.getImage())
                 .serviceId(reward.getServiceId())
                 .serviceName(reward.getServiceName())
-                .discountPercent(reward.getDiscountPercent() != null ? reward.getDiscountPercent() : 100)
+                .productId(reward.getProductId())
+                .productName(reward.getProductName())
+                .targetType(reward.getTargetType() != null ? reward.getTargetType() : "ALL")
+                .conditionOperator(reward.getConditionOperator() != null ? reward.getConditionOperator() : "OR")
+                .discountPercent(reward.getDiscountPercent() != null ? reward.getDiscountPercent() : (reward.getDiscountAmount() != null ? 0 : 100))
+                .discountAmount(reward.getDiscountAmount())
+                .eligibleCategories(reward.getEligibleCategories() != null ? new java.util.ArrayList<>(reward.getEligibleCategories()) : new java.util.ArrayList<>())
+                .eligibleBrands(reward.getEligibleBrands() != null ? new java.util.ArrayList<>(reward.getEligibleBrands()) : new java.util.ArrayList<>())
                 .pointsSpent(pointsToDeduct)
                 .status(VoucherStatus.ACTIVE)
                 .redeemedAt(LocalDateTime.now())
@@ -174,7 +181,14 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
             dto.setImage(v.getImage());
             dto.setServiceId(v.getServiceId());
             dto.setServiceName(v.getServiceName());
+            dto.setProductId(v.getProductId());
+            dto.setProductName(v.getProductName());
+            dto.setTargetType(v.getTargetType());
+            dto.setConditionOperator(v.getConditionOperator());
             dto.setDiscountPercent(v.getDiscountPercent());
+            dto.setDiscountAmount(v.getDiscountAmount());
+            dto.setEligibleCategories(v.getEligibleCategories() != null ? new java.util.ArrayList<>(v.getEligibleCategories()) : new java.util.ArrayList<>());
+            dto.setEligibleBrands(v.getEligibleBrands() != null ? new java.util.ArrayList<>(v.getEligibleBrands()) : new java.util.ArrayList<>());
             dto.setPointsSpent(v.getPointsSpent());
 
             if (v.getStatus() == VoucherStatus.ACTIVE && v.getExpiresAt() != null && v.getExpiresAt().isBefore(now)) {
@@ -205,8 +219,15 @@ public class CustomerRewardServiceImpl implements CustomerRewardService {
         dto.setStock(r.getStock());
         dto.setServiceId(r.getServiceId());
         dto.setServiceName(r.getServiceName());
+        dto.setProductId(r.getProductId());
+        dto.setProductName(r.getProductName());
+        dto.setTargetType(r.getTargetType());
+        dto.setConditionOperator(r.getConditionOperator());
         dto.setDiscountPercent(r.getDiscountPercent());
+        dto.setDiscountAmount(r.getDiscountAmount());
         dto.setValidityDays(r.getValidityDays());
+        dto.setEligibleCategories(r.getEligibleCategories() != null ? new java.util.ArrayList<>(r.getEligibleCategories()) : new java.util.ArrayList<>());
+        dto.setEligibleBrands(r.getEligibleBrands() != null ? new java.util.ArrayList<>(r.getEligibleBrands()) : new java.util.ArrayList<>());
         dto.setExpiryDate(r.getExpiryDate() != null ? r.getExpiryDate().toString() : null);
         dto.setActive(r.isActive());
         return dto;

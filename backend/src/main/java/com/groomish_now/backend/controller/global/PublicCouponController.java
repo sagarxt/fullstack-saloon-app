@@ -36,6 +36,8 @@ public class PublicCouponController {
                     dto.setExpiryDate(c.getExpiryDate() != null ? c.getExpiryDate().toString() : null);
                     dto.setActive(c.isActive());
                     dto.setEligibleCategories(c.getEligibleCategories() != null ? new ArrayList<>(c.getEligibleCategories()) : new ArrayList<>());
+                    dto.setEligibleBrands(c.getEligibleBrands() != null ? new ArrayList<>(c.getEligibleBrands()) : new ArrayList<>());
+                    dto.setCategoryBrandOperator(c.getCategoryBrandOperator() != null ? c.getCategoryBrandOperator() : "OR");
                     dto.setApplicableUserGroups(c.getApplicableUserGroups() != null ? new ArrayList<>(c.getApplicableUserGroups()) : new ArrayList<>());
                     return dto;
                 })
@@ -82,6 +84,8 @@ public class PublicCouponController {
         dto.setExpiryDate(c.getExpiryDate() != null ? c.getExpiryDate().toString() : null);
         dto.setActive(c.isActive());
         dto.setEligibleCategories(c.getEligibleCategories() != null ? new ArrayList<>(c.getEligibleCategories()) : new ArrayList<>());
+        dto.setEligibleBrands(c.getEligibleBrands() != null ? new ArrayList<>(c.getEligibleBrands()) : new ArrayList<>());
+        dto.setCategoryBrandOperator(c.getCategoryBrandOperator() != null ? c.getCategoryBrandOperator() : "OR");
         dto.setApplicableUserGroups(c.getApplicableUserGroups() != null ? new ArrayList<>(c.getApplicableUserGroups()) : new ArrayList<>());
         return dto;
     }

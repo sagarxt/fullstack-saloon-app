@@ -8,6 +8,7 @@ import {
 } from "../../api/admin";
 import { forceDeleteCouponApi } from "../../api/maintenance";
 import { getCategoriesApi } from "../../api/category";
+import { getAdminBrands } from "../../api/brand";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import CustomMultiSelect from "../../components/common/CustomMultiSelect";
 import CustomDatePicker from "../../components/common/CustomDatePicker";
@@ -87,6 +88,7 @@ const getGroupBadgeInfo = (groupId) => {
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [userGroupsCatalog, setUserGroupsCatalog] = useState(DEFAULT_GROUPS);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -136,19 +138,23 @@ export default function CouponsPage() {
     expiryDate: futureStr,
     applicableUserGroups: [],
     eligibleCategories: [],
+    eligibleBrands: [],
+    categoryBrandOperator: "OR",
     active: true,
   });
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [couponsRes, catRes, groupsRes] = await Promise.all([
+      const [couponsRes, catRes, groupsRes, brandsRes] = await Promise.all([
         getCouponsApi(),
         getCategoriesApi().catch(() => ({ data: [] })),
         getUserGroupsCatalogApi().catch(() => ({ data: DEFAULT_GROUPS })),
+        getAdminBrands().catch(() => ({ data: [] })),
       ]);
       setCoupons(extractList(couponsRes.data));
       setCategories(extractList(catRes.data));
+      setBrands(extractList(brandsRes.data));
       if (groupsRes?.data && Array.isArray(groupsRes.data)) {
         setUserGroupsCatalog(groupsRes.data);
       }
@@ -188,6 +194,8 @@ export default function CouponsPage() {
       expiryDate: futureStr,
       applicableUserGroups: [],
       eligibleCategories: [],
+      eligibleBrands: [],
+      categoryBrandOperator: "OR",
       active: true,
     });
     setError("");
@@ -206,6 +214,8 @@ export default function CouponsPage() {
       expiryDate: coupon.expiryDate ? coupon.expiryDate.slice(0, 10) : "",
       applicableUserGroups: coupon.applicableUserGroups || [],
       eligibleCategories: coupon.eligibleCategories || [],
+      eligibleBrands: coupon.eligibleBrands || [],
+      categoryBrandOperator: coupon.categoryBrandOperator || "OR",
       active: coupon.active !== false,
     });
     setError("");
@@ -256,6 +266,8 @@ export default function CouponsPage() {
         expiryDate: form.expiryDate ? `${form.expiryDate}T23:59:59` : null,
         applicableUserGroups: form.applicableUserGroups || [],
         eligibleCategories: form.eligibleCategories || [],
+        eligibleBrands: form.eligibleBrands || [],
+        categoryBrandOperator: form.categoryBrandOperator || "OR",
         active: form.active !== false,
       };
 
@@ -533,7 +545,7 @@ export default function CouponsPage() {
                   {/* Eligible Categories Badges */}
                   <div className="mt-2.5">
                     <span className="text-[10px] uppercase font-bold text-groomish-slate/50 block mb-1">
-                      Salon Categories
+                      Salon Categories & Brands
                     </span>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {c.eligibleCategories && c.eligibleCategories.length > 0 ? (
@@ -542,13 +554,29 @@ export default function CouponsPage() {
                             key={cat}
                             className="px-2 py-0.5 rounded-lg bg-groomish-orangeLight text-groomish-orange font-bold text-[10px] border border-groomish-orange/20"
                           >
-                            {cat}
+                            📁 {cat}
                           </span>
                         ))
                       ) : (
                         <span className="px-2 py-0.5 rounded-lg bg-groomish-cream text-groomish-slate/70 font-semibold text-[10px] border border-groomish-slate/10">
                           🌐 All Categories
                         </span>
+                      )}
+
+                      {c.eligibleBrands && c.eligibleBrands.length > 0 && (
+                        <>
+                          <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-groomish-slate text-white">
+                            {c.categoryBrandOperator || "OR"}
+                          </span>
+                          {c.eligibleBrands.map((b) => (
+                            <span
+                              key={b}
+                              className="px-2 py-0.5 rounded-lg bg-cyan-50 text-cyan-800 font-bold text-[10px] border border-cyan-200"
+                            >
+                              🏷️ {b}
+                            </span>
+                          ))}
+                        </>
                       )}
                     </div>
                   </div>
@@ -819,6 +847,67 @@ export default function CouponsPage() {
                 placeholder="🌐 All Categories (Salon-wide)"
                 searchPlaceholder="Filter salon categories..."
               />
+            </div>
+
+            {/* Eligible Brands */}
+            <div>
+              <label className="block text-xs font-bold text-groomish-slate/80 mb-1">
+                Eligible Retail Product Brands
+              </label>
+              <CustomMultiSelect
+                value={form.eligibleBrands}
+                onChange={(selected) => setForm({ ...form, eligibleBrands: selected })}
+                options={brands.map((b) => {
+                  const bName = typeof b === "string" ? b : (b.name || b.id);
+                  return { value: bName, label: bName };
+                })}
+                placeholder="🏷️ All Product Brands"
+                searchPlaceholder="Filter product brands (e.g. L'Oreal, Beardo)..."
+              />
+            </div>
+
+            {/* Category & Brand Condition Operator (OR / AND) */}
+            <div className="p-3 bg-groomish-cream/60 rounded-2xl border border-groomish-slate/10 space-y-1.5">
+              <span className="block text-xs font-bold text-groomish-slate">
+                Category & Brand Matching Condition
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, categoryBrandOperator: "OR" })}
+                  className={`p-2.5 rounded-xl border text-left text-xs transition ${
+                    form.categoryBrandOperator === "OR"
+                      ? "bg-white border-groomish-orange text-groomish-orange shadow-xs font-bold"
+                      : "bg-white/60 border-groomish-slate/15 text-groomish-slate hover:bg-white"
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-between">
+                    <span>OR Option (Default)</span>
+                    {form.categoryBrandOperator === "OR" && <Check className="w-3.5 h-3.5 text-groomish-orange" />}
+                  </div>
+                  <span className="text-[10px] text-groomish-slate/60 block mt-0.5 font-normal">
+                    Valid if item matches Category OR Brand
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, categoryBrandOperator: "AND" })}
+                  className={`p-2.5 rounded-xl border text-left text-xs transition ${
+                    form.categoryBrandOperator === "AND"
+                      ? "bg-white border-groomish-orange text-groomish-orange shadow-xs font-bold"
+                      : "bg-white/60 border-groomish-slate/15 text-groomish-slate hover:bg-white"
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-between">
+                    <span>AND Option</span>
+                    {form.categoryBrandOperator === "AND" && <Check className="w-3.5 h-3.5 text-groomish-orange" />}
+                  </div>
+                  <span className="text-[10px] text-groomish-slate/60 block mt-0.5 font-normal">
+                    Must match BOTH Category AND Brand
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* Description */}

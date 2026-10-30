@@ -151,48 +151,75 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                     throw new RuntimeException("Coupon '" + coupon.getCode() + "' is exclusively reserved for members of: " + String.join(", ", coupon.getApplicableUserGroups()));
                 }
             }
+
+            if (customer != null) {
+                boolean alreadyUsed = bookingRepository.existsByUserIdAndCouponIdAndStatusNot(
+                        customer.getId(), coupon.getId(), com.groomish_now.backend.enums.BookingStatus.CANCELLED
+                );
+                if (alreadyUsed) {
+                    throw new RuntimeException("Customer has already used coupon '" + coupon.getCode() + "'.");
+                }
+            }
+
             final java.util.List<String> eligibleCats = coupon.getEligibleCategories();
+            final java.util.List<String> eligibleBrands = coupon.getEligibleBrands();
+            final String operator = coupon.getCategoryBrandOperator() != null && !coupon.getCategoryBrandOperator().isBlank()
+                    ? coupon.getCategoryBrandOperator().trim().toUpperCase() : "OR";
+
             boolean hasSpecificCategories = eligibleCats != null && !eligibleCats.isEmpty()
                     && eligibleCats.stream().noneMatch(ec -> ec.trim().equalsIgnoreCase("ALL"));
+            boolean hasSpecificBrands = eligibleBrands != null && !eligibleBrands.isEmpty()
+                    && eligibleBrands.stream().noneMatch(eb -> eb.trim().equalsIgnoreCase("ALL"));
+
+            boolean hasRestrictions = hasSpecificCategories || hasSpecificBrands;
 
             double discount = coupon.getDiscount() != null ? coupon.getDiscount() : 0.0;
             if (coupon.getMaxDiscount() != null && discount > coupon.getMaxDiscount()) {
                 discount = coupon.getMaxDiscount();
             }
 
-            if (hasSpecificCategories) {
-                double eligibleCategoryTotal = items.stream()
-                        .filter(item -> item.getService() != null && item.getService().getCategory() != null &&
-                                eligibleCats.stream().anyMatch(ec ->
-                                        ec.trim().equalsIgnoreCase(item.getService().getCategory().getName()) ||
-                                        (item.getService().getCategory().getId() != null && ec.trim().equalsIgnoreCase(item.getService().getCategory().getId().toString())) ||
-                                        item.getService().getCategory().getName().toLowerCase().contains(ec.trim().toLowerCase()) ||
-                                        ec.trim().toLowerCase().contains(item.getService().getCategory().getName().toLowerCase())
-                                )
-                        )
-                        .mapToDouble(item -> item.getService().getPrice() != null ? item.getService().getPrice() : 0.0)
-                        .sum();
+            if (hasRestrictions) {
+                double eligibleTotal = 0.0;
+                int eligibleCount = 0;
 
-                boolean hasEligible = items.stream().anyMatch(item ->
-                        item.getService() != null && item.getService().getCategory() != null &&
-                        eligibleCats.stream().anyMatch(ec ->
-                                ec.trim().equalsIgnoreCase(item.getService().getCategory().getName()) ||
-                                (item.getService().getCategory().getId() != null && ec.trim().equalsIgnoreCase(item.getService().getCategory().getId().toString())) ||
-                                item.getService().getCategory().getName().toLowerCase().contains(ec.trim().toLowerCase()) ||
-                                ec.trim().toLowerCase().contains(item.getService().getCategory().getName().toLowerCase())
-                        )
-                );
+                for (BookingItem item : items) {
+                    boolean matchesCat = false;
+                    if (hasSpecificCategories && item.getService() != null && item.getService().getCategory() != null) {
+                        String catName = item.getService().getCategory().getName();
+                        String catId = item.getService().getCategory().getId() != null ? item.getService().getCategory().getId().toString() : "";
+                        matchesCat = eligibleCats.stream().anyMatch(ec -> {
+                            String clean = ec.trim();
+                            return clean.equalsIgnoreCase(catName) || clean.equalsIgnoreCase(catId) || catName.toLowerCase().contains(clean.toLowerCase());
+                        });
+                    }
 
-                if (!hasEligible) {
-                    throw new RuntimeException("Coupon '" + coupon.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
+                    boolean matchesBrand = false;
+                    // services don't have brand by default, but if items has products in other flows
+                    boolean isEligible = false;
+                    if (hasSpecificCategories && hasSpecificBrands) {
+                        isEligible = "AND".equalsIgnoreCase(operator) ? (matchesCat && matchesBrand) : (matchesCat || matchesBrand);
+                    } else if (hasSpecificCategories) {
+                        isEligible = matchesCat;
+                    } else {
+                        isEligible = matchesBrand;
+                    }
+
+                    if (isEligible) {
+                        eligibleCount++;
+                        eligibleTotal += (item.getService() != null && item.getService().getPrice() != null ? item.getService().getPrice() : 0.0);
+                    }
                 }
 
-                if (coupon.getMinAmount() != null && eligibleCategoryTotal < coupon.getMinAmount()) {
-                    throw new RuntimeException("Combined total for eligible categories (" + String.join(", ", eligibleCats) + ") is ₹" + eligibleCategoryTotal + ", which does not meet coupon minimum of ₹" + coupon.getMinAmount());
+                if (eligibleCount == 0) {
+                    throw new RuntimeException("Coupon '" + coupon.getCode() + "' is not applicable to any selected treatments.");
                 }
 
-                if (discount > eligibleCategoryTotal) {
-                    discount = eligibleCategoryTotal;
+                if (coupon.getMinAmount() != null && eligibleTotal < coupon.getMinAmount()) {
+                    throw new RuntimeException("Combined total for eligible items (₹" + eligibleTotal + ") does not meet coupon minimum of ₹" + coupon.getMinAmount());
+                }
+
+                if (discount > eligibleTotal) {
+                    discount = eligibleTotal;
                 }
             } else {
                 if (totalAmount < (coupon.getMinAmount() != null ? coupon.getMinAmount() : 0.0)) {

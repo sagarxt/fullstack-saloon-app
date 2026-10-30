@@ -13,7 +13,11 @@ public class AdminDashboardController {
     private final DashboardAdminService dashboardAdminService;
 
     @GetMapping
-    public DashboardResponse getDashboardData() {
-        return dashboardAdminService.getDashboardData();
+    public DashboardResponse getDashboardData(
+            @RequestParam(required = false, defaultValue = "30D") String period,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return dashboardAdminService.getDashboardData(period, startDate, endDate);
     }
 }

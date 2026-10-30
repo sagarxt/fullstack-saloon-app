@@ -408,23 +408,182 @@ export default function CheckoutPage() {
     }
   };
 
-  // Calculate discount
+  // Helper to determine if a cart item is eligible for a coupon
+  const checkCouponItemEligibility = useCallback((item, coupon) => {
+    if (!coupon) return false;
+    const hasEligibleCategories =
+      coupon.eligibleCategories &&
+      coupon.eligibleCategories.length > 0 &&
+      !coupon.eligibleCategories.some((ec) => ec.trim().toUpperCase() === "ALL");
+    const hasEligibleBrands =
+      coupon.eligibleBrands &&
+      coupon.eligibleBrands.length > 0 &&
+      !coupon.eligibleBrands.some((eb) => eb.trim().toUpperCase() === "ALL");
+
+    if (!hasEligibleCategories && !hasEligibleBrands) return true;
+
+    const catName =
+      item.itemType === "SERVICE"
+        ? item.serviceCategoryName || item.service?.category?.name
+        : item.productCategory || item.product?.category || item.category;
+
+    const brandName =
+      item.itemType === "PRODUCT"
+        ? item.productBrand || item.product?.brand || item.brand
+        : null;
+
+    const catMatch =
+      hasEligibleCategories &&
+      catName &&
+      coupon.eligibleCategories.some((ec) => {
+        const clean = ec.trim().toLowerCase();
+        const itemCat = catName.trim().toLowerCase();
+        return itemCat === clean || itemCat.includes(clean) || clean.includes(itemCat);
+      });
+
+    const brandMatch =
+      hasEligibleBrands &&
+      brandName &&
+      coupon.eligibleBrands.some((eb) => {
+        const clean = eb.trim().toLowerCase();
+        const itemBrd = brandName.trim().toLowerCase();
+        return itemBrd === clean || itemBrd.includes(clean) || clean.includes(itemBrd);
+      });
+
+    const operator = (coupon.categoryBrandOperator || "OR").toUpperCase();
+
+    if (hasEligibleCategories && hasEligibleBrands) {
+      return operator === "AND" ? Boolean(catMatch && brandMatch) : Boolean(catMatch || brandMatch);
+    }
+    if (hasEligibleCategories) return Boolean(catMatch);
+    if (hasEligibleBrands) return Boolean(brandMatch);
+    return true;
+  }, []);
+
+  // Helper to determine if a cart item is eligible for a voucher
+  const checkVoucherItemEligibility = useCallback((item, voucher) => {
+    if (!voucher) return false;
+
+    const hasService = Boolean(voucher.serviceId);
+    const hasProduct = Boolean(voucher.productId);
+    const hasCats =
+      voucher.eligibleCategories &&
+      voucher.eligibleCategories.length > 0 &&
+      !voucher.eligibleCategories.some((c) => c.trim().toUpperCase() === "ALL");
+    const hasBrands =
+      voucher.eligibleBrands &&
+      voucher.eligibleBrands.length > 0 &&
+      !voucher.eligibleBrands.some((b) => b.trim().toUpperCase() === "ALL");
+
+    if (!hasService && !hasProduct && !hasCats && !hasBrands && (!voucher.targetType || voucher.targetType === "ALL")) {
+      return true;
+    }
+
+    const op = (voucher.conditionOperator || "OR").toUpperCase();
+
+    const servMatch =
+      hasService &&
+      item.itemType === "SERVICE" &&
+      String(item.serviceId) === String(voucher.serviceId);
+
+    const prodMatch =
+      hasProduct &&
+      item.itemType === "PRODUCT" &&
+      String(item.productId) === String(voucher.productId);
+
+    const catName =
+      item.itemType === "SERVICE"
+        ? item.serviceCategoryName || item.service?.category?.name
+        : item.productCategory || item.product?.category || item.category;
+
+    const catMatch =
+      hasCats &&
+      catName &&
+      voucher.eligibleCategories.some((ec) => {
+        const clean = ec.trim().toLowerCase();
+        const itemCat = catName.trim().toLowerCase();
+        return itemCat === clean || itemCat.includes(clean) || clean.includes(itemCat);
+      });
+
+    const brandName =
+      item.itemType === "PRODUCT"
+        ? item.productBrand || item.product?.brand || item.brand
+        : null;
+
+    const brandMatch =
+      hasBrands &&
+      brandName &&
+      voucher.eligibleBrands.some((eb) => {
+        const clean = eb.trim().toLowerCase();
+        const itemBrd = brandName.trim().toLowerCase();
+        return itemBrd === clean || itemBrd.includes(clean) || clean.includes(itemBrd);
+      });
+
+    if (op === "AND") {
+      const activeConditions = [];
+      if (hasService) activeConditions.push(servMatch);
+      if (hasProduct) activeConditions.push(prodMatch);
+      if (hasCats) activeConditions.push(catMatch);
+      if (hasBrands) activeConditions.push(brandMatch);
+      return activeConditions.length > 0 && activeConditions.every(Boolean);
+    } else {
+      return Boolean(servMatch || prodMatch || catMatch || brandMatch);
+    }
+  }, []);
+
+  // Calculate discount - strictly restricted to eligible service/product items
   const discountAmount = useMemo(() => {
     if (appliedCoupon) {
-      let disc = appliedCoupon.discount || 0;
+      const eligibleItems = (items || []).filter((item) =>
+        checkCouponItemEligibility(item, appliedCoupon)
+      );
+      const eligibleTotal = eligibleItems.reduce(
+        (sum, item) =>
+          sum +
+          Number(item.totalPrice || item.unitPrice || item.price || 0) *
+            (item.quantity || 1),
+        0
+      );
+
+      if (eligibleTotal <= 0) return 0;
+
+      let disc = 0;
+      if (appliedCoupon.discountType === "PERCENTAGE") {
+        disc = (eligibleTotal * Number(appliedCoupon.discountValue || 0)) / 100;
+      } else {
+        disc = Number(appliedCoupon.discountValue || appliedCoupon.discount || 0);
+      }
+
       if (appliedCoupon.maxDiscount && disc > appliedCoupon.maxDiscount) {
         disc = appliedCoupon.maxDiscount;
       }
-      return Math.min(disc, totalAmount);
+      return Math.min(disc, eligibleTotal);
     }
+
     if (appliedVoucher) {
-      if (appliedVoucher.discountPercent) {
-        const disc = (totalAmount * appliedVoucher.discountPercent) / 100;
-        return Math.min(disc, totalAmount);
+      const eligibleItems = (items || []).filter((item) =>
+        checkVoucherItemEligibility(item, appliedVoucher)
+      );
+      const eligibleTotal = eligibleItems.reduce(
+        (sum, item) =>
+          sum +
+          Number(item.totalPrice || item.unitPrice || item.price || 0) *
+            (item.quantity || 1),
+        0
+      );
+
+      if (eligibleTotal <= 0) return 0;
+
+      if (appliedVoucher.discountAmount != null && appliedVoucher.discountAmount > 0) {
+        return Math.min(appliedVoucher.discountAmount, eligibleTotal);
       }
+      const pct = appliedVoucher.discountPercent != null ? appliedVoucher.discountPercent : 100;
+      const disc = (eligibleTotal * pct) / 100;
+      return Math.min(disc, eligibleTotal);
     }
+
     return 0;
-  }, [appliedCoupon, appliedVoucher, totalAmount]);
+  }, [appliedCoupon, appliedVoucher, items, checkCouponItemEligibility, checkVoucherItemEligibility]);
 
   const finalPayable = Math.max(totalAmount - discountAmount, 0);
 
@@ -441,51 +600,71 @@ export default function CheckoutPage() {
 
   const mrpSavings = Math.max(0, totalMrp - totalAmount);
 
-  // Apply Coupon
+  // Apply Coupon with duplicate verification & partial item eligibility check
   const handleApplyCoupon = async () => {
-    if (!couponCodeInput.trim()) {
+    const rawCode = couponCodeInput.trim().toUpperCase();
+    if (!rawCode) {
       showToast("Please enter a coupon code", "warning");
       return;
     }
+
+    // Check if user is attempting to re-apply the same coupon already active on this cart
+    if (appliedCoupon && appliedCoupon.code?.toUpperCase() === rawCode) {
+      showToast(`Coupon '${rawCode}' is already applied to this order.`, "warning");
+      return;
+    }
+
     setValidatingDiscount(true);
     try {
-      const res = await applyCoupon(couponCodeInput.trim().toUpperCase(), totalAmount);
+      const res = await applyCoupon(rawCode, totalAmount);
       const coupon = res.data;
       if (!coupon || !coupon.active) {
         throw new Error("Coupon is invalid or inactive");
       }
-      const hasSpecificCategories = coupon.eligibleCategories && 
-        coupon.eligibleCategories.length > 0 && 
-        !coupon.eligibleCategories.some(ec => ec.trim().toUpperCase() === "ALL");
 
-      if (hasSpecificCategories) {
-        const eligibleItems = cartItems.filter(item => {
-          const catName = item.service?.category?.name || item.serviceCategoryName || item.product?.category || item.category;
-          const catId = item.service?.category?.id || item.service?.categoryId;
-          return catName && coupon.eligibleCategories.some(ec => {
-            const clean = ec.trim().toLowerCase();
-            return clean === catName.toLowerCase() ||
-                   (catId && String(catId).toLowerCase() === clean) ||
-                   catName.toLowerCase().includes(clean) ||
-                   clean.includes(catName.toLowerCase());
-          });
-        });
+      // Check item eligibility across cart items
+      const eligibleItems = (items || []).filter((item) =>
+        checkCouponItemEligibility(item, coupon)
+      );
 
-        if (eligibleItems.length === 0) {
-          throw new Error(`Coupon '${coupon.code}' is only valid for categories: ${coupon.eligibleCategories.join(", ")}`);
-        }
+      if (eligibleItems.length === 0) {
+        const hasCats =
+          coupon.eligibleCategories &&
+          coupon.eligibleCategories.length > 0 &&
+          !coupon.eligibleCategories.some((c) => c.toUpperCase() === "ALL");
+        const hasBrands =
+          coupon.eligibleBrands &&
+          coupon.eligibleBrands.length > 0 &&
+          !coupon.eligibleBrands.some((b) => b.toUpperCase() === "ALL");
+        const op = coupon.categoryBrandOperator || "OR";
 
-        const eligibleTotal = eligibleItems.reduce((sum, item) => sum + (Number(item.price || item.unitPrice || 0) * (item.quantity || 1)), 0);
+        const parts = [];
+        if (hasCats) parts.push(`Categories [${coupon.eligibleCategories.join(", ")}]`);
+        if (hasBrands) parts.push(`Brands [${coupon.eligibleBrands.join(", ")}]`);
+        const criteriaText = parts.length > 0 ? parts.join(` ${op} `) : "specified items";
 
-        if (coupon.minAmount && eligibleTotal < coupon.minAmount) {
-          throw new Error(`Combined total for eligible categories (${coupon.eligibleCategories.join(", ")}) is ₹${eligibleTotal}, which does not meet coupon minimum of ₹${coupon.minAmount}`);
-        }
-      } else if (coupon.minAmount && totalAmount < coupon.minAmount) {
-        throw new Error(`Order total ₹${totalAmount} does not meet coupon minimum of ₹${coupon.minAmount}`);
+        throw new Error(
+          `Coupon '${coupon.code}' is not applicable to any items in your cart. Valid only for ${criteriaText}.`
+        );
       }
+
+      const eligibleTotal = eligibleItems.reduce(
+        (sum, item) =>
+          sum +
+          Number(item.totalPrice || item.unitPrice || item.price || 0) *
+            (item.quantity || 1),
+        0
+      );
+
+      if (coupon.minAmount && eligibleTotal < coupon.minAmount) {
+        throw new Error(
+          `Combined total for eligible items (₹${eligibleTotal.toFixed(0)}) does not meet coupon minimum spend of ₹${coupon.minAmount}`
+        );
+      }
+
       setAppliedCoupon(coupon);
       setAppliedVoucher(null);
-      showToast(`Coupon '${coupon.code}' applied! Saved ₹${coupon.discount}`, "success");
+      showToast(`Coupon '${coupon.code}' applied successfully to eligible items!`, "success");
     } catch (err) {
       const msg = err.response?.data?.message || err.message || "Invalid coupon code";
       showToast(msg, "error");
@@ -494,11 +673,38 @@ export default function CheckoutPage() {
     }
   };
 
-  // Apply Voucher
+  // Apply Voucher with item eligibility verification
   const handleSelectVoucher = (voucher) => {
+    if (appliedVoucher && (appliedVoucher.id === voucher.id || appliedVoucher.voucherCode === voucher.voucherCode)) {
+      showToast(`Voucher '${voucher.title || voucher.voucherCode}' is already selected.`, "warning");
+      return;
+    }
+
+    const eligibleItems = (items || []).filter((item) =>
+      checkVoucherItemEligibility(item, voucher)
+    );
+
+    if (eligibleItems.length === 0) {
+      const targetDesc = voucher.serviceName
+        ? `service "${voucher.serviceName}"`
+        : voucher.productName
+        ? `product "${voucher.productName}"`
+        : voucher.eligibleCategories?.length > 0
+        ? `categories [${voucher.eligibleCategories.join(", ")}]`
+        : voucher.eligibleBrands?.length > 0
+        ? `brands [${voucher.eligibleBrands.join(", ")}]`
+        : "eligible items";
+
+      showToast(
+        `Voucher '${voucher.title || voucher.voucherCode}' is not applicable to any items in your cart. Valid for ${targetDesc}.`,
+        "error"
+      );
+      return;
+    }
+
     setAppliedVoucher(voucher);
     setAppliedCoupon(null);
-    showToast(`Voucher '${voucher.title || voucher.voucherCode}' selected!`, "success");
+    showToast(`Voucher '${voucher.title || voucher.voucherCode}' applied to eligible items!`, "success");
   };
 
   const handleRemoveDiscount = () => {
@@ -1071,31 +1277,72 @@ export default function CheckoutPage() {
                       </div>
                     ) : (
                       <div className="grid sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto pr-1">
-                        {myVouchers.map((voucher) => (
-                          <div
-                            key={voucher.id}
-                            onClick={() => handleSelectVoucher(voucher)}
-                            className="p-3 rounded-2xl border border-groomish-slate/15 hover:border-groomish-orange bg-groomish-cream/50 hover:bg-white transition cursor-pointer flex items-center justify-between group"
-                          >
-                            <div className="min-w-0 pr-2">
-                              <span className="text-[10px] font-mono font-bold text-groomish-orange block">
-                                {voucher.voucherCode}
-                              </span>
-                              <span className="font-heading font-bold text-xs text-groomish-slate truncate block">
-                                {voucher.title}
-                              </span>
-                              <span className="text-[10px] text-groomish-slate/60 block">
-                                {voucher.discountPercent}% Discount
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-groomish-orange text-white group-hover:scale-105 transition"
+                        {myVouchers.map((voucher) => {
+                          const isApplicable = (items || []).some((item) =>
+                            checkVoucherItemEligibility(item, voucher)
+                          );
+
+                          return (
+                            <div
+                              key={voucher.id}
+                              onClick={() => handleSelectVoucher(voucher)}
+                              className={`p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between group ${
+                                isApplicable
+                                  ? "border-groomish-slate/15 hover:border-groomish-orange bg-groomish-cream/50 hover:bg-white"
+                                  : "border-gray-200 bg-gray-50/60 opacity-75 hover:opacity-100"
+                              }`}
                             >
-                              Redeem
-                            </button>
-                          </div>
-                        ))}
+                              <div className="min-w-0 pr-2">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[10px] font-mono font-bold text-groomish-orange block">
+                                    {voucher.voucherCode}
+                                  </span>
+                                  {isApplicable ? (
+                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                                      Eligible
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-medium text-gray-500 bg-gray-100 px-1 py-0.2 rounded border border-gray-200">
+                                      Not in cart
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="font-heading font-bold text-xs text-groomish-slate truncate block">
+                                  {voucher.title}
+                                </span>
+                                <div className="text-[10px] text-groomish-slate/60 flex items-center gap-1 flex-wrap">
+                                  <span>
+                                    {voucher.discountAmount
+                                      ? `₹${voucher.discountAmount} OFF`
+                                      : `${voucher.discountPercent || 100}% Discount`}
+                                  </span>
+                                  <span>•</span>
+                                  <span className="truncate max-w-[130px]">
+                                    {voucher.serviceName
+                                      ? voucher.serviceName
+                                      : voucher.productName
+                                      ? voucher.productName
+                                      : voucher.eligibleCategories?.length > 0
+                                      ? voucher.eligibleCategories.join(", ")
+                                      : voucher.eligibleBrands?.length > 0
+                                      ? voucher.eligibleBrands.join(", ")
+                                      : "Universal"}
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition shrink-0 ${
+                                  isApplicable
+                                    ? "bg-groomish-orange text-white group-hover:scale-105"
+                                    : "bg-gray-200 text-gray-600 group-hover:bg-groomish-orange group-hover:text-white"
+                                }`}
+                              >
+                                Redeem
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -1167,11 +1414,22 @@ export default function CheckoutPage() {
                                 item.quantity
                               )}
                             </span>
-                            {unavailableInfo && (
+                            {unavailableInfo ? (
                               <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-red-100 text-groomish-crimson border border-red-200">
                                 {unavailableInfo.reason}
                               </span>
-                            )}
+                            ) : (appliedCoupon || appliedVoucher) ? (
+                              (appliedCoupon && checkCouponItemEligibility(item, appliedCoupon)) ||
+                              (appliedVoucher && checkVoucherItemEligibility(item, appliedVoucher)) ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Discount Applied
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-groomish-cream text-groomish-slateLight border border-groomish-slate/10">
+                                  Regular Price
+                                </span>
+                              )
+                            ) : null}
                           </div>
                         </div>
                         <div className="text-right shrink-0">

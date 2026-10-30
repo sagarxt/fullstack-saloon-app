@@ -14,7 +14,14 @@ public class RedeemedVoucherResponse {
 
     private UUID serviceId;
     private String serviceName;
+    private UUID productId;
+    private String productName;
+    private String targetType;
+    private String conditionOperator;
     private Integer discountPercent;
+    private Double discountAmount;
+    private java.util.List<String> eligibleCategories;
+    private java.util.List<String> eligibleBrands;
 
     private Integer pointsSpent;
     private String status;

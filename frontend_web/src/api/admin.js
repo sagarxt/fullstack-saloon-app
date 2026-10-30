@@ -82,8 +82,14 @@ export const checkInBookingByAdmin = (id) =>
   axiosClient.post(`/admin/bookings/${id}/check-in`);
 
 /* DASHBOARD */
-export const getDashboardMetrics = () =>
-  axiosClient.get("/admin/dashboard");
+export const getDashboardMetrics = (period = "30D", startDate = null, endDate = null) => {
+  const params = new URLSearchParams();
+  if (period) params.append("period", period);
+  if (startDate) params.append("startDate", startDate);
+  if (endDate) params.append("endDate", endDate);
+  const qs = params.toString();
+  return axiosClient.get(`/admin/dashboard${qs ? `?${qs}` : ""}`);
+};
 
 /* USERS & STAFF */
 export const getUsersApi = (roleOrParams, page = 0, size = 50, userGroup = null, search = null) => {
@@ -111,6 +117,36 @@ export const getUsersApi = (roleOrParams, page = 0, size = 50, userGroup = null,
 
 export const getUserGroupsCatalogApi = () =>
   axiosClient.get("/admin/users/groups");
+
+/* COHORT MANAGEMENT & RULE APPLICATION */
+export const getAdminCohortsApi = () =>
+  axiosClient.get("/admin/cohorts");
+
+export const getAdminCohortApi = (id) =>
+  axiosClient.get(`/admin/cohorts/${id}`);
+
+export const createAdminCohortApi = (data) =>
+  axiosClient.post("/admin/cohorts", data);
+
+export const updateAdminCohortApi = (id, data) =>
+  axiosClient.put(`/admin/cohorts/${id}`, data);
+
+export const deleteAdminCohortApi = (id) =>
+  axiosClient.delete(`/admin/cohorts/${id}`);
+
+export const toggleAdminCohortStatusApi = (id, active) => {
+  const query = typeof active === "boolean" ? `?active=${active}` : "";
+  return axiosClient.put(`/admin/cohorts/${id}/status${query}`);
+};
+
+export const applyAdminCohortToUsersApi = (id) =>
+  axiosClient.post(`/admin/cohorts/${id}/apply`);
+
+export const applyAllAdminCohortsToUsersApi = () =>
+  axiosClient.post("/admin/cohorts/apply-all");
+
+export const getAdminCohortUsersApi = (id) =>
+  axiosClient.get(`/admin/cohorts/${id}/users`);
 
 export const updateUserGroupsApi = (id, groups) =>
   axiosClient.put(`/admin/users/${id}/groups`, groups);

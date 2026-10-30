@@ -39,6 +39,16 @@ public class Coupon {
     private java.util.List<String> eligibleCategories = new java.util.ArrayList<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "coupon_eligible_brands", joinColumns = @JoinColumn(name = "coupon_id"))
+    @Column(name = "brand_name")
+    @Builder.Default
+    private java.util.List<String> eligibleBrands = new java.util.ArrayList<>();
+
+    @Column(name = "category_brand_operator")
+    @Builder.Default
+    private String categoryBrandOperator = "OR"; // "OR" or "AND"
+
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "coupon_applicable_user_groups", joinColumns = @JoinColumn(name = "coupon_id"))
     @Column(name = "group_name")
     @Builder.Default
