@@ -19,9 +19,12 @@ import com.groomish_now.backend.dto.booking.*;
 import com.groomish_now.backend.enums.BookingStatus;
 import com.groomish_now.backend.model.*;
 import com.groomish_now.backend.repository.*;
+import com.groomish_now.backend.service.booking.SlotCapacityService;
 import com.groomish_now.backend.service.customer.CustomerBookingService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,6 +34,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CustomerBookingServiceImpl implements CustomerBookingService {
 
     private final UserRepository userRepository;
@@ -49,11 +53,14 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
     private final LoyaltyConfigService loyaltyConfigService;
     private final PointsLedgerRepository pointsLedgerRepository;
     private final BookingMapper bookingMapper;
+    private final com.groomish_now.backend.service.payment.RazorpayRefundService razorpayRefundService;
+    private final SlotCapacityService slotCapacityService;
 
     /* =====================================================
        CREATE BOOKING
        ===================================================== */
     @Override
+    @Transactional
     public BookingResponse createBooking(UUID userId,
                                          CustomerCreateBookingRequest request) {
 
@@ -100,24 +107,14 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         double servicesTotal = services.stream().mapToDouble(ServiceEntity::getPrice).sum();
         int totalDuration = services.stream().mapToInt(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0).sum();
 
-        // Check 5-Staff Capacity at requested slot
+        // 🔒 Enforce 5-Staff Capacity with Pessimistic Locking
         LocalDateTime reqStart = request.getScheduledAt();
-        LocalDateTime reqEnd = reqStart.plusMinutes(totalDuration > 0 ? totalDuration : 30);
-        List<Booking> dayBookings = bookingRepository.findBookingsForDate(reqStart.toLocalDate());
-        int overlapCount = 0;
-        for (Booking b : dayBookings) {
-            if (b.getStatus() == BookingStatus.CANCELLED) continue;
-            LocalDateTime bStart = b.getScheduledAt();
-            if (bStart == null) continue;
-            int bDur = b.getTotalDurationMinutes() != null && b.getTotalDurationMinutes() > 0 ? b.getTotalDurationMinutes() : 30;
-            LocalDateTime bEnd = bStart.plusMinutes(bDur);
-            if (bStart.isBefore(reqEnd) && bEnd.isAfter(reqStart)) {
-                overlapCount++;
-            }
-        }
-        if (overlapCount >= 5) {
-            throw new RuntimeException("Selected time slot is fully booked across all 5 salon stylists");
-        }
+        slotCapacityService.validateAndReserveSlotCapacity(
+                store != null ? store.getId() : null,
+                reqStart,
+                totalDuration,
+                null
+        );
 
         Coupon coupon = null;
         double discount = 0.0;
@@ -210,8 +207,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         booking.setScheduledAt(request.getScheduledAt());
         booking.setNote(request.getNote());
         booking.setCoupon(coupon);
-        booking.setTotalAmount(servicesTotal);
-        booking.setPricePaid(finalPrice);
+        booking.setTotalAmount(finalPrice);
         booking.setBookedBy("BOOKED_BY_SELF");
         booking.setTotalDurationMinutes(totalDuration);
 
@@ -231,6 +227,8 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 paymentStatus = PaymentStatus.PENDING;
             }
         }
+
+        booking.setPricePaid(paymentStatus == PaymentStatus.COMPLETED ? finalPrice : 0.0);
 
         // Pay at Salon (CASH) or completed payment -> CONFIRMED. Online payment pending -> PENDING.
         BookingStatus initialStatus = (method == PaymentMethod.CASH || paymentStatus == PaymentStatus.COMPLETED)
@@ -550,6 +548,7 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
        RESCHEDULE
        ===================================================== */
     @Override
+    @Transactional
     public BookingResponse rescheduleBooking(
             UUID userId,
             UUID bookingId,
@@ -565,8 +564,16 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
         }
 
         if (booking.getStatus() == BookingStatus.CANCELLED ||
-                booking.getStatus() == BookingStatus.COMPLETED) {
-            throw new RuntimeException("Booking cannot be modified in " + booking.getStatus() + " status");
+                booking.getStatus() == BookingStatus.COMPLETED ||
+                booking.getStatus() == BookingStatus.NO_SHOW ||
+                booking.getStatus() == BookingStatus.CHECKED_IN ||
+                booking.getStatus() == BookingStatus.IN_PROGRESS) {
+            throw new RuntimeException("Booking cannot be rescheduled in " + booking.getStatus() + " status");
+        }
+
+        int currentReschedules = booking.getRescheduleCount() != null ? booking.getRescheduleCount() : 0;
+        if (currentReschedules >= 2) {
+            throw new RuntimeException("Maximum reschedule limit (2 times) reached for this appointment. Please contact our salon front desk directly for assistance.");
         }
 
         if (booking.getScheduledAt() != null && booking.getScheduledAt().plusHours(2).isBefore(LocalDateTime.now())) {
@@ -578,29 +585,24 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
             throw new RuntimeException("Selected appointment slot cannot be in the past. Please select an upcoming slot.");
         }
         int dur = booking.getTotalDurationMinutes() != null && booking.getTotalDurationMinutes() > 0 ? booking.getTotalDurationMinutes() : 30;
-        LocalDateTime newEnd = newStart.plusMinutes(dur);
 
-        List<Booking> dayBookings = bookingRepository.findBookingsForDate(newStart.toLocalDate());
-        int overlappingCount = 0;
-        for (Booking b : dayBookings) {
-            if (b.getId().equals(booking.getId()) || b.getStatus() == BookingStatus.CANCELLED) continue;
-            LocalDateTime bStart = b.getScheduledAt();
-            if (bStart == null) continue;
-            int bDuration = b.getTotalDurationMinutes() != null && b.getTotalDurationMinutes() > 0 ? b.getTotalDurationMinutes() : 30;
-            LocalDateTime bEnd = bStart.plusMinutes(bDuration);
-            if (bStart.isBefore(newEnd) && bEnd.isAfter(newStart)) {
-                overlappingCount++;
-            }
-        }
-        if (overlappingCount >= 5) {
-            throw new RuntimeException("New slot unavailable - all 5 salon stylist slots are fully booked");
-        }
+        // 🔒 Enforce 5-Staff Capacity with Pessimistic Locking
+        slotCapacityService.validateAndReserveSlotCapacity(
+                booking.getStore() != null ? booking.getStore().getId() : null,
+                newStart,
+                dur,
+                booking.getId()
+        );
 
         booking.setScheduledAt(newStart);
         booking.setNote(request.getNote());
         booking.setStatus(BookingStatus.MODIFIED);
         booking.setBookedBy("MODIFIED_BY_SELF");
+        booking.setRescheduleCount(currentReschedules + 1);
+        booking.setReminder24hSent(false);
+        booking.setReminder2hSent(false);
         booking.setReminderOneHourSent(false);
+        booking.setReminderThirtyMinSent(false);
         booking.setReminderStartSent(false);
         booking.setWarningPostOneHourSent(false);
         booking.setAutoCancelled(false);
@@ -705,7 +707,25 @@ public class CustomerBookingServiceImpl implements CustomerBookingService {
                 "Your appointment has been cancelled as requested."
         );
 
-        return toBookingResponse(booking);
+        // 💳 Razorpay Automated Refund (Full if > 2h before slot, Partial with ₹200 retained if <= 2h)
+        try {
+            razorpayRefundService.processCancellationRefund(saved);
+            saved = bookingRepository.findById(saved.getId()).orElse(saved);
+        } catch (Exception ex) {
+            log.error("Failed to process Razorpay refund automatically for booking {}: {}", saved.getId(), ex.getMessage());
+        }
+
+        return toBookingResponse(saved);
+    }
+
+    @Override
+    public com.groomish_now.backend.dto.payment.RefundDetailResponse getBookingRefundStatus(UUID userId, UUID bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        if (!isBookingOwner(booking, userId)) {
+            throw new RuntimeException("Access denied: You are only authorized to view refund details for your own bookings");
+        }
+        return razorpayRefundService.getLiveRefundStatus(bookingId);
     }
 
     /* =====================================================

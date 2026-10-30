@@ -47,8 +47,8 @@ For optimal responsiveness, fast CDN delivery, and crisp rendering across Groomi
 | Entity | Recommended Dimension | Aspect Ratio | Resolution Range | Max File Size | Best File Formats | Purpose & Best Practices |
 | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | **Category** | **600 × 600 px** | **1:1 (Square)** | 400×400 to 800×800 px | < 150 KB | WebP / PNG / JPG | Rendered in circular or rounded square category tiles. Use clean, centered service icons or isolated salon cuts with minimal background noise. |
-| **Services** | **800 × 600 px** (or **1200 × 800 px**) | **4:3** or **3:2** | 600×450 to 1200×900 px | < 250 KB | WebP / JPG | Used in service cards and booking modals. 4:3 provides optimal vertical space to showcase haircuts, beard trims, facials, and styling without cropping heads. |
-| **Products** | **1000 × 1000 px** | **1:1 (Square)** | 800×800 to 1200×1200 px | < 200 KB | WebP / PNG / JPG | Standard e-commerce square ratio. Shows the product bottle/pack centered on a clean white or light-neutral background (`#F9F9FB`), allowing seamless zoom and multi-angle viewing. |
+| **Services** | **800 × 600 px** (or **1200 × 900 px**) | **4:3 (Landscape)** | 600×450 to 1200×900 px | < 250 KB | WebP / JPG | Standard 4:3 landscape format across web and mobile service catalogs and suggestion rows. Showcases haircuts, beard styling, facials, and spa rituals without vertical head cropping. |
+| **Products** | **600 × 800 px** (or **900 × 1200 px**) | **3:4 (Portrait Retail)** | 600×800 to 900×1200 px | < 200 KB | WebP / PNG / JPG | Standard retail 3:4 aspect ratio on web and mobile. Centers the full product bottle or box with clean margins on a light background, enabling multi-image carousel browsing. |
 | **Store / Salons** | **1200 × 675 px** (or **1200 × 800 px**) | **16:9** or **3:2** | 960×540 to 1600×900 px | < 350 KB | WebP / JPG | Wide landscape format is essential for storefronts, reception lounges, interior styling stations, and hair spa washing units. Supports multi-image salon photo galleries. |
 | **Vouchers** | **800 × 600 px** | **4:3** | 600×450 to 1000×750 px | < 200 KB | WebP / PNG / JPG | Displayed in loyalty reward catalogs. Upload via integrated Cloudinary dialog or paste hosted image URLs. |
 
@@ -345,9 +345,9 @@ This section provides a detailed walk-through of every page across Customer, Sta
 #### 15. Staff Dashboard & Queue Monitor (`/staff/dashboard`)
 - **Access**: Staff / Stylist / Branch Owner
 - **Flow**:
-  1. **Queue Monitor**: Filter appointments by **Today's**, **Upcoming**, **Completed**, and **All** with real-time status badges.
-  2. Displays appointment cards with customer name, scheduled time, primary service with multiplier and `+X` items chip, price, and Groom Coins badge.
-  3. Action buttons: **Reschedule**, **Bill & Products** modal, and **Complete Service**.
+  1. **Queue Monitor with Today's Priority**: Filter bookings by **Today's**, **Upcoming**, **Completed**, and **All** with dynamic badge counters. **Today's bookings are pinned to the top, sorted chronologically by time**.
+  2. Displays booking cards with customer name, scheduled 12-hour AM/PM time, primary service with multiplier and `+X` items chip, price, and Groom Coins badge.
+  3. Action buttons: **Client Check-in**, **Reschedule**, **Bill & Products** modal, and **Complete & Bill**.
   4. **Walk-in Customer Registration**: Instant on-spot enrollment form automatically creating a customer account with referral code.
   5. Persistent session login: stays logged in permanently until explicit logout.
 
@@ -376,13 +376,18 @@ This section provides a detailed walk-through of every page across Customer, Sta
 ---
 
 #### 17. Staff Booking Detail & In-Station Billing Console (`/staff/bookings/:id`)
-- **Access**: Staff / Branch Stylist
+- **Access**: Staff / Branch Stylist / Admin
 - **Flow**:
-  1. Interactive appointment progression bar (`CONFIRMED` -> `IN_PROGRESS` -> `COMPLETED`).
-  2. **Selected Salon Services**: Itemized list with duration, unit price, quantity multipliers, original strike-through MRP, and item status (**`CANCELLED`** in red when cancelled).
-  3. **Retail Products In-Station Billing**: Add salon aftercare products (shampoo, serums, waxes) directly to the customer's visit bill.
-  4. Complete **Invoice Breakdown**: Displays Subtotal, Discount on MRP, applied coupon discounts, taxes, and final payable amount.
-  5. Action buttons: **Finalize & Bill Client** (triggers automatic GST tax receipt email delivery via Gmail SMTP), **Cancel Appointment**, and Google Maps branch navigation.
+  1. **Linear Station Progression**: `CONFIRMED` &rarr; `CLIENT_CHECKIN` &rarr; `COMPLETED & BILLED`.
+     - When `CONFIRMED`: Only the **"Client Check-in"** action is presented.
+     - Once checked in: The **"Complete & Bill"** action unlocks to finalize service and deliver digital tax invoice.
+  2. **Selected Salon Services**: Itemized list with service image, duration, unit price, quantity multipliers, original strike-through MRP, and status (**`CANCELLED`** in red when cancelled). Clutter-free display without `#1`, `#2` indices.
+  3. **Multi-Variant Sub-Service Selector**: When adding services with multiple sub-services/options, staff and admin can view all variants and select any option.
+  4. **Retail Products In-Station Billing**: Add salon aftercare products (shampoo, serums, waxes) directly to the visit bill with MRP and selling price aligned neatly to the right (duplicate price tags near `Qty:` removed).
+  5. **Clear Balance Breakdown & 12-Hour Timestamps**:
+     - Standardized local 12-hour AM/PM timestamps (e.g. `26 Oct 2026, 04:40 PM`).
+     - Transparent billing: **Total Bill**, **Already Paid Online (-₹pricePaid)**, and **Remaining Balance to Pay (₹remainingAmount)** with 1-click **"Switch to Pay at Salon Counter"**.
+  6. Action buttons: **Complete & Bill Client** (triggers automatic GST tax receipt email via Gmail SMTP), **Cancel Booking**, and Google Maps branch navigation.
 
 > 📸 **Screenshot Placeholder**: _Staff Booking Detail & Billing Console_
 >
@@ -690,8 +695,11 @@ This section provides a detailed walk-through of every page across Customer, Sta
   - Group marketing email broadcaster modal for sending promotional announcements.
 
 ### 5. VIP Loyalty and Gamification Engine
+- **Admin-Managed Tier Point Ranges**:
+  - Super Admin can configure custom minimum and maximum point ranges for each loyalty tier (**Silver**, **Gold**, **Platinum**, **Diamond**) via `/admin/rewards`.
+  - Existing tier labels remain intact for members who have already reached a tier level, while requiring the newly configured points threshold to advance to subsequent tiers.
 - **Lifetime Tier Progression**:
-  - Customer tiers (**Silver**, **Gold**, **Platinum**, **Diamond**) are strictly calculated based on cumulative `lifetimePoints`.
+  - Customer tiers are strictly calculated based on cumulative `lifetimePoints`.
   - Clients never downgrade tiers when redeeming spendable loyalty points for reward vouchers.
 - **Points Ledger**: Transparent audit trail tracking points earned (+1 Groom Coin per ₹100 of eligible spend, rounding up when remainder is >= 50) and points redeemed for vouchers.
 - **Referral System and Instant Rewards**: Unique 6-character alphanumeric referral codes generated on signup with 1-click clipboard copy and sharing links. Referrers receive **+10 VIP Reward Points** upon friend registration with dedicated ledger entries and real-time email notifications.
@@ -701,6 +709,18 @@ This section provides a detailed walk-through of every page across Customer, Sta
   All uploaded imagery across categories, services, products, and salon stores is automatically transformed with Cloudinary auto-quality compression and scaled to width 800:
   `cloudinary.url().transformation(new Transformation().quality("auto").chain().width(800).crop("scale"))`
 - **Certified Brand Showcase**: Compact 8-brand logo row with normalized accent handling and timestamp-safe uploads.
+
+### 7. Cross-Platform Luxury Mobile App (`mobile_app/`)
+- **Expo SDK 57 & React Native**: Universal mobile client for iOS and Android with Expo Router file-based navigation and dark/light luxury theme engine.
+- **Dynamic Brand Showcase**: Fetches certified brand profiles, names, and logos dynamically from `/api/v1/public/brands`.
+- **4:3 Services & 3:4 Retail Product Presentation**:
+  - Salon services rendered in **4:3 landscape** format across Home and catalog.
+  - Retail products rendered in **3:4 aspect ratio** across Home, Shop, and Product details.
+- **Slidable Multi-Image Product Details**: Horizontal paging carousel with dot indicators, counter badge, verified brand authenticity seal, and companion product recommendations.
+- **Unified Booking Terminology & 12-Hour AM/PM Time**: Standardized "Booking" wording and 12-hour AM/PM format across all mobile views.
+- **Payable Amount Breakdown**: Explicitly calculates `totalAmount`, `pricePaid`, and `remainingAmount`, with an Outstanding Balance Notice and 1-tap switch to pay at salon counter.
+- **Dynamic Salon Policies & Q&A Screen**: Backed by `/api/v1/public/policy-faq` with live keyword search, dual-tab switcher, category filtering, and accordion FAQ cards.
+- **Customer-Only Access Security Guard**: Dedicated portal restriction for Staff and Admin accounts with custom alert modal offering redirection to Customer Login or Home.
 
 ---
 

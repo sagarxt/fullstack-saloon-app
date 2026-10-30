@@ -16,6 +16,8 @@ public interface StaffBookingService {
 
     BookingResponse cancelBookingForCustomer(UUID staffId, UUID bookingId, String note);
 
+    BookingResponse markNoShowForCustomer(UUID staffId, UUID bookingId, String note);
+
     Page<BookingResponse> getCustomerBookings(UUID customerId, Pageable pageable);
 
     BookingResponse getBooking(UUID bookingId);

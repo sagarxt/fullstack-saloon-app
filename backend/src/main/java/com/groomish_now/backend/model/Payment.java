@@ -38,6 +38,18 @@ public class Payment {
 
     private String paymentGatewayId;
 
+    private String razorpayOrderId;
+    private String razorpayPaymentId;
+    private String razorpaySignature;
+    private LocalDateTime paidAt;
+
+    private String razorpayRefundId;
+    private Double refundedAmount;
+    private String refundStatus;
+    private String refundArn;
+    private String refundReason;
+    private LocalDateTime refundedAt;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

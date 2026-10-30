@@ -23,6 +23,8 @@ public class UserResponse {
     private String storeName;
     private String storeCode;
     private String token;
+    private String accessToken;
+    private String refreshToken;
     private Set<String> userGroups;
     private Set<String> effectiveGroups;
     private LocalDateTime createdAt;

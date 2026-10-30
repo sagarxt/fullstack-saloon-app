@@ -23,7 +23,7 @@ export default function ServiceCard({ service }) {
     <div className="bg-white border rounded-xl shadow-sm hover:shadow-md transition overflow-hidden">
 
       {/* IMAGE + GENDER BADGE */}
-      <div className="relative">
+      <div className="relative w-full aspect-[4/3] overflow-hidden bg-groomish-slate/10">
         <img
           src={getOptimizedImageUrl(
             service.image ||
@@ -31,7 +31,7 @@ export default function ServiceCard({ service }) {
             { width: 600 }
           )}
           alt={service.name}
-          className="h-40 w-full object-cover"
+          className="w-full h-full object-cover"
           loading="lazy"
           decoding="async"
         />

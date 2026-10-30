@@ -26,13 +26,20 @@ export function calculateInvoiceBreakdown(booking) {
   }, 0);
 
   const calculatedTotalMrp = servicesMrp + productsMrp;
-  const baseAmount = Number(booking.totalAmount ?? 0);
-  const subtotal = calculatedTotalMrp > baseAmount ? calculatedTotalMrp : baseAmount;
-  const mrpDiscount = Math.max(0, subtotal - baseAmount);
 
-  // Coupon or Voucher discount
-  const paid = Number(booking.pricePaid ?? baseAmount);
-  const codeDiscount = Math.max(0, baseAmount - paid);
+  const servicesCatalogSum = items.reduce((sum, item) => {
+    return sum + Number(item.servicePriceSnapshot ?? item.price ?? item.service?.price ?? 0);
+  }, 0);
+  const productsCatalogSum = products.reduce((sum, prod) => {
+    const price = Number(prod.unitPriceSnapshot ?? prod.unitPrice ?? 0);
+    const qty = Number(prod.quantity ?? 1);
+    return sum + (price * qty);
+  }, 0);
+  const catalogSum = servicesCatalogSum + productsCatalogSum;
+
+  const totalAmount = Number(booking.totalAmount ?? catalogSum);
+  const subtotal = calculatedTotalMrp > catalogSum ? calculatedTotalMrp : (catalogSum > 0 ? catalogSum : totalAmount);
+  const mrpDiscount = Math.max(0, subtotal - (catalogSum > 0 ? catalogSum : totalAmount));
 
   const couponCode = booking.couponApplied || booking.couponCode;
   const isVoucher = Boolean(
@@ -41,13 +48,22 @@ export function calculateInvoiceBreakdown(booking) {
      couponCode.toUpperCase().includes("VIP"))
   );
 
+  let codeDiscount = 0;
+  if (couponCode && catalogSum > 0 && totalAmount < catalogSum) {
+    codeDiscount = Math.max(0, catalogSum - totalAmount);
+  } else if (booking.pricePaid && catalogSum > 0 && Number(booking.pricePaid) < catalogSum && Number(booking.pricePaid) > 0) {
+    codeDiscount = Math.max(0, catalogSum - Number(booking.pricePaid));
+  }
+
+  const finalPayable = totalAmount > 0 ? totalAmount : (Number(booking.pricePaid) || catalogSum);
+
   return {
     subtotal,
     mrpDiscount,
     couponOrVoucherCode: couponCode,
     isVoucher,
     codeDiscount,
-    finalPayable: paid,
+    finalPayable,
   };
 }
 

@@ -350,7 +350,7 @@ export default function PublicServicesPage() {
                           {/* Thumbnail (Clickable to dedicated service page) */}
                           <div
                             onClick={() => navigate(`/services/${service.id}`)}
-                            className="relative h-44 overflow-hidden bg-groomish-slate/10 cursor-pointer"
+                            className="relative w-full aspect-[4/3] overflow-hidden bg-groomish-slate/10 cursor-pointer"
                           >
                             <img
                               src={getOptimizedImageUrl(imgSrc, { width: 600 })}

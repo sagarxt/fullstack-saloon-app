@@ -121,7 +121,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await axiosClient.post("/auth/logout");
+    } catch (e) {
+      // ignore
+    }
     localStorage.clear();
     setUser(null);
     setToken(null);

@@ -11,6 +11,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginResponse {
-    private String token;
+    private String token; // For backward compatibility
+    private String accessToken;
+    private String refreshToken;
+    private long expiresIn;
     private UserResponse user;
+
+    public LoginResponse(String token, UserResponse user) {
+        this.token = token;
+        this.accessToken = token;
+        this.user = user;
+    }
 }

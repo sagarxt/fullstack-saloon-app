@@ -1,5 +1,6 @@
 package com.groomish_now.backend.service.staff.impl;
 
+import com.groomish_now.backend.dto.mail.BookingEmailDto;
 import com.groomish_now.backend.enums.NotificationType;
 import com.groomish_now.backend.enums.PaymentMethod;
 import com.groomish_now.backend.enums.PaymentStatus;
@@ -44,8 +45,10 @@ public class StaffBookingServiceImpl implements StaffBookingService {
     private final PointsLedgerRepository pointsLedgerRepository;
     private final EmailService emailService;
     private final BookingMapper bookingMapper;
+    private final com.groomish_now.backend.service.booking.SlotCapacityService slotCapacityService;
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public BookingResponse createBookingForCustomer(UUID staffId, StaffCreateBookingRequest request) {
 
         User staff = userRepository.findById(staffId)
@@ -83,6 +86,14 @@ public class StaffBookingServiceImpl implements StaffBookingService {
         if (scheduledAt.isBefore(LocalDateTime.now())) {
             throw new RuntimeException("Selected appointment slot cannot be in the past. Please select an upcoming slot.");
         }
+
+        int totalDuration = services.stream().mapToInt(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0).sum();
+        slotCapacityService.validateAndReserveSlotCapacity(
+                store != null ? store.getId() : null,
+                scheduledAt,
+                totalDuration,
+                null
+        );
 
         Booking booking = new Booking();
         booking.setUser(customer);
@@ -358,6 +369,60 @@ public class StaffBookingServiceImpl implements StaffBookingService {
                 "CANCELLED",
                 "Appointment Cancelled by Stylist",
                 "Appointment cancelled by stylist " + staff.getName() + (note != null && !note.isBlank() ? ". Reason: " + note : "."),
+                staff.getName(),
+                "STAFF",
+                staff.getEmail()
+        );
+
+        return toDto(saved);
+    }
+
+    @Override
+    public BookingResponse markNoShowForCustomer(UUID staffId, UUID bookingId, String note) {
+        User staff = userRepository.findById(staffId)
+                .orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        validateStaffBranchAccess(staff, booking, "mark as no-show");
+
+        booking.setStatus(BookingStatus.NO_SHOW);
+        booking.setCancelledAt(LocalDateTime.now());
+        List<BookingItem> items = bookingItemRepository.findByBookingId(booking.getId());
+        if (items != null) {
+            items.forEach(bi -> bi.setStatus(BookingStatus.NO_SHOW));
+            bookingItemRepository.saveAll(items);
+        }
+        if (note != null && !note.isBlank()) {
+            booking.setNote(note);
+        }
+
+        booking.setBookedBy("NO_SHOW_MARKED_BY_STAFF - " + staff.getName());
+
+        Booking saved = bookingRepository.save(booking);
+
+        if (saved.getUser() != null) {
+            String displayCode = saved.getBookingCode() != null ? saved.getBookingCode() : "GN-" + saved.getId().toString().substring(0, 8).toUpperCase();
+            Notification notif = Notification.builder()
+                    .user(saved.getUser())
+                    .title("Appointment Recorded as No-Show")
+                    .message("Your appointment (" + displayCode + ") was marked as a No-Show by salon stylist " + staff.getName() + (note != null && !note.isBlank() ? " (" + note + ")" : ". Advance deposit forfeited per policy."))
+                    .type(NotificationType.BOOKING)
+                    .referenceId(saved.getId())
+                    .link("/customer/bookings/" + saved.getId())
+                    .build();
+            notificationRepository.save(notif);
+
+            BookingEmailDto dto = BookingEmailDto.fromBooking(saved);
+            emailService.sendBookingNoShowEmail(dto);
+        }
+
+        bookingTimelineService.recordTimeline(
+                saved,
+                "NO_SHOW",
+                "Appointment Marked as No-Show by Stylist",
+                "Appointment marked as No-Show by stylist " + staff.getName() + (note != null && !note.isBlank() ? ". Reason: " + note : ". Advance deposit forfeited."),
                 staff.getName(),
                 "STAFF",
                 staff.getEmail()

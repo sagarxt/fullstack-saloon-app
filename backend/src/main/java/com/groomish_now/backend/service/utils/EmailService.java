@@ -18,6 +18,14 @@ public interface EmailService {
 
     void sendBookingStartingSoonEmail(BookingEmailDto dto);
 
+    void sendAppointmentReminder24hEmail(BookingEmailDto dto);
+
+    void sendAppointmentReminder2hEmail(BookingEmailDto dto);
+
+    void sendBookingNoShowEmail(BookingEmailDto dto);
+
+    void sendRefundIssuedEmail(BookingEmailDto dto, Double refundAmount, String refundId, String reason, boolean isPartial);
+
     void sendBookingModifiedEmail(BookingEmailDto dto, boolean isAdminOverride);
 
     void sendBookingAttentionRequiredEmail(BookingEmailDto dto);

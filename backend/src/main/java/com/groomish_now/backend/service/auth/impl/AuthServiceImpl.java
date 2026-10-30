@@ -41,6 +41,7 @@ public class AuthServiceImpl implements AuthService {
     private final NotificationRepository notificationRepository;
     private final UserMapper userMapper;
     private final com.groomish_now.backend.service.loyalty.LoyaltyConfigService loyaltyConfigService;
+    private final com.groomish_now.backend.service.auth.RefreshTokenService refreshTokenService;
 
     // ----------------------------------------------------------
     // VERIFY REFERRAL CODE
@@ -174,8 +175,12 @@ public class AuthServiceImpl implements AuthService {
                 user.getRole().name()
         );
 
+        com.groomish_now.backend.model.RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
         UserResponse userResponse = toUserResponse(user);
         userResponse.setToken(token);
+        userResponse.setAccessToken(token);
+        userResponse.setRefreshToken(refreshToken.getToken());
         return userResponse;
     }
 
@@ -198,7 +203,78 @@ public class AuthServiceImpl implements AuthService {
                 user.getRole().name()
         );
 
-        return new LoginResponse(token, toUserResponse(user));
+        com.groomish_now.backend.model.RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
+        UserResponse userResponse = toUserResponse(user);
+        userResponse.setToken(token);
+        userResponse.setAccessToken(token);
+        userResponse.setRefreshToken(refreshToken.getToken());
+
+        return LoginResponse.builder()
+                .token(token)
+                .accessToken(token)
+                .refreshToken(refreshToken.getToken())
+                .expiresIn(jwtTokenProvider.getExpirationMs() / 1000)
+                .user(userResponse)
+                .build();
+    }
+
+    // ----------------------------------------------------------
+    // REFRESH TOKEN (ROTATION)
+    // ----------------------------------------------------------
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public RefreshTokenResponse refreshToken(String refreshTokenStr) {
+        if (refreshTokenStr == null || refreshTokenStr.isBlank()) {
+            throw new RuntimeException("Refresh token is required");
+        }
+
+        com.groomish_now.backend.model.RefreshToken token = refreshTokenService.findByToken(refreshTokenStr)
+                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+
+        token = refreshTokenService.verifyExpiration(token);
+        User user = token.getUser();
+        if (!user.isActive()) {
+            throw new RuntimeException("User account is disabled");
+        }
+
+        // Revoke the old refresh token (refresh token rotation)
+        refreshTokenService.revokeToken(refreshTokenStr);
+
+        // Issue new refresh token & access token
+        com.groomish_now.backend.model.RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user);
+        String newAccessToken = jwtTokenProvider.generateToken(
+                user.getId().toString(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        UserResponse userResponse = toUserResponse(user);
+        userResponse.setToken(newAccessToken);
+        userResponse.setAccessToken(newAccessToken);
+        userResponse.setRefreshToken(newRefreshToken.getToken());
+
+        return RefreshTokenResponse.builder()
+                .token(newAccessToken)
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken.getToken())
+                .tokenType("Bearer")
+                .expiresIn(jwtTokenProvider.getExpirationMs() / 1000)
+                .user(userResponse)
+                .build();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void logout(String refreshTokenStr) {
+        if (refreshTokenStr != null && !refreshTokenStr.isBlank()) {
+            refreshTokenService.revokeToken(refreshTokenStr);
+        }
+    }
+
+    @Override
+    public long getRefreshExpirationSeconds() {
+        return jwtTokenProvider.getRefreshExpirationMs() / 1000;
     }
 
     // ----------------------------------------------------------
@@ -220,6 +296,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void resetPassword(ResetPasswordRequest request) {
         if (request == null || request.getEmail() == null || request.getOtp() == null || request.getNewPassword() == null) {
             throw new RuntimeException("Email, OTP, and new password are required");
@@ -238,7 +315,11 @@ public class AuthServiceImpl implements AuthService {
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+        user.setPasswordChangedAt(java.time.LocalDateTime.now());
         userRepository.save(user);
+
+        // Revoke all refresh tokens on password change
+        refreshTokenService.revokeAllUserTokens(user);
     }
 
     // ----------------------------------------------------------

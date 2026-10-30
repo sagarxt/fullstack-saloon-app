@@ -92,6 +92,8 @@ export default function BookingsScreen() {
         return { label: 'Completed', bg: Colors.blueLight, text: Colors.blue };
       case 'CANCELLED':
         return { label: 'Cancelled', bg: Colors.redLight, text: Colors.red };
+      case 'NO_SHOW':
+        return { label: 'No-Show', bg: '#FEE2E2', text: '#B91C1C' };
       case 'MODIFIED':
         return { label: 'Rescheduled', bg: '#F3E8FF', text: '#7E22CE' };
       default:

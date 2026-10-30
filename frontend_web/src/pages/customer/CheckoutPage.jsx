@@ -512,13 +512,14 @@ export default function CheckoutPage() {
   const launchRazorpayPayment = async (bookingId, currentRetryCount = 0, initialScheduledAt = null) => {
     try {
       setSubmitting(true);
-      const orderRes = await createRazorpayOrder({ bookingId });
+      const orderRes = await createRazorpayOrder({ bookingId, amount: finalPayable });
       const orderData = orderRes.data;
 
       if (typeof window !== "undefined" && window.Razorpay && orderData?.keyId) {
+        const expectedPaise = Math.round(Number(finalPayable) * 100);
         const options = {
           key: orderData.keyId,
-          amount: orderData.amount,
+          amount: (orderData.amount && orderData.amount > 0) ? orderData.amount : expectedPaise,
           currency: orderData.currency || "INR",
           name: "Groomish Now",
           description: `Appointment Payment (${orderData.bookingCode || bookingId})`,
@@ -1381,6 +1382,22 @@ export default function CheckoutPage() {
                       Select an appointment time slot above to enable payment options
                     </p>
                   )}
+                </div>
+
+                {/* No-Show & Deposit Cancellation Policy */}
+                <div className="p-3 rounded-xl bg-orange-50/70 border border-orange-200/80 flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-groomish-orange shrink-0 mt-0.5" />
+                  <div className="space-y-0.5 text-[11px] text-groomish-slate/80 leading-relaxed">
+                    <span className="font-bold text-groomish-slate block uppercase tracking-wider text-[10px]">
+                      No-Show & Deposit Policy
+                    </span>
+                    <p>
+                      • <strong className="text-groomish-slate font-semibold">Free cancellation:</strong> Available up to 2 hours before your appointment.
+                    </p>
+                    <p>
+                      • <strong className="text-groomish-slate font-semibold">Within 2h / No-Show:</strong> Advance deposit is forfeited to cover reserved stylist schedule.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Confirm Button */}

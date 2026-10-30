@@ -16,18 +16,20 @@ public class JwtTokenProvider {
 
     private final SecretKey key;
     private final long expirationMs;
+    private final long refreshExpirationMs;
 
     public JwtTokenProvider(
             @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.expiration-ms}") long expirationMs
+            @Value("${app.jwt.expiration-ms:900000}") long expirationMs,
+            @Value("${app.jwt.refresh-expiration-ms:2592000000}") long refreshExpirationMs
     ) {
         byte[] decodedKey = Base64.getDecoder().decode(secret);
         this.key = Keys.hmacShaKeyFor(decodedKey);
         this.expirationMs = expirationMs;
+        this.refreshExpirationMs = refreshExpirationMs;
     }
 
     public String generateToken(String userId, String email, String role) {
-
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
@@ -42,19 +44,22 @@ public class JwtTokenProvider {
     }
 
     public Claims validateToken(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-        } catch (io.jsonwebtoken.ExpiredJwtException ex) {
-            // Keep session active until user explicitly logs out
-            return ex.getClaims();
-        }
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     public String getUserId(String token) {
         return validateToken(token).getSubject();
+    }
+
+    public long getExpirationMs() {
+        return expirationMs;
+    }
+
+    public long getRefreshExpirationMs() {
+        return refreshExpirationMs;
     }
 }

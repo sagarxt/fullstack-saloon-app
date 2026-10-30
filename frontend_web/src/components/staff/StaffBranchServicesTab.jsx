@@ -374,7 +374,7 @@ export default function StaffBranchServicesTab({
 
                   {/* Service info with image */}
                   <div className="flex items-start gap-3.5 mb-3">
-                    <div className="w-16 h-16 rounded-2xl bg-groomish-cream overflow-hidden shrink-0 border border-groomish-slate/10 flex items-center justify-center">
+                    <div className="w-20 aspect-[4/3] rounded-2xl bg-groomish-cream overflow-hidden shrink-0 border border-groomish-slate/10 flex items-center justify-center">
                       {s.image ? (
                         <img
                           src={s.image}

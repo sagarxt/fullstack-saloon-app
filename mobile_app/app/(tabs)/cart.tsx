@@ -392,13 +392,17 @@ export default function CartScreen() {
 
       if (paymentMethod === 'ONLINE') {
         // Create Razorpay Order
-        const orderRes = await customerApi.createRazorpayOrder({ bookingId: bId });
+        const orderRes = await customerApi.createRazorpayOrder({ 
+          bookingId: bId,
+          amount: finalPayable,
+        });
         const orderData = orderRes.data;
+        const expectedPaise = Math.round(Number(finalPayable) * 100);
 
         setRazorpayOrderData({
           keyId: orderData.keyId,
           orderId: orderData.orderId,
-          amount: orderData.amount, // in paise
+          amount: (orderData.amount && orderData.amount > 0) ? orderData.amount : expectedPaise, // in paise
           currency: orderData.currency || 'INR',
           bookingId: bId,
           bookingCode: bCode,
@@ -498,12 +502,17 @@ export default function CartScreen() {
     setFailureModalData(null);
     setBookingLoading(true);
     try {
-      const orderRes = await customerApi.createRazorpayOrder({ bookingId: bId });
+      const retryAmount = failureModalData.amount || finalPayable;
+      const expectedPaise = Math.round(Number(retryAmount) * 100);
+      const orderRes = await customerApi.createRazorpayOrder({ 
+        bookingId: bId,
+        amount: retryAmount,
+      });
       const orderData = orderRes.data;
       setRazorpayOrderData({
         keyId: orderData.keyId,
         orderId: orderData.orderId,
-        amount: orderData.amount,
+        amount: (orderData.amount && orderData.amount > 0) ? orderData.amount : expectedPaise,
         currency: orderData.currency || 'INR',
         bookingId: bId,
         bookingCode: failureModalData.bookingCode,
@@ -1130,6 +1139,22 @@ export default function CartScreen() {
                   Earn ~{Math.round(finalPayable * 0.05)} Groom Loyalty Coins on this booking!
                 </Text>
               </View>
+            </View>
+
+            {/* No-Show & Deposit Cancellation Policy */}
+            <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder, borderLeftWidth: 4, borderLeftColor: Colors.orange }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <Ionicons name="shield-checkmark" size={16} color={Colors.orange} />
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.text }}>
+                  No-Show & Deposit Policy
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: colors.textMuted, lineHeight: 18 }}>
+                • <Text style={{ fontWeight: '700', color: colors.text }}>Free Cancellation:</Text> Free rescheduling or cancellation up to 2 hours before appointment time.
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, lineHeight: 18, marginTop: 4 }}>
+                • <Text style={{ fontWeight: '700', color: colors.text }}>Within 2 Hours / No-Show:</Text> Cancellations within 2h or failure to attend forfeit the advance deposit to cover reserved stylist time.
+              </Text>
             </View>
 
             {/* Complete Payment Button */}

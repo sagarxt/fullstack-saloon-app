@@ -15,8 +15,11 @@ const normalizeBaseUrl = (url) => {
   return cleaned;
 };
 
+const baseURL = normalizeBaseUrl(rawApiUrl);
+
 const axiosClient = axios.create({
-  baseURL: normalizeBaseUrl(rawApiUrl),
+  baseURL,
+  withCredentials: true, // Crucial: sends & receives HttpOnly refreshToken cookies
 });
 
 // Attach token to every outgoing request
@@ -47,52 +50,127 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for centralized error & 401 session expiration handling
+// Response interceptor with silent token refresh & request queueing
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 let isHandling401 = false;
 
 axiosClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
     const status = error.response?.status;
 
-    if (status === 401) {
-      // Clear expired credentials
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-
-      const reqUrl = error.config?.url || "";
+    if (status === 401 && originalRequest && !originalRequest._retry) {
+      const reqUrl = originalRequest.url || "";
       const isAuthEndpoint =
         reqUrl.includes("/auth/login") ||
         reqUrl.includes("/auth/register") ||
+        reqUrl.includes("/auth/refresh") ||
         reqUrl.includes("/auth/send-otp") ||
         reqUrl.includes("/auth/verify-otp") ||
         reqUrl.includes("/auth/verify-referral");
 
-      // Don't pop up "Session expired" or redirect if it was just an auth form attempt
-      if (!isAuthEndpoint && !isHandling401) {
-        isHandling401 = true;
+      // Auth endpoint failures (or refresh endpoint failures) should not attempt refresh
+      if (isAuthEndpoint) {
+        return Promise.reject(error);
+      }
 
-        // Show popup toast message
-        toastEmitter.error(
-          "Session expired or unauthorized. Please log in again.",
-          "Authentication Required"
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((newToken) => {
+            originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+            return axiosClient(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Attempt silent refresh using HttpOnly cookie credentials
+        const res = await axios.post(
+          `${baseURL}/auth/refresh`,
+          {},
+          { withCredentials: true }
         );
 
-        // Remember current path so user can be redirected back to the exact page they were browsing
-        const currentPath = window.location.pathname + window.location.search;
-        sessionStorage.setItem("redirectAfterLogin", currentPath);
+        const newAccessToken = res.data?.token || res.data?.accessToken;
 
-        // Redirect to Login if not already on authentication pages
-        if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
-          setTimeout(() => {
-            isHandling401 = false;
-            window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-          }, 1200);
+        if (newAccessToken) {
+          localStorage.setItem("token", newAccessToken);
+          try {
+            const rawUser = localStorage.getItem("user");
+            if (rawUser) {
+              const userObj = JSON.parse(rawUser);
+              userObj.token = newAccessToken;
+              localStorage.setItem("user", JSON.stringify(userObj));
+            }
+          } catch (e) {
+            // ignore parse error
+          }
+
+          axiosClient.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
+          originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
+
+          processQueue(null, newAccessToken);
+          isRefreshing = false;
+          return axiosClient(originalRequest);
         } else {
-          setTimeout(() => {
-            isHandling401 = false;
-          }, 3000);
+          throw new Error("No token returned in refresh response");
         }
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        isRefreshing = false;
+
+        // Refresh failed (token expired or revoked by password change)
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+
+        if (!isHandling401) {
+          isHandling401 = true;
+
+          const errorCode = refreshErr.response?.data?.code || error.response?.data?.code;
+          const msg = errorCode === "PASSWORD_CHANGED"
+            ? "Your password was changed. Please log in again."
+            : "Session expired. Please log in again.";
+
+          toastEmitter.error(msg, "Authentication Required");
+
+          const currentPath = window.location.pathname + window.location.search;
+          sessionStorage.setItem("redirectAfterLogin", currentPath);
+
+          if (
+            window.location.pathname !== "/login" &&
+            window.location.pathname !== "/register"
+          ) {
+            setTimeout(() => {
+              isHandling401 = false;
+              window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+            }, 1200);
+          } else {
+            setTimeout(() => {
+              isHandling401 = false;
+            }, 3000);
+          }
+        }
+
+        return Promise.reject(refreshErr);
       }
     } else if (status === 403) {
       toastEmitter.error(

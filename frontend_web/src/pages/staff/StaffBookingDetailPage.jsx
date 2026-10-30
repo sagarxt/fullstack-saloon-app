@@ -867,10 +867,10 @@ export default function StaffBookingDetailPage() {
                             <img
                               src={grp.image}
                               alt={grp.serviceName}
-                              className="w-11 h-11 rounded-xl object-cover border border-groomish-slate/10 shrink-0 shadow-2xs"
+                              className="w-14 aspect-[4/3] rounded-xl object-cover border border-groomish-slate/10 shrink-0 shadow-2xs"
                             />
                           ) : (
-                            <div className="w-11 h-11 rounded-xl bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-orange shrink-0">
+                            <div className="w-14 aspect-[4/3] rounded-xl bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-orange shrink-0">
                               <Scissors className="w-5 h-5 opacity-70" />
                             </div>
                           )}
@@ -1212,7 +1212,7 @@ export default function StaffBookingDetailPage() {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                          <div className="w-14 aspect-[4/3] rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
                             <img
                               src={
                                 srv.image ||

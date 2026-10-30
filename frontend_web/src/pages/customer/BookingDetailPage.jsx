@@ -10,6 +10,7 @@ import {
   removeServiceFromBooking,
   rescheduleBooking,
   cancelBooking,
+  getBookingRefundStatus,
   checkoutPayment,
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -75,6 +76,10 @@ export default function BookingDetailPage() {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [refundChecking, setRefundChecking] = useState(false);
+  const [liveRefundData, setLiveRefundData] = useState(null);
+  const [copiedRefundId, setCopiedRefundId] = useState(false);
+  const [copiedArn, setCopiedArn] = useState(false);
 
   // Add Service Modal
   const [addServiceModalOpen, setAddServiceModalOpen] = useState(false);
@@ -115,20 +120,30 @@ export default function BookingDetailPage() {
     setPayModalOpen(true);
   };
 
+  const payableDue = useMemo(() => {
+    if (!booking) return 0;
+    const rem = Number(booking.remainingAmount);
+    if (!isNaN(rem) && rem > 0) return rem;
+    const tot = Number(booking.totalAmount);
+    if (!isNaN(tot) && tot > 0) return tot;
+    return Number(booking.pricePaid || 0);
+  }, [booking]);
+
   const handlePayOnlineSubmit = async (e) => {
     e.preventDefault();
     setPayLoading(true);
     setPayError("");
     try {
       // 1. Create Razorpay Order on Backend
-      const orderRes = await createRazorpayOrder({ bookingId: id });
+      const orderRes = await createRazorpayOrder({ bookingId: id, amount: payableDue });
       const orderData = orderRes.data;
 
       // 2. Open Razorpay Gateway popup if client script is available
       if (typeof window !== "undefined" && window.Razorpay && orderData.keyId) {
+        const expectedPaise = Math.round(Number(payableDue) * 100);
         const options = {
           key: orderData.keyId,
-          amount: orderData.amount,
+          amount: (orderData.amount && orderData.amount > 0) ? orderData.amount : expectedPaise,
           currency: orderData.currency || "INR",
           name: "Groomish Now",
           description: `Salon Booking Payment (${orderData.bookingCode || id})`,
@@ -387,7 +402,15 @@ export default function BookingDetailPage() {
   };
 
   /* Open Reschedule Modal */
-  const handleOpenReschedule = () => {
+  const handleOpenReschedule = async () => {
+    if ((booking?.rescheduleCount ?? 0) >= 2) {
+      await showAlert({
+        title: "Reschedule Limit Reached",
+        message: "You have reached the maximum allowed limit of 2 reschedules for this booking per salon policy. To choose another time, please contact salon support or book a new appointment.",
+        variant: "warning",
+      });
+      return;
+    }
     setRescheduleError("");
     const todayStr = getLocalDateStr();
     if (booking?.scheduledAt) {
@@ -484,11 +507,24 @@ export default function BookingDetailPage() {
     }
   };
 
-  /* Cancel Booking */
+  /* Cancel Booking with Razorpay Refund Handling */
   const handleCancelBooking = async () => {
+    const isWithin2Hours = booking?.scheduledAt
+      ? (new Date(booking.scheduledAt).getTime() - Date.now()) <= 2 * 60 * 60 * 1000
+      : false;
+
+    const paidOnline = (booking?.pricePaid > 0.01) ||
+      (booking?.payment?.status === "COMPLETED" && booking?.payment?.paymentMethod !== "CASH");
+
+    const message = isWithin2Hours
+      ? "⚠️ Your appointment starts in less than 2 hours. In accordance with the No-Show & Deposit policy, a ₹200 advance deposit is retained. Any excess prepaid amount will be refunded automatically to your original payment method via Razorpay within 5–7 business days. Proceed to cancel?"
+      : paidOnline
+        ? `Are you sure you want to cancel this salon appointment? Free cancellation is active (more than 2h prior to slot). 100% of your prepaid amount (₹${booking.pricePaid}) will be refunded automatically to your original payment method via Razorpay within 5–7 business days.`
+        : "Are you sure you want to cancel this salon appointment? Free cancellation is active (more than 2h prior to slot).";
+
     const confirmed = await showConfirm({
-      title: "Cancel Salon Appointment",
-      message: "Are you sure you want to cancel this salon appointment? This action cannot be undone.",
+      title: isWithin2Hours ? "Late Cancellation (Deposit Retained)" : "Cancel Salon Appointment",
+      message,
       confirmText: "Yes, Cancel Booking",
       variant: "danger",
     });
@@ -498,6 +534,13 @@ export default function BookingDetailPage() {
     try {
       await cancelBooking(id);
       await loadBooking();
+      await showAlert({
+        title: "Booking Cancelled",
+        message: paidOnline
+          ? "Your appointment has been cancelled and a Razorpay refund has been initiated. You can view your refund tracking details below."
+          : "Your appointment has been cancelled.",
+        variant: "info",
+      });
     } catch (err) {
       await showAlert({
         title: "Cancellation Error",
@@ -507,6 +550,52 @@ export default function BookingDetailPage() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  /* Live Razorpay Refund Status Check */
+  const handleCheckLiveRefundStatus = async () => {
+    if (!booking?.id) return;
+    setRefundChecking(true);
+    try {
+      const res = await getBookingRefundStatus(booking.id);
+      const data = res.data;
+      setLiveRefundData(data);
+      setBooking((prev) => ({
+        ...prev,
+        refundStatus: data.refundStatus || prev?.refundStatus,
+        refundAmount: data.refundAmount !== undefined && data.refundAmount !== null ? data.refundAmount : prev?.refundAmount,
+        razorpayRefundId: data.razorpayRefundId || data.refundId || prev?.razorpayRefundId,
+        refundArn: data.refundArn || data.bankArn || prev?.refundArn,
+        refundReason: data.refundReason || data.message || prev?.refundReason,
+      }));
+      await showAlert({
+        title: "Razorpay Live Sync",
+        message: `Refund Status: ${data.refundStatus || "ACTIVE"}${data.bankArn ? `\nBank ARN: ${data.bankArn}` : ""}\n${data.message || "Synced directly with Razorpay API."}`,
+        variant: "info",
+      });
+    } catch (err) {
+      await showAlert({
+        title: "Live Status Check",
+        message: err.response?.data?.message || "Could not fetch live refund status from Razorpay at this moment.",
+        variant: "warning",
+      });
+    } finally {
+      setRefundChecking(false);
+    }
+  };
+
+  const copyRefundId = (rId) => {
+    if (!rId) return;
+    navigator.clipboard.writeText(rId);
+    setCopiedRefundId(true);
+    setTimeout(() => setCopiedRefundId(false), 2000);
+  };
+
+  const copyArn = (arn) => {
+    if (!arn) return;
+    navigator.clipboard.writeText(arn);
+    setCopiedArn(true);
+    setTimeout(() => setCopiedArn(false), 2000);
   };
 
   const copyCode = () => {
@@ -528,6 +617,8 @@ export default function BookingDetailPage() {
         return "bg-groomish-blueLight text-groomish-blue border-groomish-blue/30";
       case "CANCELLED":
         return "bg-groomish-crimsonLight text-groomish-crimson border-groomish-crimson/30";
+      case "NO_SHOW":
+        return "bg-rose-100 text-rose-800 border-rose-300 font-bold";
       case "MODIFIED":
         return "bg-purple-100 text-purple-700 border-purple-200";
       default:
@@ -539,7 +630,8 @@ export default function BookingDetailPage() {
     booking?.status !== "CANCELLED" &&
     booking?.status !== "COMPLETED" &&
     booking?.status !== "CHECKED_IN" &&
-    booking?.status !== "IN_PROGRESS";
+    booking?.status !== "IN_PROGRESS" &&
+    booking?.status !== "NO_SHOW";
 
   // Group categories from availableServices for quick filter pills
   const serviceCategories = [
@@ -593,27 +685,44 @@ export default function BookingDetailPage() {
     }, 0);
 
     const calculatedTotalMrp = servicesMrp + productsMrp;
-    const baseAmount = Number(booking.totalAmount ?? 0);
-    const subtotal = calculatedTotalMrp > baseAmount ? calculatedTotalMrp : baseAmount;
-    const mrpDiscount = Math.max(0, subtotal - baseAmount);
 
-    // Coupon or Voucher discount
-    const paid = Number(booking.pricePaid ?? baseAmount);
-    const codeDiscount = Math.max(0, baseAmount - paid);
+    const servicesCatalogSum = (booking.items || []).reduce((sum, item) => {
+      return sum + Number(item.servicePriceSnapshot ?? item.price ?? item.service?.price ?? 0);
+    }, 0);
+    const productsCatalogSum = (booking.products || []).reduce((sum, prod) => {
+      const price = Number(prod.unitPriceSnapshot ?? prod.unitPrice ?? 0);
+      const qty = Number(prod.quantity ?? 1);
+      return sum + (price * qty);
+    }, 0);
+    const catalogSum = servicesCatalogSum + productsCatalogSum;
 
+    const totalAmount = Number(booking.totalAmount ?? catalogSum);
+    const subtotal = calculatedTotalMrp > catalogSum ? calculatedTotalMrp : (catalogSum > 0 ? catalogSum : totalAmount);
+    const mrpDiscount = Math.max(0, subtotal - (catalogSum > 0 ? catalogSum : totalAmount));
+
+    const couponCode = booking.couponApplied || booking.couponCode;
     const isVoucher = Boolean(
-      booking.couponApplied &&
-      (booking.couponApplied.toUpperCase().includes("VOUCH") ||
-       booking.couponApplied.toUpperCase().includes("VIP"))
+      couponCode &&
+      (couponCode.toUpperCase().includes("VOUCH") ||
+       couponCode.toUpperCase().includes("VIP"))
     );
+
+    let codeDiscount = 0;
+    if (couponCode && catalogSum > 0 && totalAmount < catalogSum) {
+      codeDiscount = Math.max(0, catalogSum - totalAmount);
+    } else if (booking.pricePaid && catalogSum > 0 && Number(booking.pricePaid) < catalogSum && Number(booking.pricePaid) > 0) {
+      codeDiscount = Math.max(0, catalogSum - Number(booking.pricePaid));
+    }
+
+    const finalPayable = totalAmount > 0 ? totalAmount : (Number(booking.pricePaid) || catalogSum);
 
     return {
       subtotal,
       mrpDiscount,
-      couponOrVoucherCode: booking.couponApplied,
+      couponOrVoucherCode: couponCode,
       isVoucher,
       codeDiscount,
-      finalPayable: paid,
+      finalPayable,
     };
   }, [booking]);
 
@@ -871,6 +980,24 @@ export default function BookingDetailPage() {
                   </div>
                 </div>
               </div>
+
+              {/* No-Show & Deposit Cancellation Policy */}
+              <div className="mt-3 p-3.5 rounded-xl bg-orange-50/70 border border-orange-200/80 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-groomish-orange/15 text-groomish-orange flex items-center justify-center shrink-0 mt-0.5">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div className="space-y-1 text-xs text-groomish-slate/80">
+                  <div className="text-[11px] font-bold text-groomish-slate uppercase tracking-wider flex items-center gap-1.5">
+                    No-Show & Cancellation Policy
+                  </div>
+                  <p className="leading-relaxed">
+                    • <strong className="text-groomish-slate font-semibold">Free Cancellation:</strong> Reschedule or cancel free up to 2 hours before your appointment.
+                  </p>
+                  <p className="leading-relaxed">
+                    • <strong className="text-groomish-slate font-semibold">Within 2 Hours / No-Show:</strong> Cancellations under 2h or failure to arrive forfeit the advance deposit to cover reserved stylist time.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Customer Special Notes */}
@@ -928,10 +1055,10 @@ export default function BookingDetailPage() {
                           <img
                             src={grp.image}
                             alt={grp.serviceName}
-                            className="w-10 h-10 rounded-lg object-cover border border-groomish-slate/10 shrink-0"
+                            className="w-12 aspect-[4/3] rounded-lg object-cover border border-groomish-slate/10 shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-orange shrink-0">
+                          <div className="w-12 aspect-[4/3] rounded-lg bg-groomish-cream border border-groomish-slate/10 flex items-center justify-center text-groomish-orange shrink-0">
                             <Scissors className="w-5 h-5" />
                           </div>
                         )}
@@ -1059,6 +1186,135 @@ export default function BookingDetailPage() {
               </div>
             )}
 
+            {/* Razorpay Automated Refund Details Card */}
+            {Boolean(
+              (booking.refundStatus && booking.refundStatus !== "NONE") ||
+              booking.razorpayRefundId ||
+              (booking.status === "CANCELLED" && Number(booking.pricePaid) > 0)
+            ) && (
+              <div className="card-groomish p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-white via-sky-50/40 to-indigo-50/30 border-2 border-sky-200 shadow-soft space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between gap-2 flex-wrap border-b border-sky-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center shrink-0 border border-sky-200">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-heading font-extrabold text-groomish-slate flex items-center gap-2">
+                        <span>Razorpay Refund Details</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-300">
+                          Automated Gateway
+                        </span>
+                      </h3>
+                      <p className="text-xs text-groomish-slate/60 mt-0.5">
+                        Refund processed directly to your original payment account.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Live Status Refresh Button */}
+                  <button
+                    onClick={handleCheckLiveRefundStatus}
+                    disabled={refundChecking}
+                    className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-sky-50 text-sky-700 border border-sky-200 font-bold text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+                    title="Query Razorpay API for live refund status and bank reference ARN"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${refundChecking ? "animate-spin text-sky-600" : ""}`} />
+                    <span>{refundChecking ? "Verifying..." : "Check Live Status with Razorpay"}</span>
+                  </button>
+                </div>
+
+                {/* Status & Key Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="p-3 rounded-xl bg-white/80 border border-sky-100 space-y-1">
+                    <span className="text-[11px] font-medium text-groomish-slate/60 block">Refund Status</span>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                      booking.refundStatus === "PROCESSED"
+                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                        : booking.refundStatus === "FORFEITED"
+                        ? "bg-amber-100 text-amber-800 border-amber-300"
+                        : booking.refundStatus === "FAILED"
+                        ? "bg-rose-100 text-rose-800 border-rose-300"
+                        : "bg-sky-100 text-sky-800 border-sky-300"
+                    }`}>
+                      {booking.refundStatus || "INITIATED"}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white/80 border border-sky-100 space-y-1">
+                    <span className="text-[11px] font-medium text-groomish-slate/60 block">Refunded Amount</span>
+                    <span className="text-base font-extrabold text-emerald-700 font-mono">
+                      ₹{booking.refundAmount !== undefined && booking.refundAmount !== null ? booking.refundAmount : (booking.pricePaid || 0)}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white/80 border border-sky-100 space-y-1">
+                    <span className="text-[11px] font-medium text-groomish-slate/60 block">Original Paid Online</span>
+                    <span className="text-base font-bold text-groomish-slate/80 font-mono">
+                      ₹{booking.pricePaid || booking.totalAmount || 0}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Razorpay Refund Reference ID & Bank ARN */}
+                <div className="space-y-2 pt-1 text-xs">
+                  {booking.razorpayRefundId && (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/90 border border-sky-100">
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] font-bold text-groomish-slate/70">Razorpay Refund Reference ID:</span>
+                        <div className="font-mono font-extrabold text-sky-800 text-xs">
+                          {booking.razorpayRefundId}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => copyRefundId(booking.razorpayRefundId)}
+                        className="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[11px] font-bold flex items-center gap-1 transition"
+                      >
+                        {copiedRefundId ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedRefundId ? "Copied" : "Copy ID"}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {booking.refundArn ? (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white/90 border border-sky-100">
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] font-bold text-groomish-slate/70">Bank ARN (Acquirer Reference Number):</span>
+                        <div className="font-mono font-extrabold text-groomish-slate text-xs">
+                          {booking.refundArn}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => copyArn(booking.refundArn)}
+                        className="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[11px] font-bold flex items-center gap-1 transition"
+                      >
+                        {copiedArn ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedArn ? "Copied" : "Copy ARN"}</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-xl bg-white/60 border border-sky-100/60 text-[11px] text-groomish-slate/60 flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                      <span>Bank ARN is generated automatically by Razorpay once settled by your bank. Click "Check Live Status" anytime to fetch ARN.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Refund Policy / Reason explanation */}
+                {booking.refundReason && (
+                  <div className="p-3 rounded-xl bg-sky-500/5 border border-sky-200/60 text-xs text-sky-950">
+                    <span className="font-bold">Cancellation & Policy Details: </span>
+                    <span>{booking.refundReason}</span>
+                  </div>
+                )}
+
+                {/* Arrival timeline reminder */}
+                <div className="flex items-center gap-2 text-[11px] text-groomish-slate/70 pt-1">
+                  <Clock className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                  <span>Refunds typically reflect in your bank account or UPI handle within <strong>5–7 business days</strong>.</span>
+                </div>
+              </div>
+            )}
+
             {/* Bill Summary & Breakdown */}
             <div className="card-groomish p-4 sm:p-5 space-y-3">
               <h2 className="text-base font-heading font-bold text-groomish-slate flex items-center gap-2 border-b border-groomish-slate/10 pb-2.5">
@@ -1142,10 +1398,23 @@ export default function BookingDetailPage() {
                         <span>Payment Status</span>
                         <div>
                           {booking.status === "CANCELLED" ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                              <AlertCircle className="w-3.5 h-3.5" />
-                              <span>Cancelled • No Payment Received</span>
-                            </span>
+                            booking.refundStatus && booking.refundStatus !== "NONE" ? (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                                booking.refundStatus === "PROCESSED"
+                                  ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                  : booking.refundStatus === "FORFEITED"
+                                  ? "bg-amber-100 text-amber-800 border-amber-300"
+                                  : "bg-sky-100 text-sky-800 border-sky-300"
+                              }`}>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Refund {booking.refundStatus} (₹{booking.refundAmount || 0})</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                <span>Cancelled • No Online Payment</span>
+                              </span>
+                            )
                           ) : isFullyPaid ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-groomish-greenLight text-groomish-green border border-groomish-green/30">
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1647,7 +1916,7 @@ export default function BookingDetailPage() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-12 h-12 rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
+                        <div className="w-14 aspect-[4/3] rounded-xl bg-groomish-cream overflow-hidden border border-groomish-slate/10 shrink-0">
                           <img
                             src={
                               srv.image ||
@@ -1803,6 +2072,19 @@ export default function BookingDetailPage() {
                 {booking.storeName || booking.store.name}
               </span>
             )}
+          </div>
+
+          {/* Reschedule Rules & Counter */}
+          <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Reschedule Policy:</strong> Max 2 reschedules permitted. Reminders will reset to your new slot.
+              </span>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-200/90 text-amber-950 border border-amber-300 shrink-0">
+              {booking?.rescheduleCount ?? 0} / 2 used
+            </span>
           </div>
 
           {rescheduleError && (
@@ -1983,7 +2265,7 @@ export default function BookingDetailPage() {
               </div>
               <h4 className="text-base font-bold text-groomish-slate">Payment Successful!</h4>
               <p className="text-xs text-groomish-slate/60">
-                Your payment of ₹{booking?.pricePaid} has been verified and recorded.
+                Your payment of ₹{payableDue} has been verified and recorded.
               </p>
             </div>
           ) : (
@@ -2002,14 +2284,14 @@ export default function BookingDetailPage() {
                     Amount Due
                   </span>
                   <span className="text-2xl font-heading font-extrabold text-groomish-orange">
-                    ₹{booking?.pricePaid}
+                    ₹{payableDue}
                   </span>
                 </div>
                 <div className="text-right text-xs">
                   <span className="text-groomish-slate/50 block">Groom Coins Earned</span>
                   <span className="font-bold text-amber-700 flex items-center gap-1 justify-end">
                     <GroomCoinIcon className="w-3.5 h-3.5" />
-                    +{booking?.expectedRewardPoints != null ? booking.expectedRewardPoints : calculateCoins(booking?.pricePaid || 0)} Coins
+                    +{booking?.expectedRewardPoints != null ? booking.expectedRewardPoints : calculateCoins(payableDue)} Coins
                   </span>
                 </div>
               </div>

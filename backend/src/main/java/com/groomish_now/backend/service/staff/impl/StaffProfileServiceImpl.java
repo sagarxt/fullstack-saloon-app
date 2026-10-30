@@ -24,6 +24,7 @@ public class StaffProfileServiceImpl implements StaffProfileService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final com.groomish_now.backend.service.auth.RefreshTokenService refreshTokenService;
 
     @Override
     @Transactional(readOnly = true)
@@ -70,7 +71,9 @@ public class StaffProfileServiceImpl implements StaffProfileService {
         }
 
         staff.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        staff.setPasswordChangedAt(java.time.LocalDateTime.now());
         userRepository.save(staff);
+        refreshTokenService.revokeAllUserTokens(staff);
 
         try {
             if (staff.getEmail() != null && !staff.getEmail().isBlank()) {

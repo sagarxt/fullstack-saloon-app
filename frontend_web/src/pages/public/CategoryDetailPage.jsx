@@ -352,7 +352,7 @@ export default function CategoryDetailPage() {
                       {/* Image Preview (Clickable to Service Detail) */}
                       <div
                         onClick={() => navigate(`/services/${service.id}`)}
-                        className="relative h-40 sm:h-42 overflow-hidden bg-groomish-slate/10 cursor-pointer"
+                        className="relative w-full aspect-[4/3] overflow-hidden bg-groomish-slate/10 cursor-pointer"
                       >
                         <img
                           src={getOptimizedImageUrl(imgSrc, { width: 600 })}

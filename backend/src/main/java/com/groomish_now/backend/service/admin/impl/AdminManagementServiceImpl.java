@@ -23,6 +23,7 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final com.groomish_now.backend.service.auth.RefreshTokenService refreshTokenService;
 
     @Override
     public AdminResponse createAdmin(AdminRequest request) {
@@ -79,6 +80,8 @@ public class AdminManagementServiceImpl implements AdminManagementService {
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             admin.setPassword(passwordEncoder.encode(request.getPassword()));
+            admin.setPasswordChangedAt(java.time.LocalDateTime.now());
+            refreshTokenService.revokeAllUserTokens(admin);
         }
 
         userRepository.save(admin);

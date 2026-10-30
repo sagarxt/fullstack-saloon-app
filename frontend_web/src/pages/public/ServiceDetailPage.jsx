@@ -324,8 +324,8 @@ export default function ServiceDetailPage() {
           <div className="grid lg:grid-cols-12 gap-4 sm:gap-5 lg:gap-7 w-full max-w-full min-w-0 items-start">
             {/* LEFT / CENTER COLUMN: IMAGERY & DETAILS */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-5 w-full max-w-full min-w-0">
-              {/* Image Preview - Compact */}
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft h-[240px] sm:h-[300px] lg:h-[340px] w-full">
+              {/* Image Preview - 4:3 Landscape */}
+              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white border border-groomish-slate/10 shadow-soft w-full aspect-[4/3]">
                 <img
                   src={imgSrc}
                   alt={service.name}

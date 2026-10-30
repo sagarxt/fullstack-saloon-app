@@ -6,6 +6,12 @@ export const loginApi = (data) =>
 export const registerApi = (data) =>
   axiosClient.post("/auth/register", data);
 
+export const refreshTokenApi = (refreshToken) =>
+  axiosClient.post("/auth/refresh", refreshToken ? { refreshToken } : {});
+
+export const logoutApi = (refreshToken) =>
+  axiosClient.post("/auth/logout", refreshToken ? { refreshToken } : {});
+
 export const sendOtpApi = (data) =>
   axiosClient.post("/auth/send-otp", data);
 
@@ -20,4 +26,3 @@ export const forgotPasswordApi = (email) =>
 
 export const resetPasswordApi = (data) =>
   axiosClient.post("/auth/reset-password", data);
-

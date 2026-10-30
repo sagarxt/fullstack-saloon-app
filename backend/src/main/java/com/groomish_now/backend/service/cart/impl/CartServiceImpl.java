@@ -48,6 +48,7 @@ public class CartServiceImpl implements CartService {
     private final BranchCatalogService branchCatalogService;
     private final LoyaltyConfigService loyaltyConfigService;
     private final BookingMapper bookingMapper;
+    private final com.groomish_now.backend.service.booking.SlotCapacityService slotCapacityService;
 
     /* =====================================================
        GET OR CREATE CART
@@ -369,25 +370,14 @@ public class CartServiceImpl implements CartService {
 
         double grossTotal = servicesTotal + productsTotal;
 
-        // Check 5-Stylist capacity if appointment slot scheduled
+        // 🔒 Enforce 5-Stylist capacity with Pessimistic Locking if appointment slot scheduled
         if (scheduledAt != null && !serviceItems.isEmpty()) {
-            LocalDateTime reqStart = scheduledAt;
-            LocalDateTime reqEnd = reqStart.plusMinutes(totalDuration > 0 ? totalDuration : 30);
-            List<Booking> dayBookings = bookingRepository.findBookingsForDate(reqStart.toLocalDate());
-            int overlapCount = 0;
-            for (Booking b : dayBookings) {
-                if (b.getStatus() == BookingStatus.CANCELLED) continue;
-                LocalDateTime bStart = b.getScheduledAt();
-                if (bStart == null) continue;
-                int bDur = b.getTotalDurationMinutes() != null && b.getTotalDurationMinutes() > 0 ? b.getTotalDurationMinutes() : 30;
-                LocalDateTime bEnd = bStart.plusMinutes(bDur);
-                if (bStart.isBefore(reqEnd) && bEnd.isAfter(reqStart)) {
-                    overlapCount++;
-                }
-            }
-            if (overlapCount >= 5) {
-                throw new RuntimeException("Selected time slot is fully booked across all 5 salon stylists. Please choose another slot.");
-            }
+            slotCapacityService.validateAndReserveSlotCapacity(
+                    store != null ? store.getId() : null,
+                    scheduledAt,
+                    totalDuration,
+                    null
+            );
         }
 
         // Apply Coupon or Voucher
@@ -573,8 +563,8 @@ public class CartServiceImpl implements CartService {
         booking.setScheduledAt(scheduledAt != null ? scheduledAt : LocalDateTime.now());
         booking.setNote(request.getNote());
         booking.setCoupon(coupon);
-        booking.setTotalAmount(grossTotal);
-        booking.setPricePaid(finalPrice);
+        booking.setTotalAmount(finalPrice);
+        booking.setPricePaid(paymentStatus == PaymentStatus.COMPLETED ? finalPrice : 0.0);
         booking.setStatus(initialStatus);
         booking.setBookedBy("SELF_CART_CHECKOUT");
         booking.setTotalDurationMinutes(totalDuration);

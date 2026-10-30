@@ -250,6 +250,224 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Async
+    public void sendAppointmentReminder24hEmail(BookingEmailDto dto) {
+        if (dto == null || dto.getCustomerEmail() == null || dto.getCustomerEmail().isBlank())
+            return;
+
+        String subject = "Reminder: Your salon appointment is tomorrow! - Groomish Now";
+        String formattedDate = dto.getScheduledAt() != null ? dto.getScheduledAt().format(DATE_FORMATTER) : "Tomorrow";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style='color: #373A43; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>")
+                .append("<div style='background: linear-gradient(135deg, #FFF8E7 0%, #FAF6ED 100%); border-left: 4px solid #FC6957; border: 1px solid rgba(252, 105, 87, 0.2); border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;'>")
+                .append("<div style='display: flex; align-items: center; gap: 8px;'>")
+                .append("<span style='font-size: 20px;'>📅</span>")
+                .append("<h2 style='color: #373A43; margin: 0; font-size: 18px; font-weight: 800;'>Your appointment is tomorrow!</h2>")
+                .append("</div>")
+                .append("<p style='margin: 6px 0 0 0; font-size: 13px; color: #7A7E89;'>We look forward to welcoming you at Groomish Now. Your stylist and station have been reserved exclusively for you.</p>")
+                .append("</div>")
+
+                .append("<p style='font-size: 14px;'>Dear <strong>").append(dto.getCustomerName())
+                .append("</strong>,</p>")
+                .append("<p style='font-size: 13px; color: #5D616D; line-height: 1.6;'>This is a friendly 24-hour reminder for your upcoming salon booking:</p>")
+
+                // Details Card
+                .append(renderBookingDetailsCard(dto.getBookingCode(), formattedDate, dto.getStoreName(),
+                        dto.getStoreAddress(), dto.getStorePhone(), dto.getStoreDirectionsUrl()))
+
+                // Itemized Table
+                .append("<h3 style='font-size: 15px; font-weight: 800; color: #373A43; margin: 24px 0 10px 0;'>Booked Treatments</h3>")
+                .append(renderItemsTable(dto.getItems()))
+
+                // No-Show & Deposit Policy Notice
+                .append("<div style='background: #FAF6ED; border-left: 4px solid #FC6957; border-radius: 10px; padding: 16px 18px; margin: 24px 0; border: 1px solid rgba(252, 105, 87, 0.15);'>")
+                .append("<div style='font-size: 14px; font-weight: 800; color: #373A43; margin-bottom: 6px;'>📋 No-Show & Cancellation Policy</div>")
+                .append("<p style='margin: 0; font-size: 12px; color: #5D616D; line-height: 1.6;'>")
+                .append("You may reschedule or cancel your appointment free of charge up to <strong>2 hours before</strong> your scheduled time. Cancellations with less than 2 hours' notice or failure to arrive (No-Show) will result in forfeiture of the advance booking deposit to cover reserved stylist time.")
+                .append("</p>")
+                .append("</div>")
+
+                // Action Buttons: Reschedule & Directions
+                .append("<div style='text-align: center; margin: 28px 0 16px 0;'>")
+                .append("<a href='").append(dto.getStoreDirectionsUrl())
+                .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 26px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35); margin-right: 10px;'>🧭 Get Directions</a>")
+                .append("<a href='").append(getFrontendUrl()).append("/customer/bookings/").append(dto.getBookingId())
+                .append("?reschedule=true' style='background: #FAF6ED; color: #373A43; border: 1px solid rgba(55,58,67,0.2); text-decoration: none; padding: 13px 22px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;'>🔄 Manage / Reschedule</a>")
+                .append("</div>")
+
+                .append("<p style='font-size: 12px; color: #7A7E89; text-align: center; margin-top: 12px;'>Questions? Call our front desk at <a href='tel:")
+                .append(dto.getStorePhone()).append("' style='color: #FC6957; font-weight: 700;'>")
+                .append(dto.getStorePhone()).append("</a>.</p>")
+
+                .append("<p style='margin-top: 28px; font-size: 13px; color: #7A7E89;'>Warm regards,<br><strong style='color: #373A43;'>Groomish Now Salon Team</strong></p>")
+                .append("</div>");
+
+        String fullHtml = templateService.buildTemplate(subject, sb.toString());
+        sendHtmlEmail(dto.getCustomerEmail(), subject, fullHtml);
+    }
+
+    @Override
+    @Async
+    public void sendAppointmentReminder2hEmail(BookingEmailDto dto) {
+        if (dto == null || dto.getCustomerEmail() == null || dto.getCustomerEmail().isBlank())
+            return;
+
+        String subject = "Final Reminder: Your salon appointment is in 2 hours! - Groomish Now";
+        String formattedDate = dto.getScheduledAt() != null ? dto.getScheduledAt().format(DATE_FORMATTER) : "In 2 Hours";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style='color: #373A43; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>")
+                .append("<div style='background: linear-gradient(135deg, #FFF3F0 0%, #FAF6ED 100%); border-left: 4px solid #FC6957; border: 1px solid #FC6957; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;'>")
+                .append("<div style='display: flex; align-items: center; gap: 8px;'>")
+                .append("<span style='font-size: 20px;'>⏳</span>")
+                .append("<h2 style='color: #FC6957; margin: 0; font-size: 18px; font-weight: 800;'>Your appointment starts in 2 hours!</h2>")
+                .append("</div>")
+                .append("<p style='margin: 6px 0 0 0; font-size: 13px; color: #7A7E89;'>Our team is prepping your treatment room and styling station.</p>")
+                .append("</div>")
+
+                .append("<p style='font-size: 14px;'>Dear <strong>").append(dto.getCustomerName())
+                .append("</strong>,</p>")
+                .append("<p style='font-size: 13px; color: #5D616D; line-height: 1.6;'>This is your final reminder for your session today at <strong>").append(dto.getStoreName()).append("</strong>:</p>")
+
+                // Details Card
+                .append(renderBookingDetailsCard(dto.getBookingCode(), formattedDate, dto.getStoreName(),
+                        dto.getStoreAddress(), dto.getStorePhone(), dto.getStoreDirectionsUrl()))
+
+                // Itemized Table
+                .append("<h3 style='font-size: 15px; font-weight: 800; color: #373A43; margin: 24px 0 10px 0;'>Booked Treatments</h3>")
+                .append(renderItemsTable(dto.getItems()))
+
+                // Cancellation Window Closed Alert
+                .append("<div style='background: #FFF5F4; border-left: 4px solid #D9534F; border-radius: 10px; padding: 16px 18px; margin: 24px 0; border: 1px solid rgba(217, 83, 79, 0.2);'>")
+                .append("<div style='font-size: 14px; font-weight: 800; color: #D9534F; margin-bottom: 6px;'>⚠️ Free Cancellation Window Closed</div>")
+                .append("<p style='margin: 0; font-size: 12px; color: #5D616D; line-height: 1.6;'>")
+                .append("As your appointment is within 2 hours, the free cancellation window has closed. Failure to arrive (No-Show) will result in deposit forfeiture. Please arrive 5–10 minutes early so your appointment starts smoothly.")
+                .append("</p>")
+                .append("</div>")
+
+                // Action Buttons: Directions & Call Salon
+                .append("<div style='text-align: center; margin: 28px 0 16px 0;'>")
+                .append("<a href='").append(dto.getStoreDirectionsUrl())
+                .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 26px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35); margin-right: 10px;'>🧭 Navigate to Salon</a>")
+                .append("<a href='tel:").append(dto.getStorePhone())
+                .append("' style='background: #FAF6ED; color: #373A43; border: 1px solid rgba(55,58,67,0.2); text-decoration: none; padding: 13px 22px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;'>📞 Call Salon Desk</a>")
+                .append("</div>")
+
+                .append("<p style='margin-top: 28px; font-size: 13px; color: #7A7E89;'>See you soon,<br><strong style='color: #373A43;'>Groomish Now Salon Team</strong></p>")
+                .append("</div>");
+
+        String fullHtml = templateService.buildTemplate(subject, sb.toString());
+        sendHtmlEmail(dto.getCustomerEmail(), subject, fullHtml);
+    }
+
+    @Override
+    @Async
+    public void sendBookingNoShowEmail(BookingEmailDto dto) {
+        if (dto == null || dto.getCustomerEmail() == null || dto.getCustomerEmail().isBlank())
+            return;
+
+        String subject = "Missed Appointment: " + dto.getBookingCode() + " - Groomish Now";
+        String formattedDate = dto.getScheduledAt() != null ? dto.getScheduledAt().format(DATE_FORMATTER) : "Scheduled slot";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style='color: #373A43; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>")
+                .append("<div style='background: linear-gradient(135deg, #FFF1F0 0%, #FAF6ED 100%); border-left: 4px solid #D9534F; border: 1px solid rgba(217, 83, 79, 0.25); border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;'>")
+                .append("<div style='display: flex; align-items: center; gap: 8px;'>")
+                .append("<span style='font-size: 20px;'>⚠️</span>")
+                .append("<h2 style='color: #D9534F; margin: 0; font-size: 18px; font-weight: 800;'>Missed Appointment / No-Show</h2>")
+                .append("</div>")
+                .append("<p style='margin: 6px 0 0 0; font-size: 13px; color: #7A7E89;'>We missed you today at Groomish Now.</p>")
+                .append("</div>")
+
+                .append("<p style='font-size: 14px;'>Dear <strong>").append(dto.getCustomerName())
+                .append("</strong>,</p>")
+                .append("<p style='font-size: 13px; color: #5D616D; line-height: 1.6;'>You were scheduled for an appointment at <strong>").append(dto.getStoreName()).append("</strong> on <strong>").append(formattedDate).append("</strong>. Because you were unable to check in or reschedule, this booking has been recorded as a <strong>No-Show</strong>.</p>")
+
+                // Policy Note
+                .append("<div style='background: #FAF6ED; border: 1px solid rgba(55,58,67,0.1); border-radius: 10px; padding: 16px 18px; margin: 20px 0;'>")
+                .append("<div style='font-size: 13px; font-weight: 800; color: #373A43; margin-bottom: 6px;'>Deposit & Cancellation Policy</div>")
+                .append("<p style='margin: 0; font-size: 12px; color: #7A7E89; line-height: 1.5;'>")
+                .append("As per our salon policy, no-shows forfeit the advance booking deposit to compensate stylists for the reserved schedule block.")
+                .append("</p>")
+                .append("</div>")
+
+                // Button to book again
+                .append("<div style='text-align: center; margin: 28px 0 16px 0;'>")
+                .append("<a href='").append(getFrontendUrl()).append("/services")
+                .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 26px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>📅 Book a New Appointment</a>")
+                .append("</div>")
+
+                .append("<p style='margin-top: 28px; font-size: 13px; color: #7A7E89;'>If you believe this was an error, please reach out to our team at support@groomish.com.<br><strong style='color: #373A43;'>Groomish Now Salon Team</strong></p>")
+                .append("</div>");
+
+        String fullHtml = templateService.buildTemplate(subject, sb.toString());
+        sendHtmlEmail(dto.getCustomerEmail(), subject, fullHtml);
+    }
+
+    @Override
+    @Async
+    public void sendRefundIssuedEmail(BookingEmailDto dto, Double refundAmount, String refundId, String reason, boolean isPartial) {
+        if (dto == null || dto.getCustomerEmail() == null || dto.getCustomerEmail().isBlank())
+            return;
+
+        String refundType = isPartial ? "Partial Refund" : "Full Refund";
+        String subject = refundType + " Processed: ₹" + (refundAmount != null ? String.format("%.2f", refundAmount) : "0.00") + " (" + dto.getBookingCode() + ") - Groomish Now";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style='color: #373A43; font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;'>")
+                .append("<div style='background: linear-gradient(135deg, #ECFDF5 0%, #FAF6ED 100%); border-left: 4px solid #10B981; border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;'>")
+                .append("<div style='display: flex; align-items: center; gap: 8px;'>")
+                .append("<span style='font-size: 20px;'>💳</span>")
+                .append("<h2 style='color: #065F46; margin: 0; font-size: 18px; font-weight: 800;'>")
+                .append(refundType).append(" of ₹").append(refundAmount != null ? String.format("%.2f", refundAmount) : "0.00").append(" Processed</h2>")
+                .append("</div>")
+                .append("<p style='margin: 6px 0 0 0; font-size: 13px; color: #047857;'>Your refund has been initiated through our Razorpay payment gateway.</p>")
+                .append("</div>")
+
+                .append("<p style='font-size: 14px;'>Dear <strong>").append(dto.getCustomerName())
+                .append("</strong>,</p>")
+                .append("<p style='font-size: 13px; color: #5D616D; line-height: 1.6;'>A refund has been issued for your salon appointment <strong>").append(dto.getBookingCode()).append("</strong>:</p>")
+
+                // Refund details card
+                .append("<table style='width: 100%; border-collapse: collapse; margin: 18px 0; background: #FAF6ED; border-radius: 14px; overflow: hidden; border: 1px solid rgba(55,58,67,0.08);'>")
+                .append("<tr style='border-bottom: 1px solid rgba(55,58,67,0.06);'>")
+                .append("<td style='padding: 12px 14px; font-weight: 600; color: #7A7E89; width: 40%; font-size: 13px;'>Refund Reference (Razorpay):</td>")
+                .append("<td style='padding: 12px 14px; color: #373A43; font-weight: 800; font-family: monospace; font-size: 14px;'>")
+                .append(refundId != null ? refundId : "Processing").append("</td>")
+                .append("</tr>")
+                .append("<tr style='border-bottom: 1px solid rgba(55,58,67,0.06);'>")
+                .append("<td style='padding: 12px 14px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Refunded Amount:</td>")
+                .append("<td style='padding: 12px 14px; color: #10B981; font-weight: 800; font-size: 15px;'>₹")
+                .append(refundAmount != null ? String.format("%.2f", refundAmount) : "0.00").append("</td>")
+                .append("</tr>")
+                .append("<tr style='border-bottom: 1px solid rgba(55,58,67,0.06);'>")
+                .append("<td style='padding: 12px 14px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Estimated Arrival:</td>")
+                .append("<td style='padding: 12px 14px; color: #373A43; font-weight: 700; font-size: 13px;'>5–7 Business Days</td>")
+                .append("</tr>")
+                .append("<tr>")
+                .append("<td style='padding: 12px 14px; font-weight: 600; color: #7A7E89; font-size: 13px;'>Reason / Policy:</td>")
+                .append("<td style='padding: 12px 14px; color: #5D616D; font-size: 12px; line-height: 1.4;'>")
+                .append(reason != null ? reason : "Appointment cancellation / refund request per salon policy.").append("</td>")
+                .append("</tr>")
+                .append("</table>")
+
+                .append("<p style='font-size: 12px; color: #7A7E89; line-height: 1.5;'>The funds will reflect directly back into the bank account, UPI ID, or card used for payment. Standard bank settlement usually completes within 5–7 business days.</p>")
+
+                // View Booking CTA
+                .append("<div style='text-align: center; margin: 28px 0 16px 0;'>")
+                .append("<a href='").append(getFrontendUrl()).append("/customer/bookings/").append(dto.getBookingId())
+                .append("' style='background: #FC6957; color: #FFFFFF; text-decoration: none; padding: 13px 26px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(252, 105, 87, 0.35);'>View Booking & Refund Details</a>")
+                .append("</div>")
+
+                .append("<p style='margin-top: 28px; font-size: 13px; color: #7A7E89;'>Questions regarding your refund? Contact us at support@groomish.com.<br><strong style='color: #373A43;'>Groomish Now Billing Support</strong></p>")
+                .append("</div>");
+
+        String fullHtml = templateService.buildTemplate(subject, sb.toString());
+        sendHtmlEmail(dto.getCustomerEmail(), subject, fullHtml);
+    }
+
+    @Override
+    @Async
     public void sendBookingModifiedEmail(BookingEmailDto dto, boolean isAdminOverride) {
         if (dto == null || dto.getCustomerEmail() == null || dto.getCustomerEmail().isBlank())
             return;
