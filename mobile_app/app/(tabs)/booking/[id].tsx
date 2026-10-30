@@ -374,12 +374,10 @@ export default function BookingDetailsScreen() {
     (couponOrVoucherCode.toUpperCase().includes('VOUCH') || couponOrVoucherCode.toUpperCase().includes('VIP'))
   );
 
-  const finalPayable = totalAmount > 0 ? totalAmount : (Number(booking.pricePaid) || catalogSum);
+  const finalPayable = totalAmount > 0 ? totalAmount : (catalogSum > 0 ? catalogSum : Number(booking.pricePaid) || 0);
   let codeDiscount = 0;
   if (couponOrVoucherCode && catalogSum > 0 && totalAmount < catalogSum) {
     codeDiscount = Math.max(0, catalogSum - totalAmount);
-  } else if (booking.pricePaid && catalogSum > 0 && Number(booking.pricePaid) < catalogSum && Number(booking.pricePaid) > 0) {
-    codeDiscount = Math.max(0, catalogSum - Number(booking.pricePaid));
   }
 
   return (

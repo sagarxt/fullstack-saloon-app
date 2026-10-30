@@ -234,7 +234,6 @@ public class BookingMapper {
             dto.setItems(new ArrayList<>());
         }
 
-        // Map products safely
         if (prods != null && !prods.isEmpty()) {
             dto.setProducts(prods.stream().map(bp -> BookingProductResponse.builder()
                     .id(bp.getId())
@@ -248,9 +247,6 @@ public class BookingMapper {
                     .quantity(bp.getQuantity())
                     .totalPrice(bp.getTotalPrice())
                     .build()).collect(Collectors.toList()));
-            if (dto.getServiceName() == null || dto.getServiceName().isBlank()) {
-                dto.setServiceName(prods.get(0).getProductNameSnapshot());
-            }
         } else {
             dto.setProducts(new ArrayList<>());
         }

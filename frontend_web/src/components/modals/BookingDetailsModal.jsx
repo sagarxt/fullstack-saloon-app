@@ -369,6 +369,7 @@ export default function BookingDetailsModal({
             <div className="divide-y divide-groomish-slate/10 border border-groomish-slate/10 rounded-xl overflow-hidden bg-white text-xs">
               {(() => {
                 const serviceList = booking.items || booking.bookingItems || [];
+                const productList = booking.products || booking.bookingProducts || [];
                 const grouped = groupBookingServices(serviceList);
                 if (grouped.length > 0) {
                   return grouped.map((grp, idx) => (
@@ -398,6 +399,13 @@ export default function BookingDetailsModal({
                       </div>
                     </div>
                   ));
+                }
+                if (productList.length > 0) {
+                  return (
+                    <div className="p-3 text-center text-xs text-groomish-slate/60">
+                      No salon services in this appointment (Retail products only)
+                    </div>
+                  );
                 }
                 return (
                   <div className="p-3 flex items-center justify-between">

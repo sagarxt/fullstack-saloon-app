@@ -405,8 +405,10 @@ export default function StaffBookingDetailPage() {
   };
 
   const bookingCode = booking?.bookingCode || (booking?.id ? `GN-${booking.id.slice(0, 8).toUpperCase()}` : "");
-  const groupedServices = booking ? groupBookingServices(booking.items || booking.bookingItems || []) : [];
-  const totalRawItems = (booking?.items || booking?.bookingItems || []).length;
+  const rawServices = booking ? (booking.items || booking.bookingItems || []) : [];
+  const groupedServices = booking ? groupBookingServices(rawServices) : [];
+  const rawProducts = booking ? (booking.products || booking.bookingProducts || []) : [];
+  const totalRawItems = rawServices.length;
   const isOwnBranch = !user?.storeId || !booking?.storeId || String(user.storeId) === String(booking.storeId);
 
   if (loading) {
@@ -825,8 +827,8 @@ export default function StaffBookingDetailPage() {
                                 minute: "2-digit",
                                 hour12: true,
                               })
-                            : ""}{" "}
-                          ({booking.totalDurationMinutes || 45} mins)
+                            : ""}
+                          {booking.totalDurationMinutes > 0 ? ` (${booking.totalDurationMinutes} mins)` : ""}
                         </span>
                       </p>
                     </div>
@@ -840,7 +842,7 @@ export default function StaffBookingDetailPage() {
                   <div className="flex items-center gap-2">
                     <Scissors className="w-4 h-4 text-groomish-orange" />
                     <h3 className="font-heading font-bold text-base text-groomish-slate">
-                      Salon Services ({totalRawItems || 1})
+                      Salon Services ({totalRawItems})
                     </h3>
                   </div>
                   {isOwnBranch && booking.status !== "COMPLETED" && booking.status !== "CANCELLED" && (
@@ -930,6 +932,11 @@ export default function StaffBookingDetailPage() {
                         </div>
                       </div>
                     ))
+                  ) : rawProducts.length > 0 ? (
+                    <div className="p-6 text-center text-xs text-groomish-slate/60 bg-groomish-cream/20">
+                      <p className="font-bold text-groomish-slate">No Salon Services in this Order</p>
+                      <p className="text-[11px] text-groomish-slate/50 mt-1">This appointment contains retail products only.</p>
+                    </div>
                   ) : (
                     <div className="p-4 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
@@ -942,7 +949,7 @@ export default function StaffBookingDetailPage() {
                           </p>
                           <p className="text-[11px] text-groomish-slate/50 flex items-center gap-1.5 mt-0.5">
                             <Clock className="w-3 h-3" />
-                            <span>{booking.totalDurationMinutes || 45} mins</span>
+                            <span>{booking.totalDurationMinutes || 0} mins</span>
                             <span>•</span>
                             <span className={booking.status === "CANCELLED" ? "text-groomish-crimson font-bold uppercase" : "capitalize"}>
                               {booking.status === "CANCELLED" ? "CANCELLED" : booking.status}

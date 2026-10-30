@@ -155,14 +155,14 @@ public class CustomerPaymentServiceImpl implements CustomerPaymentService {
         }
         Booking savedBooking = bookingRepository.save(booking);
 
-        String desc = confirmedPaid > 0
+        String desc = paid > 0.01
                 ? "Online payment of remaining balance ₹" + payableRemaining + " confirmed via " + savedPayment.getPaymentMethod() + ". Total ₹" + newPaidTotal + " paid in full. Invoice: " + savedPayment.getInvoiceNumber()
                 : "Online payment of ₹" + savedPayment.getAmount() + " confirmed via " + savedPayment.getPaymentMethod() + ". Invoice: " + savedPayment.getInvoiceNumber();
 
         bookingTimelineService.recordTimeline(
                 savedBooking,
                 "PAYMENT_RECORDED",
-                confirmedPaid > 0 ? "Online Balance Payment Verified" : "Online Payment Verified",
+                paid > 0.01 ? "Online Balance Payment Verified" : "Online Payment Verified",
                 desc,
                 user.getName(),
                 "CUSTOMER",

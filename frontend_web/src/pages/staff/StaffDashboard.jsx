@@ -1268,7 +1268,7 @@ export default function StaffDashboard() {
               <div className="flex justify-between items-center mb-2">
                 <h4 className="font-bold text-groomish-slate flex items-center gap-1.5">
                   <Scissors className="w-4 h-4 text-groomish-orange" />
-                  <span>Salon Services ({billingBooking.items?.length || 1})</span>
+                  <span>Salon Services ({billingBooking.items?.length || (billingBooking.products?.length > 0 ? 0 : 1)})</span>
                 </h4>
                 <span className="text-[11px] text-groomish-slate/60">
                   Client: <strong className="text-groomish-slate">{billingBooking.userName || billingBooking.bookedBy || "Walk-In Guest"}</strong>
@@ -1331,6 +1331,11 @@ export default function StaffDashboard() {
                       </div>
                     </div>
                   ))
+                ) : (billingBooking.products && billingBooking.products.length > 0) ? (
+                  <div className="p-3 rounded-xl bg-white border border-groomish-slate/10 text-center text-xs text-groomish-slate/60">
+                    <p className="font-semibold text-groomish-slate">No Salon Services in this Order</p>
+                    <p className="text-[11px] text-groomish-slate/50 mt-0.5">This appointment contains retail products only.</p>
+                  </div>
                 ) : (
                   <div className="p-3 rounded-xl bg-white border border-groomish-slate/10 flex items-center justify-between">
                     <span className="font-bold text-groomish-slate">{billingBooking.serviceName || "Salon Service"}</span>

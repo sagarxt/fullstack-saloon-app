@@ -1061,8 +1061,8 @@ public class EmailServiceImpl implements EmailService {
     private String renderBillSummary(BookingEmailDto dto) {
         double subtotal = dto.getSubtotal() != null ? dto.getSubtotal()
                 : (dto.getTotalMrp() != null ? dto.getTotalMrp() : 0.0);
-        double paid = dto.getFinalPayable() != null ? dto.getFinalPayable()
-                : (dto.getPricePaid() != null ? dto.getPricePaid() : subtotal);
+        double finalPayable = dto.getFinalPayable() != null ? dto.getFinalPayable()
+                : (dto.getPricePaid() != null && dto.getPricePaid() > 0 ? dto.getPricePaid() : subtotal);
         double mrpDiscount = dto.getMrpDiscount() != null && dto.getMrpDiscount() > 0 ? dto.getMrpDiscount()
                 : (dto.getDiscountAmount() != null ? dto.getDiscountAmount() : 0.0);
 
@@ -1071,15 +1071,18 @@ public class EmailServiceImpl implements EmailService {
         String voucherCode = dto.getVoucherCode();
         Double voucherDisc = dto.getVoucherDiscount();
 
-        // Fallback if promoCode is set
+        // Fallback if promoCode is set but couponCode/voucherCode not set
         if (couponCode == null && voucherCode == null && dto.getPromoCode() != null && !dto.getPromoCode().isBlank()) {
-            if (dto.getPromoCode().toUpperCase().contains("VOUCH")
-                    || dto.getPromoCode().toUpperCase().contains("VIP")) {
-                voucherCode = dto.getPromoCode();
-                voucherDisc = Math.max(0.0, subtotal - mrpDiscount - paid);
-            } else {
-                couponCode = dto.getPromoCode();
-                couponDisc = Math.max(0.0, subtotal - mrpDiscount - paid);
+            double codeDiff = Math.max(0.0, subtotal - mrpDiscount - finalPayable);
+            if (codeDiff > 0) {
+                if (dto.getPromoCode().toUpperCase().contains("VOUCH")
+                        || dto.getPromoCode().toUpperCase().contains("VIP")) {
+                    voucherCode = dto.getPromoCode();
+                    voucherDisc = codeDiff;
+                } else {
+                    couponCode = dto.getPromoCode();
+                    couponDisc = codeDiff;
+                }
             }
         }
 
@@ -1119,8 +1122,20 @@ public class EmailServiceImpl implements EmailService {
         sb.append(
                 "<tr><td style='padding: 5px 0; color: #7A7E89;'>Salon Hygiene & Taxes:</td><td style='padding: 5px 0; text-align: right; color: #2E7D32; font-weight: 700; font-size: 11px;'>FREE</td></tr>")
                 .append("<tr style='border-top: 2px solid rgba(55,58,67,0.1);'><td style='padding: 8px 0 2px 0; font-weight: 800; font-size: 14px; color: #373A43;'>Final Payable:</td><td style='padding: 8px 0 2px 0; text-align: right; font-weight: 800; font-size: 18px; color: #FC6957;'>₹")
-                .append(String.format("%.2f", paid)).append("</td></tr>")
-                .append("</table>")
+                .append(String.format("%.2f", finalPayable)).append("</td></tr>");
+
+        double paidOnline = dto.getPricePaid() != null ? dto.getPricePaid() : 0.0;
+        if (paidOnline > 0) {
+            sb.append("<tr><td style='padding: 4px 0; color: #2E7D32; font-weight: 600;'>Already Paid Online:</td><td style='padding: 4px 0; text-align: right; color: #2E7D32; font-weight: 700;'>-₹")
+                    .append(String.format("%.2f", paidOnline)).append("</td></tr>");
+            double remaining = Math.max(0.0, finalPayable - paidOnline);
+            if (remaining > 0) {
+                sb.append("<tr><td style='padding: 4px 0; color: #B45309; font-weight: 700;'>Remaining to Settle:</td><td style='padding: 4px 0; text-align: right; color: #B45309; font-weight: 800;'>₹")
+                        .append(String.format("%.2f", remaining)).append("</td></tr>");
+            }
+        }
+
+        sb.append("</table>")
                 .append("</div>");
 
         // 2. PAYMENT DETAILS (PLACED AFTER PRICE & INVOICE DETAILS)

@@ -5,7 +5,7 @@ import CustomerProfileModal from "../modals/CustomerProfileModal";
 import GroomCoinIcon from "../common/GroomCoinIcon";
 import { getBranchNavigationUrl } from "../../utils/mapHelper";
 import { groupBookingServices } from "../../utils/serviceMultiplierHelper";
-import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, UserCheck, MapPin, User, Trash2, Scissors, Navigation, Sparkles } from "lucide-react";
+import { Calendar, Clock, CreditCard, ChevronRight, Check, X, CheckCircle2, UserCheck, MapPin, User, Trash2, Scissors, Navigation, Sparkles, ShoppingBag } from "lucide-react";
 import { forceDeleteBookingApi } from "../../api/maintenance";
 import { showConfirm, showAlert } from "../../context/ConfirmContext";
 
