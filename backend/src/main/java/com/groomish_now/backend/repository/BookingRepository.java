@@ -21,6 +21,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
 
     List<Booking> findByUserId(UUID userId);
 
+    boolean existsByUserIdAndCouponIdAndStatusNot(UUID userId, UUID couponId, com.groomish_now.backend.enums.BookingStatus status);
+
     boolean existsByBookingCode(String bookingCode);
 
     java.util.Optional<Booking> findByBookingCode(String bookingCode);

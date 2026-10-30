@@ -49,6 +49,11 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         if (req.getEligibleCategories() != null) {
             c.setEligibleCategories(new java.util.ArrayList<>(req.getEligibleCategories()));
         }
+        if (req.getEligibleBrands() != null) {
+            c.setEligibleBrands(new java.util.ArrayList<>(req.getEligibleBrands()));
+        }
+        c.setCategoryBrandOperator(req.getCategoryBrandOperator() != null && !req.getCategoryBrandOperator().isBlank() 
+            ? req.getCategoryBrandOperator().trim().toUpperCase() : "OR");
         if (req.getApplicableUserGroups() != null) {
             c.setApplicableUserGroups(new java.util.ArrayList<>(req.getApplicableUserGroups()));
         }
@@ -84,6 +89,12 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         if (req.getActive() != null) c.setActive(req.getActive());
         if (req.getEligibleCategories() != null) {
             c.setEligibleCategories(new java.util.ArrayList<>(req.getEligibleCategories()));
+        }
+        if (req.getEligibleBrands() != null) {
+            c.setEligibleBrands(new java.util.ArrayList<>(req.getEligibleBrands()));
+        }
+        if (req.getCategoryBrandOperator() != null && !req.getCategoryBrandOperator().isBlank()) {
+            c.setCategoryBrandOperator(req.getCategoryBrandOperator().trim().toUpperCase());
         }
         if (req.getApplicableUserGroups() != null) {
             c.setApplicableUserGroups(new java.util.ArrayList<>(req.getApplicableUserGroups()));
@@ -217,6 +228,8 @@ public class CouponAdminServiceImpl implements CouponAdminService {
         dto.setExpiryDate(c.getExpiryDate() != null ? c.getExpiryDate().toString() : null);
         dto.setActive(c.isActive());
         dto.setEligibleCategories(c.getEligibleCategories() != null ? new java.util.ArrayList<>(c.getEligibleCategories()) : new java.util.ArrayList<>());
+        dto.setEligibleBrands(c.getEligibleBrands() != null ? new java.util.ArrayList<>(c.getEligibleBrands()) : new java.util.ArrayList<>());
+        dto.setCategoryBrandOperator(c.getCategoryBrandOperator() != null ? c.getCategoryBrandOperator() : "OR");
         dto.setApplicableUserGroups(c.getApplicableUserGroups() != null ? new java.util.ArrayList<>(c.getApplicableUserGroups()) : new java.util.ArrayList<>());
         return dto;
     }

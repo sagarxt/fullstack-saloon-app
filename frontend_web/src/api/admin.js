@@ -118,6 +118,36 @@ export const getUsersApi = (roleOrParams, page = 0, size = 50, userGroup = null,
 export const getUserGroupsCatalogApi = () =>
   axiosClient.get("/admin/users/groups");
 
+/* COHORT MANAGEMENT & RULE APPLICATION */
+export const getAdminCohortsApi = () =>
+  axiosClient.get("/admin/cohorts");
+
+export const getAdminCohortApi = (id) =>
+  axiosClient.get(`/admin/cohorts/${id}`);
+
+export const createAdminCohortApi = (data) =>
+  axiosClient.post("/admin/cohorts", data);
+
+export const updateAdminCohortApi = (id, data) =>
+  axiosClient.put(`/admin/cohorts/${id}`, data);
+
+export const deleteAdminCohortApi = (id) =>
+  axiosClient.delete(`/admin/cohorts/${id}`);
+
+export const toggleAdminCohortStatusApi = (id, active) => {
+  const query = typeof active === "boolean" ? `?active=${active}` : "";
+  return axiosClient.put(`/admin/cohorts/${id}/status${query}`);
+};
+
+export const applyAdminCohortToUsersApi = (id) =>
+  axiosClient.post(`/admin/cohorts/${id}/apply`);
+
+export const applyAllAdminCohortsToUsersApi = () =>
+  axiosClient.post("/admin/cohorts/apply-all");
+
+export const getAdminCohortUsersApi = (id) =>
+  axiosClient.get(`/admin/cohorts/${id}/users`);
+
 export const updateUserGroupsApi = (id, groups) =>
   axiosClient.put(`/admin/users/${id}/groups`, groups);
 

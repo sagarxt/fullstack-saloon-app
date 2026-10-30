@@ -8,6 +8,7 @@ import {
 import { forceDeleteCustomerApi } from "../../api/maintenance";
 import Pagination from "../../components/common/Pagination";
 import CustomerProfileModal from "../../components/modals/CustomerProfileModal";
+import CohortManagementModal from "../../components/modals/CohortManagementModal";
 import ModalWrapper from "../../components/modals/ModalWrapper";
 import GroomCoinIcon from "../../components/common/GroomCoinIcon";
 import { extractList } from "../../utils/dataHelper";
@@ -91,6 +92,7 @@ export default function CustomersPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [selectedCustomerData, setSelectedCustomerData] = useState(null);
   const [modalInitialTab, setModalInitialTab] = useState("ORDERS");
+  const [cohortModalOpen, setCohortModalOpen] = useState(false);
 
   // Email Campaign Modal State
   const [emailModalOpen, setEmailModalOpen] = useState(false);
@@ -324,6 +326,15 @@ export default function CustomersPage() {
           </button>
 
           <button
+            onClick={() => setCohortModalOpen(true)}
+            className="px-4 py-2.5 rounded-2xl font-bold text-xs bg-groomish-cream text-groomish-slate border border-groomish-slate/20 hover:border-groomish-orange hover:text-groomish-orange transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            title="Create, modify, and apply automated customer cohorts & logics"
+          >
+            <Sparkles className="w-4 h-4 text-groomish-orange" />
+            <span>Manage Cohorts & Rules</span>
+          </button>
+
+          <button
             onClick={() => handleOpenEmailModal(selectedGroup)}
             className="px-4 py-2.5 rounded-2xl font-bold text-xs bg-white border border-groomish-slate/20 text-groomish-slate hover:border-groomish-orange hover:text-groomish-orange transition flex items-center gap-1.5 shadow-xs"
           >
@@ -342,7 +353,10 @@ export default function CustomersPage() {
           <span>Filter by Customer Cohort:</span>
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-          {FILTER_GROUPS.map((grp) => {
+          {(userGroupsCatalog && userGroupsCatalog.length > 0
+            ? [{ id: "ALL", label: "All Customers" }, ...userGroupsCatalog.map((g) => ({ id: g.id, label: g.name }))]
+            : FILTER_GROUPS
+          ).map((grp) => {
             const isSelected = selectedGroup === grp.id;
             return (
               <button
@@ -1203,6 +1217,13 @@ export default function CustomersPage() {
           );
         })()}
       </ModalWrapper>
+
+      {/* Cohort Management & Rules Modal */}
+      <CohortManagementModal
+        open={cohortModalOpen}
+        onClose={() => setCohortModalOpen(false)}
+        onCohortsUpdated={loadData}
+      />
     </div>
   );
 }

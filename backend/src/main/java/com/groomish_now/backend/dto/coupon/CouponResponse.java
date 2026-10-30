@@ -16,5 +16,7 @@ public class CouponResponse {
     private String expiryDate;
     private Boolean active;
     private java.util.List<String> eligibleCategories;
+    private java.util.List<String> eligibleBrands;
+    private String categoryBrandOperator;
     private java.util.List<String> applicableUserGroups;
 }

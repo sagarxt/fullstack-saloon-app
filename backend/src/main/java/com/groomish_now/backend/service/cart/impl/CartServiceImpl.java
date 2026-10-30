@@ -394,6 +394,15 @@ public class CartServiceImpl implements CartService {
             if (c.getStartDate() != null && c.getStartDate().isAfter(LocalDateTime.now())) {
                 throw new RuntimeException("Coupon '" + c.getCode() + "' is not active yet (valid from " + c.getStartDate().toLocalDate() + ").");
             }
+
+            // Check if user already used this coupon in a non-cancelled booking
+            boolean alreadyUsed = bookingRepository.existsByUserIdAndCouponIdAndStatusNot(
+                    userId, c.getId(), BookingStatus.CANCELLED
+            );
+            if (alreadyUsed) {
+                throw new RuntimeException("You have already used coupon '" + c.getCode() + "'. This coupon is valid for single use per customer.");
+            }
+
             if (c.getApplicableUserGroups() != null && !c.getApplicableUserGroups().isEmpty() && !c.getApplicableUserGroups().contains("ALL")) {
                 java.util.Set<String> effectiveGroups = user.getAllEffectiveGroups();
                 boolean matches = c.getApplicableUserGroups().stream()
@@ -404,77 +413,107 @@ public class CartServiceImpl implements CartService {
             }
 
             final java.util.List<String> eligibleCats = c.getEligibleCategories();
+            final java.util.List<String> eligibleBrands = c.getEligibleBrands();
+            final String operator = c.getCategoryBrandOperator() != null && !c.getCategoryBrandOperator().isBlank()
+                    ? c.getCategoryBrandOperator().trim().toUpperCase() : "OR";
+
             boolean hasSpecificCategories = eligibleCats != null && !eligibleCats.isEmpty()
                     && eligibleCats.stream().noneMatch(ec -> ec.trim().equalsIgnoreCase("ALL"));
+            boolean hasSpecificBrands = eligibleBrands != null && !eligibleBrands.isEmpty()
+                    && eligibleBrands.stream().noneMatch(eb -> eb.trim().equalsIgnoreCase("ALL"));
 
-            if (hasSpecificCategories) {
-                double eligibleCategoryTotal = 0.0;
-                int eligibleItemCount = 0;
+            boolean hasRestrictions = hasSpecificCategories || hasSpecificBrands;
 
-                for (CartItem ci : cart.getItems()) {
-                    int qty = ci.getQuantity() != null && ci.getQuantity() > 0 ? ci.getQuantity() : 1;
-                    boolean matchesCategory = false;
+            double eligibleTotal = 0.0;
+            int eligibleItemCount = 0;
 
-                    if (ci.getService() != null && ci.getService().getCategory() != null) {
-                        String catName = ci.getService().getCategory().getName();
-                        String catId = ci.getService().getCategory().getId() != null ? ci.getService().getCategory().getId().toString() : "";
-                        matchesCategory = eligibleCats.stream().anyMatch(ec -> {
-                            String cleanEc = ec.trim();
-                            return (catName != null && cleanEc.equalsIgnoreCase(catName))
-                                    || cleanEc.equalsIgnoreCase(catId)
-                                    || (catName != null && (catName.toLowerCase().contains(cleanEc.toLowerCase()) || cleanEc.toLowerCase().contains(catName.toLowerCase())));
-                        });
-                    } else if (ci.getProduct() != null && ci.getProduct().getCategory() != null) {
-                        String prodCat = ci.getProduct().getCategory();
-                        matchesCategory = eligibleCats.stream().anyMatch(ec -> {
-                            String cleanEc = ec.trim();
-                            return cleanEc.equalsIgnoreCase(prodCat)
-                                    || prodCat.toLowerCase().contains(cleanEc.toLowerCase())
-                                    || cleanEc.toLowerCase().contains(prodCat.toLowerCase());
-                        });
-                    }
+            for (CartItem ci : cart.getItems()) {
+                int qty = ci.getQuantity() != null && ci.getQuantity() > 0 ? ci.getQuantity() : 1;
+                double itemPrice = 0.0;
+                if (ci.getItemType() == CartItemType.SERVICE && ci.getService() != null) {
+                    itemPrice = ci.getSubServicePrice() != null ? ci.getSubServicePrice() : (ci.getService().getPrice() != null ? ci.getService().getPrice() : 0.0);
+                } else if (ci.getItemType() == CartItemType.PRODUCT && ci.getProduct() != null) {
+                    itemPrice = ci.getProduct().getPrice() != null ? ci.getProduct().getPrice() : 0.0;
+                }
 
-                    if (matchesCategory) {
-                        eligibleItemCount += qty;
-                        double itemPrice = 0.0;
-                        if (ci.getItemType() == CartItemType.SERVICE && ci.getService() != null) {
-                            itemPrice = ci.getSubServicePrice() != null ? ci.getSubServicePrice() : (ci.getService().getPrice() != null ? ci.getService().getPrice() : 0.0);
-                        } else if (ci.getItemType() == CartItemType.PRODUCT && ci.getProduct() != null) {
-                            itemPrice = ci.getProduct().getPrice() != null ? ci.getProduct().getPrice() : 0.0;
+                boolean isEligible = false;
+                if (!hasRestrictions) {
+                    isEligible = true;
+                } else {
+                    boolean matchesCat = false;
+                    if (hasSpecificCategories) {
+                        String catName = ci.getService() != null && ci.getService().getCategory() != null
+                                ? ci.getService().getCategory().getName()
+                                : (ci.getProduct() != null ? ci.getProduct().getCategory() : null);
+                        String catId = ci.getService() != null && ci.getService().getCategory() != null && ci.getService().getCategory().getId() != null
+                                ? ci.getService().getCategory().getId().toString() : "";
+                        if (catName != null || !catId.isBlank()) {
+                            matchesCat = eligibleCats.stream().anyMatch(ec -> {
+                                String clean = ec.trim();
+                                return (catName != null && clean.equalsIgnoreCase(catName))
+                                        || clean.equalsIgnoreCase(catId)
+                                        || (catName != null && (catName.toLowerCase().contains(clean.toLowerCase()) || clean.toLowerCase().contains(catName.toLowerCase())));
+                            });
                         }
-                        eligibleCategoryTotal += itemPrice * qty;
+                    }
+
+                    boolean matchesBrand = false;
+                    if (hasSpecificBrands) {
+                        String brandName = ci.getProduct() != null ? ci.getProduct().getBrand() : null;
+                        if (brandName != null && !brandName.isBlank()) {
+                            matchesBrand = eligibleBrands.stream().anyMatch(eb -> {
+                                String clean = eb.trim();
+                                return clean.equalsIgnoreCase(brandName)
+                                        || brandName.toLowerCase().contains(clean.toLowerCase())
+                                        || clean.toLowerCase().contains(brandName.toLowerCase());
+                            });
+                        }
+                    }
+
+                    if (hasSpecificCategories && hasSpecificBrands) {
+                        if ("AND".equalsIgnoreCase(operator)) {
+                            isEligible = matchesCat && matchesBrand;
+                        } else {
+                            isEligible = matchesCat || matchesBrand;
+                        }
+                    } else if (hasSpecificCategories) {
+                        isEligible = matchesCat;
+                    } else {
+                        isEligible = matchesBrand;
                     }
                 }
 
-                if (eligibleItemCount == 0) {
-                    throw new RuntimeException("Coupon '" + c.getCode() + "' is only valid for categories: " + String.join(", ", eligibleCats));
+                if (isEligible) {
+                    eligibleItemCount += qty;
+                    eligibleTotal += itemPrice * qty;
                 }
+            }
 
-                if (c.getMinAmount() != null && eligibleCategoryTotal < c.getMinAmount()) {
-                    throw new RuntimeException("Combined total for eligible categories (" + String.join(", ", eligibleCats) + ") is ₹" + eligibleCategoryTotal + ", which does not meet coupon minimum of ₹" + c.getMinAmount());
+            if (eligibleItemCount == 0) {
+                StringBuilder msg = new StringBuilder("Coupon '").append(c.getCode()).append("' is not applicable to any items in your cart. Valid for: ");
+                if (hasSpecificCategories && hasSpecificBrands) {
+                    msg.append("Categories [").append(String.join(", ", eligibleCats)).append("] ")
+                       .append(operator).append(" Brands [").append(String.join(", ", eligibleBrands)).append("]");
+                } else if (hasSpecificCategories) {
+                    msg.append("Categories [").append(String.join(", ", eligibleCats)).append("]");
+                } else if (hasSpecificBrands) {
+                    msg.append("Brands [").append(String.join(", ", eligibleBrands)).append("]");
                 }
+                throw new RuntimeException(msg.toString());
+            }
 
-                coupon = c;
-                discount = c.getDiscount() != null ? c.getDiscount() : 0.0;
-                if (c.getMaxDiscount() != null && discount > c.getMaxDiscount()) {
-                    discount = c.getMaxDiscount();
-                }
-                if (discount > eligibleCategoryTotal) {
-                    discount = eligibleCategoryTotal;
-                }
-            } else {
-                if (c.getMinAmount() != null && grossTotal < c.getMinAmount()) {
-                    throw new RuntimeException("Order total ₹" + grossTotal + " does not meet coupon minimum of ₹" + c.getMinAmount());
-                }
+            if (c.getMinAmount() != null && eligibleTotal < c.getMinAmount()) {
+                throw new RuntimeException("Combined total for eligible items (₹" + eligibleTotal + ") does not meet coupon minimum of ₹" + c.getMinAmount());
+            }
 
-                coupon = c;
-                discount = c.getDiscount() != null ? c.getDiscount() : 0.0;
-                if (c.getMaxDiscount() != null && discount > c.getMaxDiscount()) {
-                    discount = c.getMaxDiscount();
-                }
-                if (discount > grossTotal) {
-                    discount = grossTotal;
-                }
+            coupon = c;
+            discount = c.getDiscount() != null ? c.getDiscount() : 0.0;
+            if (c.getMaxDiscount() != null && discount > c.getMaxDiscount()) {
+                discount = c.getMaxDiscount();
+            }
+            // Coupon discount applies strictly on eligible items - other items are unchanged
+            if (discount > eligibleTotal) {
+                discount = eligibleTotal;
             }
         } else if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
             RedeemedVoucher voucher = redeemedVoucherRepository.findByVoucherCode(request.getVoucherCode().trim())
@@ -492,22 +531,89 @@ public class CartServiceImpl implements CartService {
                 throw new RuntimeException("Voucher has expired.");
             }
 
-            if (voucher.getDiscountPercent() != null && voucher.getDiscountPercent() > 0) {
-                if (voucher.getServiceId() != null) {
-                    // Check if voucher's service is in the cart
-                    Optional<CartItem> matchingSrv = serviceItems.stream()
-                            .filter(si -> si.getService().getId().equals(voucher.getServiceId()))
-                            .findFirst();
-                    if (matchingSrv.isPresent()) {
-                        double srvPrice = matchingSrv.get().getService().getPrice();
-                        discount = (srvPrice * voucher.getDiscountPercent()) / 100.0;
-                    } else {
-                        // Discount on grossTotal
-                        discount = (grossTotal * voucher.getDiscountPercent()) / 100.0;
-                    }
-                } else {
-                    discount = (grossTotal * voucher.getDiscountPercent()) / 100.0;
+            // Voucher multi-condition evaluation
+            UUID vServiceId = voucher.getServiceId();
+            UUID vProductId = voucher.getProductId();
+            java.util.List<String> vCats = voucher.getEligibleCategories();
+            java.util.List<String> vBrands = voucher.getEligibleBrands();
+            String vOperator = voucher.getConditionOperator() != null && !voucher.getConditionOperator().isBlank()
+                    ? voucher.getConditionOperator().trim().toUpperCase() : "OR";
+
+            boolean hasSpecificService = vServiceId != null;
+            boolean hasSpecificProduct = vProductId != null;
+            boolean hasSpecificCats = vCats != null && !vCats.isEmpty() && vCats.stream().noneMatch(cat -> cat.trim().equalsIgnoreCase("ALL"));
+            boolean hasSpecificBrands = vBrands != null && !vBrands.isEmpty() && vBrands.stream().noneMatch(br -> br.trim().equalsIgnoreCase("ALL"));
+
+            boolean hasVoucherRestrictions = hasSpecificService || hasSpecificProduct || hasSpecificCats || hasSpecificBrands;
+
+            double eligibleVoucherTotal = 0.0;
+            int eligibleVoucherCount = 0;
+
+            for (CartItem ci : cart.getItems()) {
+                int qty = ci.getQuantity() != null && ci.getQuantity() > 0 ? ci.getQuantity() : 1;
+                double itemPrice = 0.0;
+                if (ci.getItemType() == CartItemType.SERVICE && ci.getService() != null) {
+                    itemPrice = ci.getSubServicePrice() != null ? ci.getSubServicePrice() : (ci.getService().getPrice() != null ? ci.getService().getPrice() : 0.0);
+                } else if (ci.getItemType() == CartItemType.PRODUCT && ci.getProduct() != null) {
+                    itemPrice = ci.getProduct().getPrice() != null ? ci.getProduct().getPrice() : 0.0;
                 }
+
+                boolean isEligible = false;
+                if (!hasVoucherRestrictions) {
+                    isEligible = true;
+                } else {
+                    boolean matchSrv = hasSpecificService && ci.getService() != null && ci.getService().getId().equals(vServiceId);
+                    boolean matchProd = hasSpecificProduct && ci.getProduct() != null && ci.getProduct().getId().equals(vProductId);
+
+                    boolean matchCat = false;
+                    if (hasSpecificCats) {
+                        String catName = ci.getService() != null && ci.getService().getCategory() != null
+                                ? ci.getService().getCategory().getName()
+                                : (ci.getProduct() != null ? ci.getProduct().getCategory() : null);
+                        if (catName != null) {
+                            matchCat = vCats.stream().anyMatch(ec -> ec.trim().equalsIgnoreCase(catName) || catName.toLowerCase().contains(ec.trim().toLowerCase()));
+                        }
+                    }
+
+                    boolean matchBrand = false;
+                    if (hasSpecificBrands && ci.getProduct() != null && ci.getProduct().getBrand() != null) {
+                        String bName = ci.getProduct().getBrand();
+                        matchBrand = vBrands.stream().anyMatch(eb -> eb.trim().equalsIgnoreCase(bName) || bName.toLowerCase().contains(eb.trim().toLowerCase()));
+                    }
+
+                    if ("AND".equalsIgnoreCase(vOperator)) {
+                        boolean ok = true;
+                        if (hasSpecificService && !matchSrv) ok = false;
+                        if (hasSpecificProduct && !matchProd) ok = false;
+                        if (hasSpecificCats && !matchCat) ok = false;
+                        if (hasSpecificBrands && !matchBrand) ok = false;
+                        isEligible = ok;
+                    } else {
+                        isEligible = matchSrv || matchProd || matchCat || matchBrand;
+                    }
+                }
+
+                if (isEligible) {
+                    eligibleVoucherCount += qty;
+                    eligibleVoucherTotal += itemPrice * qty;
+                }
+            }
+
+            if (eligibleVoucherCount == 0) {
+                throw new RuntimeException("Voucher '" + (voucher.getTitle() != null ? voucher.getTitle() : voucher.getVoucherCode()) + "' is not applicable to any items in your cart.");
+            }
+
+            // Voucher discount calculated strictly on eligible items
+            if (voucher.getDiscountPercent() != null && voucher.getDiscountPercent() > 0) {
+                discount = (eligibleVoucherTotal * voucher.getDiscountPercent()) / 100.0;
+            } else if (voucher.getDiscountAmount() != null && voucher.getDiscountAmount() > 0) {
+                discount = voucher.getDiscountAmount();
+            } else {
+                discount = eligibleVoucherTotal; // 100% off
+            }
+
+            if (discount > eligibleVoucherTotal) {
+                discount = eligibleVoucherTotal;
             }
 
             // Mark voucher as APPLIED

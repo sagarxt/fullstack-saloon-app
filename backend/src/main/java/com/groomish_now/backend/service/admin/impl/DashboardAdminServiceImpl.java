@@ -458,8 +458,8 @@ public class DashboardAdminServiceImpl implements DashboardAdminService {
             for (BookingProduct prod : bProds) {
                 String pName = prod.getProductNameSnapshot() != null ? prod.getProductNameSnapshot()
                         : (prod.getProduct() != null ? prod.getProduct().getName() : "Salon Retail Product");
-                String brand = prod.getBrand() != null ? prod.getBrand()
-                        : (prod.getProduct() != null ? prod.getProduct().getBrand() : "Groomish");
+                String brand = (prod.getProduct() != null && prod.getProduct().getBrand() != null)
+                        ? prod.getProduct().getBrand() : "Groomish";
                 UUID pId = prod.getProduct() != null ? prod.getProduct().getId() : null;
                 double pTotal = getBookingProductPrice(prod);
                 int qty = prod.getQuantity() != null && prod.getQuantity() > 0 ? prod.getQuantity() : 1;
