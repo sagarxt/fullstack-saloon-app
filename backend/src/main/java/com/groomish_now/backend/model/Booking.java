@@ -84,6 +84,7 @@ public class Booking {
     }
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(50)")
     private BookingStatus status;
 
     private String note;

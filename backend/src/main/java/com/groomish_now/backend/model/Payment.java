@@ -29,11 +29,13 @@ public class Payment {
     private Double amount;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(50)")
     private PaymentMethod paymentMethod;
 
     private String paymentModeDetails;
 
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(50)")
     private PaymentStatus status;
 
     private String paymentGatewayId;

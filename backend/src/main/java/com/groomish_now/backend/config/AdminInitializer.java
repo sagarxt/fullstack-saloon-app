@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 
@@ -22,19 +21,9 @@ public class AdminInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) throws Exception {
-
-        // Ensure database check constraint on payments table supports ONLINE payment method
-        try {
-            jdbcTemplate.execute("ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_payment_method_check");
-            jdbcTemplate.execute("ALTER TABLE payments ADD CONSTRAINT payments_payment_method_check CHECK (payment_method IN ('CASH', 'CARD', 'UPI', 'ONLINE'))");
-            System.out.println("✔ Successfully updated payments_payment_method_check constraint to include ONLINE.");
-        } catch (Exception e) {
-            System.err.println("Notice on payments_payment_method_check: " + e.getMessage());
-        }
 
         // Check if ANY admin exists
         if (userRepository.findByRole(Role.ROLE_ADMIN).isEmpty()) {
